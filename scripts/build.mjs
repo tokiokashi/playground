@@ -18,6 +18,10 @@ for (const ent of readdirSync(root, { withFileTypes: true })) {
   const metaPath = join(dir, 'meta.json');
   if (!existsSync(metaPath)) continue;
   const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
+  // 一覧は date の文字列順で並べるので、形をそろえないと順番が崩れる
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(meta.date || '')) {
+    throw new Error(`${ent.name}/meta.json: date は "YYYY-MM-DD HH:MM"(JST)で書く。今の値: ${JSON.stringify(meta.date)}`);
+  }
   let src = dir;
   if (existsSync(join(dir, 'package.json'))) {
     console.log(`build: ${ent.name}`);

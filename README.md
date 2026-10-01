@@ -16,10 +16,10 @@ AIと作った小さなブラウザ作品と、新しい技術の実験場。Git
 ```
 my-toy/
   index.html
-  meta.json   # { "title": "...", "description": "...", "tags": ["WebGPU"], "date": "2026-10-01" }
+  meta.json   # { "title": "...", "description": "...", "tags": ["WebGPU"], "date": "2026-10-01 21:17" }
 ```
 
-`tags` に使った技術を書くと、一覧にそのまま出る。実験の記録として使う。
+`date` は初回公開日時（JST、`YYYY-MM-DD HH:MM`）。一覧はこの順に新しいものから並ぶ。`tags` に使った技術を書くと、一覧にそのまま出る。実験の記録として使う。
 
 ## 開発の準備
 
