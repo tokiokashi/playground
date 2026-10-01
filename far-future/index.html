@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>遠未来タイムマシン</title>
+<meta name="description" content="1万年後から10の10の10の56乗年後まで、遠い未来の出来事を絵で見て回るタイムマシン。">
+<style>
+:root{
+  --bg:#070b16;--panel:#0d1426;--panel2:#111b33;--line:#24324f;--ink:#e8edf8;--mute:#94a0bc;
+  --amber:#ffb547;--amber2:#ffda8a;--cyan:#6fe3ff;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:radial-gradient(120% 80% at 50% 0%,#101a36 0%,var(--bg) 60%);background-color:var(--bg);color:var(--ink);
+  font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;min-height:100vh}
+a{color:var(--cyan)}
+header{max-width:1240px;margin:0 auto;padding:14px 16px 6px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.back{font-size:13px;color:var(--mute);text-decoration:none}
+.back:hover{color:var(--ink)}
+h1{margin:0;font:700 clamp(20px,4.2vw,30px)/1.2 "Hiragino Mincho ProN","Yu Mincho",serif;letter-spacing:.06em}
+h1 small{display:block;font:400 12.5px/1.5 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;color:var(--mute);letter-spacing:0;margin-top:4px}
+main{max-width:1240px;margin:0 auto;padding:6px 16px 24px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@media (min-width:980px){main{grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);align-items:start}.log{position:sticky;top:12px;max-height:calc(100vh - 24px);display:flex;flex-direction:column}}
+
+.console{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.04)}
+.readout{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:end;padding:4px 6px 10px}
+.era{grid-column:1/-1;font-size:12.5px;color:var(--cyan);letter-spacing:.08em;display:flex;gap:8px;align-items:center;min-width:0}
+.era b{font-weight:700;white-space:nowrap}
+.era span{color:var(--mute);letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.years{font:700 clamp(28px,7vw,52px)/1.05 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--amber);text-shadow:0 0 18px rgba(255,170,60,.45);font-variant-numeric:tabular-nums;min-width:0;overflow-wrap:anywhere}
+.years .num{font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;font-weight:800}
+.years sup{font-size:.55em;line-height:0}
+.years sup sup{font-size:.8em}
+.years .unit{font-size:.42em;color:var(--amber2);margin-left:.25em;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+.sub{font-size:13px;color:var(--mute);text-align:right;max-width:46ch}
+@media (max-width:600px){.readout{grid-template-columns:1fr}.sub{text-align:left;max-width:none}}
+.sub sup{font-size:.75em}
+.screen{position:relative;border-radius:10px;overflow:hidden;border:1px solid #1d2a48;background:#000;aspect-ratio:8/5}
+.screen canvas{display:block;width:100%;height:100%}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:10px;box-shadow:inset 0 0 50px rgba(0,0,0,.55);
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px)}
+.badge{font-size:14px;font-weight:700;padding:0 6px 8px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.7em}
+.controls{display:flex;gap:8px;align-items:center;margin:12px 2px 6px;flex-wrap:wrap}
+.controls button{appearance:none;border:1px solid var(--line);background:#16213d;color:var(--ink);border-radius:10px;min-height:44px;padding:0 14px;font:600 14px/1 inherit;cursor:pointer;touch-action:manipulation}
+.controls button:hover{border-color:#3b5080}
+.controls button:disabled{opacity:.4;cursor:default}
+.controls button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.controls .go{background:linear-gradient(180deg,#ffbf5a,#e89422);color:#1a1004;border-color:#ffcf80;flex:1 1 140px;font-size:15px}
+.controls .go:hover{border-color:#fff0c0}
+.controls .icon{width:48px;padding:0;font-size:16px}
+.controls .auto[aria-pressed="true"]{background:#0f3a46;border-color:var(--cyan);color:#cff6ff}
+.pos{font-size:12px;color:var(--mute);margin-left:auto;font-variant-numeric:tabular-nums}
+
+.track{position:relative;height:58px;margin:8px 4px 0;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
+.bar{position:absolute;left:0;right:0;top:14px;height:10px;border-radius:5px;overflow:hidden;display:flex;background:#0a1020}
+.bar i{display:block;height:100%}
+.ticks{position:absolute;left:0;right:0;top:8px;height:22px;pointer-events:none}
+.ticks i{position:absolute;top:0;width:1px;height:6px;background:rgba(255,255,255,.28)}
+.ticks i.on{background:rgba(255,255,255,.75)}
+.thumb{position:absolute;top:4px;width:4px;height:30px;margin-left:-2px;border-radius:2px;background:var(--amber);box-shadow:0 0 12px var(--amber);pointer-events:none}
+.marks{position:absolute;left:0;right:0;top:34px;height:20px;font-size:11px;color:var(--mute);pointer-events:none}
+.marks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.marks span:first-child{transform:none}
+.marks sup{font-size:.8em}
+@media (max-width:600px){.marks .wide{display:none}}
+
+.log{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.log h2{margin:0 0 8px;font-size:14px;color:var(--mute);font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.cats button{appearance:none;font:600 12.5px/1 inherit;padding:0 10px;min-height:34px;border-radius:99px;border:1px solid var(--line);background:#0b1120;color:var(--mute);cursor:pointer;display:inline-flex;gap:6px;align-items:center;touch-action:manipulation}
+.cats button[aria-pressed="true"]{color:#0b0f18;background:var(--c);border-color:var(--c)}
+.events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:0}
+.events button{all:unset;box-sizing:border-box;display:block;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0b1222;cursor:pointer}
+.events button:hover{border-color:#3b5080}
+.events button:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+.events button[aria-current="true"]{border-color:var(--amber);background:#1a1608;box-shadow:inset 3px 0 0 var(--amber)}
+.ev-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--mute)}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:0 7px;border-radius:99px;border:1px solid var(--c);color:var(--c);font-weight:600;line-height:20px}
+.prob{color:#ffb4b4;border:1px dashed rgba(255,180,180,.6);padding:0 6px;border-radius:99px;line-height:18px}
+.ev-title{display:block;font-weight:700;font-size:15.5px;margin:3px 0 2px;color:var(--ink)}
+.ev-text{display:block;font-size:13.5px;color:#c4cce0;line-height:1.7}
+.empty{color:var(--mute);font-size:13.5px;padding:8px 2px}
+footer{max-width:1240px;margin:0 auto;padding:0 16px 32px;color:var(--mute);font-size:12px;line-height:1.8}
+footer p{margin:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="../">← 作品一覧</a>
+  <h1>遠未来タイムマシン<small>1万年後から、宇宙の終わりのその先まで。</small></h1>
+</header>
+<main>
+  <section class="console" aria-label="タイムマシン">
+    <div class="readout">
+      <div class="era" id="era"></div>
+      <div class="years" id="years" aria-live="polite"></div>
+      <div class="sub" id="sub"></div>
+    </div>
+    <div class="badge" id="badge"></div>
+    <div class="screen">
+      <canvas id="view" role="img" aria-label="選んだ出来事の想像図"></canvas>
+    </div>
+    <div class="controls">
+      <button class="icon" id="home" title="現在へ戻る" aria-label="現在へ戻る">⏮</button>
+      <button class="icon" id="prev" title="ひとつ前の出来事へ(←)" aria-label="ひとつ前の出来事へ">◀</button>
+      <button class="go" id="next">▶ 未来へ跳ぶ</button>
+      <button class="auto" id="auto" aria-pressed="false">自動航行</button>
+      <span class="pos" id="pos"></span>
+    </div>
+    <div class="track" id="track" role="slider" tabindex="0" aria-label="時間の目盛り" aria-valuemin="0">
+      <div class="bar" id="bar"></div>
+      <div class="ticks" id="ticks"></div>
+      <div class="thumb" id="thumb"></div>
+      <div class="marks" id="marks"></div>
+    </div>
+  </section>
+  <section class="log" aria-label="この時刻の出来事">
+    <h2><span>この時刻の出来事</span><span id="count"></span></h2>
+    <div class="cats" id="cats"></div>
+    <ol class="events" id="events"></ol>
+  </section>
+</main>
+<footer>
+  <p>出来事の一覧と内容は Wikipedia「<a href="https://ja.wikipedia.org/wiki/%E9%81%A0%E3%81%84%E6%9C%AA%E6%9D%A5%E3%81%AE%E3%82%BF%E3%82%A4%E3%83%A0%E3%83%A9%E3%82%A4%E3%83%B3">遠い未来のタイムライン</a>」(<a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja">CC BY-SA 4.0</a>)に基づき、文章を要約し直した。英語版「<a href="https://en.wikipedia.org/wiki/Timeline_of_the_far_future">Timeline of the far future</a>」で一部を確かめている。出来事の文章も CC BY-SA 4.0 で提供する。</p>
+  <p>絵はすべてプログラムで描いた想像図で、大きさや明るさは誇張している。地球の陸地は <a href="https://www.naturalearthdata.com/">Natural Earth</a>(パブリックドメイン)の海岸線を各プレートごとに回転させたもので、2億5000万年後の配置は Scotese のパンゲア・プロキシマ予想に目で合わせた。</p>
+</footer>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
