@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>六角スライドパズル</title>
+<style>
+:root{--bg:#0a1222;--panel:#0e1a30;--line:#243456;--ink:#e6ecf7;--mute:#93a0bd;--gold:#f3c75c;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:24px 16px}
+main{max-width:640px;margin:0 auto}
+h1{margin:0 0 4px;font:700 clamp(24px,5vw,32px)/1.2 "Hiragino Mincho ProN","Yu Mincho",serif}
+p.lead{color:var(--mute);margin:0 0 16px;font-size:14px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.bar .grow{flex:1}
+button{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 12px;cursor:pointer}
+button:hover,button:focus-visible{border-color:var(--gold);outline:none}
+button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.stat{color:var(--mute);font-variant-numeric:tabular-nums}
+svg{display:block;width:100%;height:auto;max-height:78vh;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.slot{fill:#0b162a;stroke:var(--line);stroke-width:1}
+.tile{cursor:pointer;transition:transform .14s ease-out}
+.tile polygon{stroke:rgba(0,0,0,.35);stroke-width:1.5}
+.tile text{font:700 17px/1 system-ui,sans-serif;fill:#0a1222;text-anchor:middle;dominant-baseline:central;pointer-events:none;user-select:none}
+.numoff .tile text{display:none}
+.tile:hover polygon{stroke:var(--gold);stroke-width:2.5}
+#msg{min-height:1.7em;margin:10px 0 0;color:var(--gold);font-weight:700}
+.note{color:var(--mute);font-size:13px;margin-top:14px}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}}
+</style></head><body><main>
+<h1>六角スライドパズル</h1>
+<p class="lead">空きマスの隣、または空きマスと同じ軸上のタイルを押すと滑る。軸は3方向ある。</p>
+<div class="bar" id="bar">
+  <span role="group" aria-label="盤の大きさ">
+    <button data-size="2" aria-pressed="false">7</button>
+    <button data-size="3" aria-pressed="true">19</button>
+    <button data-size="4" aria-pressed="false">37</button>
+  </span>
+  <button id="num" aria-pressed="true">番号</button>
+  <button id="shuffle">シャッフル</button>
+  <span class="grow"></span>
+  <span class="stat">手数 <b id="moves">0</b></span>
+</div>
+<svg id="board" role="img" aria-label="六角形のスライドパズルの盤"></svg>
+<p id="msg" aria-live="polite"></p>
+<p class="note">色は完成時の位置で決まる（中心から外へ明るさが変わり、角度で色相が回る）。右下が空きマスの完成位置。シャッフルは完全にランダムな並べ替えだが、必ず解ける。</p>
+</main>
+<script>
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -1], [-1, 1]];
+const S = 34, SQ3 = Math.sqrt(3);
+const svg = document.getElementById('board');
+const NS = 'http://www.w3.org/2000/svg';
+let cells, idx, N, b, tileEl, moves, solvedShown;
+
+const px = c => [S * SQ3 * (c.q + c.r / 2), S * 1.5 * c.r];
+const hexPoints = rad => [0, 1, 2, 3, 4, 5].map(k => {
+  const a = Math.PI / 180 * (60 * k + 30);
+  return (rad * Math.cos(a)).toFixed(2) + ',' + (rad * Math.sin(a)).toFixed(2);
+}).join(' ');
+const el = (tag, attrs, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+
+function build(side) {
+  cells = []; idx = new Map();
+  for (let r = -(side - 1); r <= side - 1; r++)
+    for (let q = -(side - 1); q <= side - 1; q++)
+      if (Math.abs(q + r) <= side - 1) { idx.set(q + ',' + r, cells.length); cells.push({ q, r }); }
+  N = cells.length;
+  svg.replaceChildren();
+  const pts = cells.map(px);
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const pad = S * 1.1;
+  const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad;
+  svg.setAttribute('viewBox', `${x0} ${y0} ${Math.max(...xs) + pad - x0} ${Math.max(...ys) + pad - y0}`);
+  cells.forEach((c, i) => el('polygon', { class: 'slot', points: hexPoints(S * 0.97), transform: `translate(${pts[i]})` }, svg));
+  tileEl = [null];
+  for (let id = 1; id < N; id++) {
+    const c = cells[id - 1], d = Math.max(Math.abs(c.q), Math.abs(c.r), Math.abs(c.q + c.r));
+    const [x, y] = px(c);
+    const hue = d === 0 ? 45 : (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    const g = el('g', { class: 'tile' }, svg);
+    el('polygon', { points: hexPoints(S * 0.9), fill: `hsl(${hue} ${d === 0 ? 25 : 68}% ${74 - d * 7}%)` }, g);
+    el('text', {}, g).textContent = id;
+    g.addEventListener('click', () => tap(b.indexOf(id)));
+    tileEl[id] = g;
+  }
+}
+
+function render() {
+  b.forEach((id, c) => { if (id) tileEl[id].setAttribute('transform', `translate(${px(cells[c])})`); });
+  document.getElementById('moves').textContent = moves;
+}
+
+const isSolved = () => b[N - 1] === 0 && b.every((id, c) => c === N - 1 || id === c + 1);
+
+function tap(c) {
+  const bc = b.indexOf(0);
+  if (c === bc) return;
+  for (const [dq, dr] of DIRS) {
+    const ray = [];
+    let q = cells[bc].q, r = cells[bc].r;
+    for (;;) {
+      q += dq; r += dr;
+      const i = idx.get(q + ',' + r);
+      if (i === undefined) break;
+      ray.push(i);
+    }
+    const k = ray.indexOf(c);
+    if (k < 0) continue;
+    let prev = bc;
+    for (let j = 0; j <= k; j++) { b[prev] = b[ray[j]]; prev = ray[j]; }
+    b[prev] = 0;
+    moves++;
+    render();
+    if (isSolved()) document.getElementById('msg').textContent = `完成。${moves} 手`;
+    return;
+  }
+}
+
+function shuffle() {
+  do {
+    for (let i = N - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [b[i], b[j]] = [b[j], b[i]];
+    }
+  } while (isSolved());
+  moves = 0;
+  document.getElementById('msg').textContent = '';
+  render();
+}
+
+function start(side) {
+  build(side);
+  b = Array.from({ length: N }, (_, c) => (c === N - 1 ? 0 : c + 1));
+  shuffle();
+  document.querySelectorAll('[data-size]').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.size === side)));
+}
+
+document.querySelectorAll('[data-size]').forEach(x => x.addEventListener('click', () => start(+x.dataset.size)));
+document.getElementById('shuffle').addEventListener('click', shuffle);
+document.getElementById('num').addEventListener('click', e => {
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', String(on));
+  svg.classList.toggle('numoff', !on);
+});
+start(3);
+</script>
+</body></html>
