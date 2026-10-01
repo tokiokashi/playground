@@ -38,6 +38,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:0}
 .verdict{font-size:15px;margin:0 0 16px}
 kbd{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--mute)}
 .pc{color:var(--mute);font-size:12px;margin:10px 0 0}
+.back{display:inline-block;margin-top:18px;padding:6px 10px;color:var(--mute);font-size:13px;text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -56,6 +58,7 @@ kbd{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:4px;p
     </div>
     <button class="primary" id="start">出社する</button>
     <p class="pc">PC: <kbd>WASD</kbd> / <kbd>矢印</kbd> で移動</p>
+    <a class="back" href="../">← 作品一覧</a>
   </div>
 </div>
 
@@ -76,6 +79,7 @@ kbd{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:4px;p
     <p class="verdict" id="rVerdict"></p>
     <div class="stats" id="rStats"></div>
     <button class="primary" id="retry">もう一度出社する</button>
+    <a class="back" href="../">← 作品一覧</a>
   </div>
 </div>
 

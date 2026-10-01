@@ -16,10 +16,10 @@ AIと作った小さなブラウザ作品と、新しい技術の実験場。Git
 ```
 my-toy/
   index.html
-  meta.json   # { "title": "...", "description": "...", "tags": ["WebGPU"], "date": "2026-10-01" }
+  meta.json   # { "title": "...", "description": "...", "tags": ["WebGPU"], "date": "2026-10-01 21:17" }
 ```
 
-`tags` に使った技術を書くと、一覧にそのまま出る。実験の記録として使う。
+`date` は初回公開日時（JST、`YYYY-MM-DD HH:MM`）。一覧はこの順に新しいものから並ぶ。`tags` に使った技術を書くと、一覧にそのまま出る。実験の記録として使う。
 
 ## 開発の準備
 
@@ -30,6 +30,14 @@ git config core.hooksPath .githooks
 ```
 
 `.githooks/commit-msg` が、コミットメッセージからセッションURLの行（`Claude-Session:`）を消し、Claude の共作者の行（`Co-Authored-By: Claude …`）からメールアドレスを外す。
+
+スマホ幅の検査を手元で回す時は、playwright を入れてから実行する（バージョンは `.github/workflows/ci.yml` の `PLAYWRIGHT_VERSION` に合わせる）。PR では CI が同じ検査を回し、スクリーンショットをアーティファクトに上げる。
+
+```bash
+npm install --no-save --no-package-lock playwright@1.56.1
+npx playwright install chromium
+node scripts/build.mjs && node scripts/check-mobile.mjs   # shots/ にスクリーンショットが出る
+```
 
 ## 守ること
 
