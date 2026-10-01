@@ -1,5 +1,6 @@
 // dist/ の一覧ページと各作品を、スマホ幅(360x740、タッチ有効)で開いて検査する。
-// 検査: ページのエラーが出ないこと、自前のファイルの取得に失敗しないこと、横スクロールが出ないこと。
+// 検査: ページのエラーが出ないこと、自前のファイルの取得に失敗しないこと、横スクロールが出ないこと、
+// 作品ページに一覧へ戻るリンク(href="../")が見えていること。
 // 外部(フォントの CDN など)の取得失敗は実行環境のネットワーク次第なので、警告だけにする。
 // スクリーンショットを shots/ に保存する(CI ではアーティファクトとして上げる)。
 // 先に node scripts/build.mjs を実行しておくこと。playwright は npm install --no-save playwright で入れる。
@@ -42,6 +43,7 @@ for (const [name, path] of pages) {
   await page.waitForTimeout(500);
   const { sw, cw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
   if (sw > cw + 1) errors.push(`横スクロールが出る(内容幅 ${sw}px > 画面幅 ${cw}px)`);
+  if (path && !(await page.locator('a[href="../"]:visible, a[href="../index.html"]:visible').count())) errors.push('一覧へ戻るリンク(href="../")が見えていない');
   await page.screenshot({ path: join(shots, (path.replace(/\/$/, '') || 'index') + '.png'), fullPage: true });
   console.log(`${errors.length ? 'NG' : 'OK'}  ${name}`);
   for (const e of errors) console.log(`      ${e}`);
