@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
-# 公開リポジトリのコミットメッセージに、セッションURLの行(Claude-Session:)を残さない。
-# 同じセッションで作業を続けていることが、履歴から外に読み取れてしまうため。
-# clone ごとに `git config core.hooksPath .githooks` が要る。
+# コミットメッセージを整える。clone ごとに `git config core.hooksPath .githooks` が要る。
+#
+# 1. セッションURLの行(Claude-Session:)を消す。同じセッションで作業を続けていることが、
+#    公開した履歴から読み取れてしまうため。
+# 2. Claude の共作者行(Co-Authored-By: Claude … <noreply@anthropic.com>)から、メールアドレスを外す。
+#    行そのものは `Co-Authored-By: Claude …` のまま残し、使ったモデルの記録を文字で残す。
+#    GitHub は共作者の行のメールをアカウントに紐づけてアイコンを出すので、外せばアイコンは付かない
+#    (想定。実際の表示は GitHub 側の仕様に従う)。人間の共作者の行は触らない。
 msg_file="$1"
 tmp=$(mktemp) || exit 0
-# -a: UTF-8 ロケールで不正なバイト列を含む行があると GNU grep がバイナリ扱いにして、
-# その行を出さずに終了コード 0 を返す。-a で常にテキストとして読み、他の行を黙って失わない
-grep -av '^Claude-Session:' "$msg_file" > "$tmp"
+# grep の -a: UTF-8 ロケールで不正なバイト列を含む行があると GNU grep がバイナリ扱いにして、
+# その行を出さずに終了コード 0 を返す。-a で常にテキストとして読み、他の行を黙って失わない。
+# sed は LC_ALL=C でバイト単位に読ませ、不正なバイト列があっても止めない
+grep -av '^Claude-Session:' "$msg_file" \
+  | LC_ALL=C sed -E 's/^([Cc]o-[Aa]uthored-[Bb]y:[[:space:]]*Claude[^<]*[^<[:space:]])[[:space:]]*<noreply@anthropic\.com>[[:space:]]*$/\1/' \
+  > "$tmp"
 [ -s "$tmp" ] && cat "$tmp" > "$msg_file"
 rm -f "$tmp"
 exit 0
