@@ -31,6 +31,14 @@ git config core.hooksPath .githooks
 
 `.githooks/commit-msg` が、コミットメッセージからセッションURLの行（`Claude-Session:`）を消し、Claude の共作者の行（`Co-Authored-By: Claude …`）からメールアドレスを外す。
 
+スマホ幅の検査を手元で回す時は、playwright を入れてから実行する（バージョンは `.github/workflows/ci.yml` の `PLAYWRIGHT_VERSION` に合わせる）。PR では CI が同じ検査を回し、スクリーンショットをアーティファクトに上げる。
+
+```bash
+npm install --no-save --no-package-lock playwright@1.56.1
+npx playwright install chromium
+node scripts/build.mjs && node scripts/check-mobile.mjs   # shots/ にスクリーンショットが出る
+```
+
 ## 守ること
 
 - 公開リポジトリ。会社のコード・データ・社内情報は入れない。
