@@ -1,20 +1,12 @@
 #!/usr/bin/env bash
-# コミットメッセージを整える。clone ごとに `git config core.hooksPath .githooks` が要る。
-#
-# 1. セッションURLの行(Claude-Session:)を消す。同じセッションで作業を続けていることが、
-#    公開した履歴から読み取れてしまうため。
-# 2. Claude の共作者行(Co-Authored-By: Claude … <noreply@anthropic.com>)を、メールを外した
-#    AI-Assisted-By: Claude … に書き換える。GitHub は共作者の行のメールをアカウントに紐づけて
-#    アイコンを出す。メールを外すとアイコンと貢献者の表示は付かず、モデルの記録だけが文字で残る。
-#    人間の共作者の行は触らない。
+# 公開リポジトリのコミットメッセージに、セッションURLの行(Claude-Session:)を残さない。
+# 同じセッションで作業を続けていることが、履歴から外に読み取れてしまうため。
+# clone ごとに `git config core.hooksPath .githooks` が要る。
 msg_file="$1"
 tmp=$(mktemp) || exit 0
-# grep の -a: UTF-8 ロケールで不正なバイト列を含む行があると GNU grep がバイナリ扱いにして、
-# その行を出さずに終了コード 0 を返す。-a で常にテキストとして読み、他の行を黙って失わない。
-# sed は LC_ALL=C でバイト単位に読ませ、不正なバイト列があっても止めない
-grep -av '^Claude-Session:' "$msg_file" \
-  | LC_ALL=C sed -E 's/^[Cc]o-[Aa]uthored-[Bb]y:[[:space:]]*(Claude[^<]*[^<[:space:]])[[:space:]]*<noreply@anthropic\.com>[[:space:]]*$/AI-Assisted-By: \1/' \
-  > "$tmp"
+# -a: UTF-8 ロケールで不正なバイト列を含む行があると GNU grep がバイナリ扱いにして、
+# その行を出さずに終了コード 0 を返す。-a で常にテキストとして読み、他の行を黙って失わない
+grep -av '^Claude-Session:' "$msg_file" > "$tmp"
 [ -s "$tmp" ] && cat "$tmp" > "$msg_file"
 rm -f "$tmp"
 exit 0

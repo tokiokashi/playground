@@ -27,7 +27,7 @@ clone したあとに1度だけ、コミットメッセージのフックを有�
 git config core.hooksPath .githooks
 ```
 
-`.githooks/commit-msg` が、コミットメッセージからセッションURLの行（`Claude-Session:`）を消し、Claude の共作者の行（`Co-Authored-By: Claude …`）をメールなしの `AI-Assisted-By: Claude …` に書き換える。
+`.githooks/commit-msg` が、コミットメッセージからセッションURLの行（`Claude-Session:`）を消す。
 
 ## 守ること
 
