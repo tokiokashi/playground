@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# 公開リポジトリのコミットメッセージに、セッションURLの行(Claude-Session:)を残さない。
+# 同じセッションで作業を続けていることが、履歴から外に読み取れてしまうため。
+# clone ごとに `git config core.hooksPath .githooks` が要る。
+msg_file="$1"
+tmp=$(mktemp) || exit 0
+grep -v '^Claude-Session:' "$msg_file" > "$tmp"
+cat "$tmp" > "$msg_file"
+rm -f "$tmp"
+exit 0

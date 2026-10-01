@@ -19,6 +19,16 @@ my-toy/
 
 `tags` に使った技術を書くと、一覧にそのまま出る。実験の記録として使う。
 
+## 開発の準備
+
+clone したあとに1度だけ、コミットメッセージのフックを有効にする。
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/commit-msg` が、コミットメッセージからセッションURLの行（`Claude-Session:`）を消す。
+
 ## 守ること
 
 - 公開リポジトリ。会社のコード・データ・社内情報は入れない。

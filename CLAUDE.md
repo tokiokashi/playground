@@ -7,3 +7,4 @@
 - 会社のコード・データ・社内情報は絶対に入れない。
 - 追加したら `node scripts/build.mjs` が通ること、`dist/<作品名>/` をブラウザで開いて動くことを確認する。
 - コミットメッセージとPR本文に、`Claude-Session:` の行とセッションURLを入れない（公開リポジトリなので、セッションの出入りを外から読まれないようにする）。
+- clone したら `git config core.hooksPath .githooks` を実行する。`.githooks/commit-msg` が `Claude-Session:` の行を機械的に消す（上の決まりと二重に守る）。API 経由のコミットはフックを通らないので、PR本文やAPIで上げるメッセージには自分で入れない。
