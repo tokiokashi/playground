@@ -4,7 +4,9 @@
 # clone ごとに `git config core.hooksPath .githooks` が要る。
 msg_file="$1"
 tmp=$(mktemp) || exit 0
-grep -v '^Claude-Session:' "$msg_file" > "$tmp"
+# -a: UTF-8 ロケールで不正なバイト列を含む行があると GNU grep がバイナリ扱いにして、
+# その行を出さずに終了コード 0 を返す。-a で常にテキストとして読み、他の行を黙って失わない
+grep -av '^Claude-Session:' "$msg_file" > "$tmp"
 cat "$tmp" > "$msg_file"
 rm -f "$tmp"
 exit 0
