@@ -29,11 +29,12 @@ main{max-width:1240px;margin:0 auto;padding:6px 16px 24px;display:grid;grid-temp
 .era{grid-column:1/-1;font-size:12.5px;color:var(--cyan);letter-spacing:.08em;display:flex;gap:8px;align-items:center;min-width:0}
 .era b{font-weight:700;white-space:nowrap}
 .era span{color:var(--mute);letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.years{font:700 clamp(28px,7vw,52px)/1.05 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--amber);text-shadow:0 0 18px rgba(255,170,60,.45);font-variant-numeric:tabular-nums;min-width:0;overflow-wrap:anywhere}
+.years{font:700 clamp(28px,7vw,52px)/1.05 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--amber);text-shadow:0 0 18px rgba(255,170,60,.45);font-variant-numeric:tabular-nums;min-width:0;overflow-wrap:anywhere;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.25em}
 .years .num{font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;font-weight:800}
 .years sup{font-size:.55em;line-height:0}
 .years sup sup{font-size:.8em}
-.years .unit{font-size:.42em;color:var(--amber2);margin-left:.25em;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+.years .when{font:600 max(13px,.3em)/1.3 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;color:var(--cyan);text-shadow:none;margin-left:.5em;white-space:nowrap}
+.years .unit{font-size:.42em;color:var(--amber2);font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif}
 .sub{font-size:13px;color:var(--mute);text-align:right;max-width:46ch}
 @media (max-width:600px){.readout{grid-template-columns:1fr}.sub{text-align:left;max-width:none}}
 .sub sup{font-size:.75em}
@@ -42,16 +43,16 @@ main{max-width:1240px;margin:0 auto;padding:6px 16px 24px;display:grid;grid-temp
 .screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:10px;box-shadow:inset 0 0 50px rgba(0,0,0,.55);
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px)}
 .badge{font-size:14px;font-weight:700;padding:0 6px 8px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.7em}
-.controls{display:flex;gap:8px;align-items:center;margin:12px 2px 6px;flex-wrap:wrap}
+.controls{display:flex;gap:8px;align-items:center;margin:12px 2px 6px}
 .controls button{appearance:none;border:1px solid var(--line);background:#16213d;color:var(--ink);border-radius:10px;min-height:44px;padding:0 14px;font:600 14px/1 inherit;cursor:pointer;touch-action:manipulation}
 .controls button:hover{border-color:#3b5080}
 .controls button:disabled{opacity:.4;cursor:default}
 .controls button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-.controls .go{background:linear-gradient(180deg,#ffbf5a,#e89422);color:#1a1004;border-color:#ffcf80;flex:1 1 140px;font-size:15px}
+.controls .go{background:linear-gradient(180deg,#ffbf5a,#e89422);color:#1a1004;border-color:#ffcf80;flex:1 1 0;min-width:0;font-size:15px;white-space:nowrap}
 .controls .go:hover{border-color:#fff0c0}
 .controls .icon{width:48px;padding:0;font-size:16px}
+@media (max-width:420px){.controls{gap:6px}.controls .icon{width:44px}.controls .go{padding:0 8px;font-size:14px}.controls .auto{padding:0 10px}}
 .controls .auto[aria-pressed="true"]{background:#0f3a46;border-color:var(--cyan);color:#cff6ff}
-.pos{font-size:12px;color:var(--mute);margin-left:auto;font-variant-numeric:tabular-nums}
 
 .track{position:relative;height:58px;margin:8px 4px 0;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
 .bar{position:absolute;left:0;right:0;top:14px;height:10px;border-radius:5px;overflow:hidden;display:flex;background:#0a1020}
@@ -107,7 +108,6 @@ footer p{margin:4px 0}
       <button class="icon" id="prev" title="ひとつ前の出来事へ(←)" aria-label="ひとつ前の出来事へ">◀</button>
       <button class="go" id="next">▶ 未来へ跳ぶ</button>
       <button class="auto" id="auto" aria-pressed="false">自動航行</button>
-      <span class="pos" id="pos"></span>
     </div>
     <div class="track" id="track" role="slider" tabindex="0" aria-label="時間の目盛り" aria-valuemin="0">
       <div class="bar" id="bar"></div>
