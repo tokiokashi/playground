@@ -24,14 +24,14 @@ function sci(L) {
   const ms = m.toFixed(m < 9.95 ? 1 : 0);
   return ms === '1.0' ? `10<sup>${e}</sup>` : `${ms} × 10<sup>${e}</sup>`;
 }
+// when: 年後の隣に添える時期。停留点に日付や幅があればそれを、なければ200万年後ごろまで西暦を出す
 function readout(L, stop) {
-  if (stop?.tower) return { main: `${stop.tower}`, unit: '年後', sub: stop.towerNote };
-  if (L < 0.5) return { main: '現在', unit: '', sub: `西暦${2026}年` };
-  if (L < 72) {
-    const sub = L < 6.2 ? `西暦${Math.round(2026 + 10 ** L).toLocaleString('ja-JP')}年ごろ` : `${sci(L)} 年`;
-    return { main: jaNumber(L), unit: '年後', sub };
-  }
-  return { main: sci(L), unit: '年後', sub: '漢数字の単位(無量大数)では書けない' };
+  const label = stop?.events.find(e => e.when)?.when;
+  if (stop?.tower) return { main: `${stop.tower}`, unit: '年後', when: '', sub: stop.towerNote };
+  if (L < 0.5) return { main: '現在', unit: '', when: '西暦2026年', sub: '' };
+  const when = label || (L < 6.3 ? `西暦${Math.round(2026 + 10 ** L).toLocaleString('ja-JP')}年ごろ` : '');
+  if (L < 72) return { main: jaNumber(L), unit: '年後', when, sub: `${sci(L)} 年` };
+  return { main: sci(L), unit: '年後', when, sub: '漢数字の単位(無量大数)では書けない' };
 }
 const eraOf = L => [...ERAS].reverse().find(([from]) => L >= from);
 
@@ -125,7 +125,7 @@ function render(now) {
 let lastReadout = '', lastList = -1, lastEra = '';
 function updateReadout(L, exactStop, nearStop, ev) {
   const r = readout(L, exactStop || (nearStop.tower ? nearStop : null));
-  const html = `<span class="num">${r.main}</span>${r.unit ? `<span class="unit">${r.unit}</span>` : ''}`;
+  const html = `<span class="num">${r.main}</span>${r.unit ? `<span class="unit">${r.unit}</span>` : ''}${r.when ? `<span class="when">${r.when}</span>` : ''}`;
   const key = html + r.sub;
   if (key !== lastReadout) { $('years').innerHTML = html; $('sub').innerHTML = r.sub; lastReadout = key; }
   const era = eraOf(L);
@@ -179,7 +179,6 @@ function renderList() {
   $('count').textContent = `${i + 1} / ${N} 地点`;
   $('next').disabled = i === N - 1;
   $('prev').disabled = i === 0;
-  $('pos').innerHTML = stopLabel(stop);
   const track = $('track');
   track.setAttribute('aria-valuemax', String(N - 1));
   track.setAttribute('aria-valuenow', String(i));
