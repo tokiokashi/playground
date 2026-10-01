@@ -2,6 +2,8 @@
 
 AIと作った小さなブラウザ作品と、新しい技術の実験場。GitHub Pages で公開している。
 
+**公開ページ: https://tokiokashi.github.io/playground/**
+
 ## 構成
 
 - 作品は1つずつトップ階層のディレクトリに置く。`meta.json` があるディレクトリだけが公開対象になる。
