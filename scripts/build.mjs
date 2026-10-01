@@ -47,15 +47,16 @@ p.lead{color:var(--mute);margin:8px 0 28px}
 ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 a.card{display:flex;flex-direction:column;gap:8px;height:100%;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:inherit;text-decoration:none}
 a.card:hover,a.card:focus-visible{border-color:var(--gold);outline:none}
+.date{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;line-height:1}
 .t{font-weight:700;font-size:17px}
 .d{color:var(--mute);font-size:13.5px;flex:1}
-.m{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--mute)}
+.m{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
 .tag{border:1px solid var(--line);border-radius:4px;padding:1px 7px;color:var(--pole)}
 </style></head><body><main>
 <h1>playground</h1>
 <p class="lead">AIと作った小さな作品と、新しい技術の実験場。</p>
 <ul>
-${works.map(w => `<li><a class="card" href="./${esc(w.slug)}/"><span class="t">${esc(w.title || w.slug)}</span><span class="d">${esc(w.description)}</span><span class="m">${(w.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}<span>${esc(w.date)}</span></span></a></li>`).join('\n')}
+${works.map(w => `<li><a class="card" href="./${esc(w.slug)}/"><span class="date">${esc(w.date)}</span><span class="t">${esc(w.title || w.slug)}</span><span class="d">${esc(w.description)}</span><span class="m">${(w.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</span></a></li>`).join('\n')}
 </ul>
 </main></body></html>
 `;
