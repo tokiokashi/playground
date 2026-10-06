@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#151b26">
+<title>定時サバイバー</title>
+<style>
+:root{
+  --bg:#151b26;--line:#263043;--panel:#1f2838;--ink:#eef2f8;--mute:#9aa6bb;
+  --accent:#f3c75c;--ok:#5ad3a0;--hp:#ef5b6b;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:400 15px/1.6 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));
+  background:rgba(10,14,22,.78);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);touch-action:manipulation}
+.overlay.show{display:flex}
+.box{width:100%;max-width:420px;text-align:center}
+h1{margin:0 0 4px;font:800 clamp(30px,9vw,44px)/1.15 "Hiragino Mincho ProN","Yu Mincho",serif;letter-spacing:.04em}
+.sub{color:var(--mute);margin:0 0 20px;font-size:14px}
+.rules{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:0 0 20px;font-size:14px}
+.rules p{margin:4px 0}
+button{font:inherit;color:inherit;cursor:pointer;border:0}
+.primary,.secondary{width:100%;padding:16px;border-radius:12px;font-weight:800;font-size:18px}
+.primary{background:var(--accent);color:#1a1405}
+.secondary{background:var(--panel);border:1px solid var(--line);margin-top:10px}
+.danger{background:var(--hp);color:#1a0508}
+.primary:active,.secondary:active{transform:scale(.98)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 20px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:22px}
+.stat span{color:var(--mute);font-size:12px}
+.verdict{font-size:15px;margin:0 0 16px}
+kbd{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--mute)}
+.pc{color:var(--mute);font-size:12px;margin:10px 0 0}
+.back{display:inline-block;margin-top:18px;padding:6px 10px;color:var(--mute);font-size:13px;text-decoration:none}
+.back:hover,.back:focus-visible{color:var(--accent)}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="overlay show" id="title">
+  <div class="box">
+    <p class="sub" style="margin:0 0 6px">16:00 ― あと1時間で定時</p>
+    <h1>定時サバイバー</h1>
+    <p class="sub">通知・会議・仕様変更から逃げ切って、17:00に退社せよ。</p>
+    <div class="rules">
+      <p>👆 画面のどこかを押さえて、そのまま指をずらすと移動</p>
+      <p>⚔️ 攻撃もスキル習得も全自動。「工数」を拾うほど強くなる</p>
+      <p>⏱ 1プレー60秒。17:00まで生き残れば定時退社</p>
+      <p>🌙 17:00以降は残業もできる。何時に帰れるか</p>
+    </div>
+    <button class="primary" id="start">出社する</button>
+    <p class="pc">PC: <kbd>WASD</kbd> / <kbd>矢印</kbd> で移動</p>
+    <a class="back" href="../">← 作品一覧</a>
+  </div>
+</div>
+
+<div class="overlay" id="teiji">
+  <div class="box">
+    <p class="sub" style="margin:0 0 4px">17:00</p>
+    <h1>定時です</h1>
+    <p class="verdict">フロアの照明が半分消えた。</p>
+    <button class="primary" id="goHome">帰る</button>
+    <button class="secondary danger" id="overtime">残業する</button>
+  </div>
+</div>
+
+<div class="overlay" id="result">
+  <div class="box">
+    <p class="sub" id="rTime" style="margin:0 0 4px"></p>
+    <h1 id="rTitle"></h1>
+    <p class="verdict" id="rVerdict"></p>
+    <div class="stats" id="rStats"></div>
+    <button class="primary" id="retry">もう一度出社する</button>
+    <a class="back" href="../">← 作品一覧</a>
+  </div>
+</div>
+
+<script>
+'use strict';
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const GAME_SEC = 60;            // 16:00〜17:00 を60秒で。1秒 = 1分
+const START_MIN = 16 * 60;
+const FONT = '"Hiragino Sans","Yu Gothic",system-ui,sans-serif';
+
+// ---------- 画面 ----------
+let W = 0, H = 0, DPR = 1, ZOOM = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  // スマホ縦持ちで、短辺に約420ワールド単位が入るように
+  ZOOM = Math.max(0.7, Math.min(1.4, Math.min(W, H) / 420));
+}
+addEventListener('resize', resize);
+resize();
+
+// ---------- 定義 ----------
+const ENEMY = {
+  notice:  { label: '通知',     r: 11, hp: 30,  speed: 80,  dmg: 6,  xp: 1,  color: '#f3c75c', from: 0 },
+  meeting: { label: '会議',     r: 15, hp: 90,  speed: 48,  dmg: 9,  xp: 2,  color: '#6aa8ff', from: 8 },
+  cut:     { label: '差し込み', r: 12, hp: 60,  speed: 185, dmg: 8,  xp: 2,  color: '#ff9b52', from: 15 },
+  spec:    { label: '仕様変更', r: 22, hp: 400, speed: 36,  dmg: 15, xp: 6,  color: '#b58cff', from: 30 },
+};
+// ボス: 定時前に1体、残業中は20分（20秒）ごとに順番に出る
+const BOSSES = [
+  { at: 40, label: 'ちょっといい？', hp: 4500,  color: '#ef5b6b', enter: '「ちょっといい？」', leave: '「…やっぱ明日でいいや」' },
+  { at: 80, label: '障害発生',       hp: 18000, color: '#ff6b3d', enter: '本番で障害発生', leave: '「暫定対処で様子見で」' },
+  { at: 100, label: '顧客から電話',  hp: 32000, color: '#e04fa0', enter: '顧客から電話', leave: '「では来週また」' },
+  { at: 120, label: '明日までに',    hp: 52000, color: '#c03a3a', enter: '「明日までにお願い」', leave: '「来週でもいいよ」' },
+];
+const BOSS_DEF = { r: 38, speed: 52, dmg: 25, xp: 40 };
+
+const SKILLS = {
+  reply:  { kind: 'weapon',  name: '定型返信',   color: '#5ad3a0' },
+  aura:   { kind: 'weapon',  name: '既読スルー', color: '#8fd3ff' },
+  orbit:  { kind: 'weapon',  name: '議事録',     color: '#e8e8e8' },
+  nova:   { kind: 'weapon',  name: '全員に返信', color: '#f3c75c' },
+  coffee: { kind: 'passive', name: 'コーヒー',   color: '#c79a6a' },
+  nc:     { kind: 'passive', name: 'ノイキャン', color: '#9aa6bb' },
+  memo:   { kind: 'passive', name: '付箋',       color: '#ffe36a' },
+  early:  { kind: 'passive', name: '朝活',       color: '#ffb36a' },
+};
+const MAX_LV = { weapon: 10, passive: 5 };
+
+// ---------- 状態 ----------
+let S = null;
+function newGame() {
+  S = {
+    t: 0, running: true, paused: false, overtime: false,
+    p: { x: 0, y: 0, hp: 100, maxHp: 100, hurt: 0 },
+    lv: 1, xp: 0, xpNext: 3, kills: 0, damage: 0,
+    skills: { reply: 1 },
+    enemies: [], shots: [], gems: [], texts: [], snacks: [], banners: [],
+    cds: { reply: 0, nova: 1.2, aura: 0 },
+    spawnAcc: 0, bossIdx: 0, bossesBeaten: 0, shake: 0,
+  };
+}
+const lvOf = k => S.skills[k] || 0;
+const speedMul = () => 1 + 0.12 * lvOf('coffee');
+const dmgTakenMul = () => 1 - 0.13 * lvOf('nc');
+const pickupR = () => 60 * (1 + 0.4 * lvOf('memo'));
+const cdMul = () => 1 - 0.1 * lvOf('early');
+// 時間とともに硬くなる。残業に入ると加速度的に
+const hpScale = t => (1 + t / 22) * (t > GAME_SEC ? 1.07 ** (t - GAME_SEC) : 1);
+
+// ---------- 入力 ----------
+const keys = new Set();
+addEventListener('keydown', e => {
+  keys.add(e.key.toLowerCase());
+  if (e.key === 'Enter' || e.key === ' ') {
+    if ($('title').classList.contains('show')) $('start').click();
+    else if ($('result').classList.contains('show')) $('retry').click();
+  }
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => { keys.clear(); stick.id = null; });
+
+// 画面のどこを押さえてもそこがスティックの中心になる
+const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+const STICK_R = 56;
+cv.addEventListener('pointerdown', e => {
+  if (stick.id !== null) return;
+  stick.id = e.pointerId; stick.ox = stick.x = e.clientX; stick.oy = stick.y = e.clientY;
+  cv.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+cv.addEventListener('pointermove', e => {
+  if (e.pointerId !== stick.id) return;
+  stick.x = e.clientX; stick.y = e.clientY;
+});
+const endStick = e => { if (e.pointerId === stick.id) stick.id = null; };
+cv.addEventListener('pointerup', endStick);
+cv.addEventListener('pointercancel', endStick);
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+function inputVec() {
+  let x = 0, y = 0;
+  if (keys.has('a') || keys.has('arrowleft')) x -= 1;
+  if (keys.has('d') || keys.has('arrowright')) x += 1;
+  if (keys.has('w') || keys.has('arrowup')) y -= 1;
+  if (keys.has('s') || keys.has('arrowdown')) y += 1;
+  if (stick.id !== null) {
+    const dx = stick.x - stick.ox, dy = stick.y - stick.oy;
+    const d = Math.hypot(dx, dy);
+    if (d > 6) { const m = Math.min(1, d / STICK_R); x = dx / d * m; y = dy / d * m; }
+  }
+  const m = Math.hypot(x, y);
+  if (m > 1) { x /= m; y /= m; }
+  return { x, y };
+}
+
+// ---------- 生成 ----------
+function spawnPos() {
+  // 逃げ続けるだけでは勝てないように、半分は進行方向の前から湧かせる
+  const mv = inputVec();
+  const a = (mv.x || mv.y) && Math.random() < 0.5
+    ? Math.atan2(mv.y, mv.x) + (Math.random() - 0.5) * 2.1
+    : Math.random() * Math.PI * 2;
+  const R = Math.hypot(W, H) / 2 / ZOOM + 40;
+  return { x: S.p.x + Math.cos(a) * R, y: S.p.y + Math.sin(a) * R };
+}
+function spawnEnemy(type) {
+  const def = ENEMY[type], { x, y } = spawnPos(), hp = def.hp * hpScale(S.t);
+  S.enemies.push({ type, def, x, y, hp, maxHp: hp, flash: 0, hitCd: {}, kx: 0, ky: 0 });
+}
+function spawnBoss(b, round) {
+  const { x, y } = spawnPos(), hp = b.hp * (1 + round * 2.5);
+  const def = { ...BOSS_DEF, label: b.label, color: b.color, leave: b.leave };
+  S.enemies.push({ type: 'boss', def, x, y, hp, maxHp: hp, flash: 0, hitCd: {}, kx: 0, ky: 0 });
+  banner(b.enter, b.color, 2);
+}
+function pickType() {
+  const pool = Object.entries(ENEMY).filter(([, d]) => S.t >= d.from);
+  const weight = { notice: 6, meeting: 3, cut: 2.5, spec: 1.2 };
+  let r = Math.random() * pool.reduce((s, [k]) => s + weight[k], 0);
+  for (const [k] of pool) { r -= weight[k]; if (r <= 0) return k; }
+  return 'notice';
+}
+function nextBoss() {
+  // 4体目のあとは障害発生から繰り返し、毎周強くなる
+  const i = S.bossIdx, n = BOSSES.length, round = i < n ? 0 : Math.floor((i - 1) / (n - 1));
+  const b = i < n ? BOSSES[i] : BOSSES[1 + (i - 1) % (n - 1)];
+  const at = i < n ? b.at : BOSSES[n - 1].at + (i - n + 1) * 20;
+  return { b, at, round };
+}
+
+function addText(x, y, str, color, size = 13) {
+  if (S.texts.length > 120) return;
+  S.texts.push({ x, y, str, color, size, life: 0.7 });
+}
+function banner(str, color, life = 1.2) {
+  S.banners.push({ str, color, life, max: life });
+  if (S.banners.length > 4) S.banners.shift();
+}
+const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(0) + 'k' : String(Math.round(n));
+
+// ---------- 攻撃 ----------
+// 武器の強さは Lv の連続式。Lv10 まで素直にインフレさせる
+const W_REPLY = lv => ({ cd: 0.6 * 0.9 ** (lv - 1), n: 1 + Math.floor(lv / 2), dmg: 50 * 1.45 ** (lv - 1), pierce: 1 + Math.floor(lv / 3) });
+const W_AURA  = lv => ({ R: 52 + lv * 11, dps: 70 * 1.45 ** (lv - 1) });
+const W_ORBIT = lv => ({ n: Math.min(2 + Math.floor(lv / 2), 7), dmg: 70 * 1.45 ** (lv - 1), spd: 3 + lv * 0.18, R: 74 + lv * 3 });
+const W_NOVA  = lv => ({ cd: 2.4 * 0.9 ** (lv - 1), n: 8 + lv * 2, dmg: 60 * 1.45 ** (lv - 1) });
+
+function nearestEnemies(n) {
+  return S.enemies
+    .map(e => ({ e, d: (e.x - S.p.x) ** 2 + (e.y - S.p.y) ** 2 }))
+    .sort((a, b) => a.d - b.d).slice(0, n).map(o => o.e);
+}
+function fire(x, y, vx, vy, o) {
+  S.shots.push({ x, y, vx, vy, life: o.life, dmg: o.dmg, pierce: o.pierce, r: o.r, label: o.label, color: o.color, hit: new Set() });
+}
+
+function updateWeapons(dt) {
+  const p = S.p, cm = cdMul();
+  const rl = lvOf('reply');
+  if (rl) {
+    S.cds.reply -= dt;
+    if (S.cds.reply <= 0 && S.enemies.length) {
+      const w = W_REPLY(rl);
+      S.cds.reply = w.cd * cm;
+      nearestEnemies(w.n).forEach(t => {
+        const a = Math.atan2(t.y - p.y, t.x - p.x);
+        fire(p.x, p.y, Math.cos(a) * 450, Math.sin(a) * 450,
+          { life: 1.1, dmg: w.dmg, pierce: w.pierce, r: 10, label: '了解です', color: '#5ad3a0' });
+      });
+    }
+  }
+  const nl = lvOf('nova');
+  if (nl) {
+    S.cds.nova -= dt;
+    if (S.cds.nova <= 0) {
+      const w = W_NOVA(nl);
+      S.cds.nova = w.cd * cm;
+      for (let i = 0; i < w.n; i++) {
+        const a = i / w.n * Math.PI * 2 + S.t;
+        fire(p.x, p.y, Math.cos(a) * 310, Math.sin(a) * 310,
+          { life: 0.95, dmg: w.dmg, pierce: 2, r: 9, label: 'Re:', color: '#f3c75c' });
+      }
+    }
+  }
+  const al = lvOf('aura');
+  if (al) {
+    S.cds.aura -= dt;
+    if (S.cds.aura <= 0) {
+      S.cds.aura = 0.3;
+      const w = W_AURA(al);
+      for (const e of S.enemies) {
+        if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 < (w.R + e.def.r) ** 2) hurtEnemy(e, w.dps * 0.3, false);
+      }
+    }
+  }
+  const ol = lvOf('orbit');
+  if (ol) {
+    const w = W_ORBIT(ol);
+    for (let i = 0; i < w.n; i++) {
+      const a = S.t * w.spd + i / w.n * Math.PI * 2;
+      const ox = p.x + Math.cos(a) * w.R, oy = p.y + Math.sin(a) * w.R;
+      for (const e of S.enemies) {
+        if ((e.x - ox) ** 2 + (e.y - oy) ** 2 < (e.def.r + 13) ** 2 && !(e.hitCd.orbit > 0)) {
+          e.hitCd.orbit = 0.4;
+          hurtEnemy(e, w.dmg, true);
+          const d = Math.hypot(e.x - p.x, e.y - p.y) || 1;
+          if (e.type !== 'boss') { e.kx += (e.x - p.x) / d * 160; e.ky += (e.y - p.y) / d * 160; }
+        }
+      }
+    }
+  }
+}
+
+function hurtEnemy(e, dmg, show = true) {
+  e.hp -= dmg; e.flash = 0.08; S.damage += dmg;
+  if (show) addText(e.x, e.y - e.def.r, fmt(dmg), dmg >= 1000 ? '#f3c75c' : '#fff', Math.min(22, 11 + Math.log10(dmg + 1) * 3));
+}
+
+// ---------- 成長（全自動） ----------
+function gainXp(v) {
+  S.xp += v;
+  while (S.xp >= S.xpNext) {
+    S.xp -= S.xpNext; S.lv++;
+    S.xpNext = Math.round(3 + S.lv * 1.6 + (S.lv > 25 ? (S.lv - 25) * 3 : 0));
+    autoLevelUp();
+  }
+}
+function autoLevelUp() {
+  const cand = Object.keys(SKILLS).filter(k => lvOf(k) < MAX_LV[SKILLS[k].kind]);
+  if (!cand.length) {
+    S.p.hp = Math.min(S.p.maxHp, S.p.hp + 15);
+    banner('おやつ休憩 HP+15', '#5ad3a0');
+    return;
+  }
+  // 武器を優先して伸ばし、持っていない武器も早めに揃える
+  const w = k => SKILLS[k].kind === 'weapon' ? (lvOf(k) ? 3 : 4) : 1.2;
+  let r = Math.random() * cand.reduce((s, k) => s + w(k), 0), k = cand[0];
+  for (const c of cand) { r -= w(c); if (r <= 0) { k = c; break; } }
+  S.skills[k] = lvOf(k) + 1;
+  const sk = SKILLS[k], max = S.skills[k] >= MAX_LV[sk.kind];
+  banner(`${sk.name} ${S.skills[k] === 1 ? '習得' : max ? 'MAX' : 'Lv' + S.skills[k]}`, sk.color);
+  if (k === 'nc' || S.lv % 5 === 0) S.p.hp = Math.min(S.p.maxHp, S.p.hp + 10);
+}
+
+// ---------- 更新 ----------
+function update(dt) {
+  S.t += dt;
+  const p = S.p;
+
+  const v = inputVec();
+  const sp = 165 * speedMul();
+  p.x += v.x * sp * dt; p.y += v.y * sp * dt;
+  p.hurt = Math.max(0, p.hurt - dt);
+
+  // 湧き。残業に入るとさらに増える
+  const rate = 1.5 + S.t * 0.36 + (S.overtime ? (S.t - GAME_SEC) * 0.3 : 0);
+  S.spawnAcc += rate * dt;
+  while (S.spawnAcc >= 1) {
+    S.spawnAcc -= 1;
+    if (S.enemies.length < 360) spawnEnemy(pickType());
+  }
+  const nb = nextBoss();
+  if (S.t >= nb.at && (nb.at < GAME_SEC || S.overtime)) { S.bossIdx++; spawnBoss(nb.b, nb.round); }
+
+  updateWeapons(dt);
+
+  for (const e of S.enemies) {
+    const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
+    e.x += (dx / d * e.def.speed + e.kx) * dt;
+    e.y += (dy / d * e.def.speed + e.ky) * dt;
+    e.kx *= 0.86; e.ky *= 0.86;
+    e.flash = Math.max(0, e.flash - dt);
+    for (const k in e.hitCd) e.hitCd[k] -= dt;
+    if (d < e.def.r + 13) {
+      // 残業中は敵の攻撃も少しずつ痛くなる
+      const ot = S.overtime ? 1.035 ** (S.t - GAME_SEC) : 1;
+      p.hp -= e.def.dmg * ot * dmgTakenMul() * dt;
+      if (p.hurt <= 0) { p.hurt = 0.25; S.shake = reduceMotion ? 0 : 5; }
+    }
+  }
+  // 軽い押し合い（同じマスにいる敵だけ）
+  const grid = new Map(), CELL = 48;
+  for (const e of S.enemies) {
+    const key = Math.floor(e.x / CELL) + ',' + Math.floor(e.y / CELL);
+    (grid.get(key) || grid.set(key, []).get(key)).push(e);
+  }
+  for (const list of grid.values()) {
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const a = list[i], b = list[j];
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, min = a.def.r + b.def.r;
+      if (d < min) {
+        const push = (min - d) / 2 / d;
+        const wa = a.type === 'boss' ? 0 : 1, wb = b.type === 'boss' ? 0 : 1;
+        a.x -= dx * push * wa; a.y -= dy * push * wa; b.x += dx * push * wb; b.y += dy * push * wb;
+      }
+    }
+  }
+
+  for (const s of S.shots) {
+    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+    for (const e of S.enemies) {
+      if (s.pierce <= 0 || s.hit.has(e)) continue;
+      if ((e.x - s.x) ** 2 + (e.y - s.y) ** 2 < (e.def.r + s.r) ** 2) {
+        s.hit.add(e); s.pierce--; hurtEnemy(e, s.dmg);
+        if (e.type !== 'boss') { const m = Math.hypot(s.vx, s.vy); e.kx += s.vx / m * 90; e.ky += s.vy / m * 90; }
+      }
+    }
+  }
+  S.shots = S.shots.filter(s => s.life > 0 && s.pierce > 0);
+
+  const alive = [], far = Math.hypot(W, H) / ZOOM;
+  for (const e of S.enemies) {
+    if (e.hp > 0) {
+      // 遠くに置き去りになった雑魚は手前に回り込ませる
+      if (e.type !== 'boss' && Math.hypot(e.x - p.x, e.y - p.y) > far) Object.assign(e, spawnPos());
+      alive.push(e); continue;
+    }
+    S.kills++;
+    S.gems.push({ x: e.x, y: e.y, v: e.def.xp });
+    if (e.type === 'boss') {
+      S.bossesBeaten++;
+      addText(e.x, e.y - 50, e.def.leave, e.def.color, 17);
+      S.snacks.push({ x: e.x + 30, y: e.y });
+    } else if (Math.random() < 0.01) {
+      S.snacks.push({ x: e.x, y: e.y });
+    }
+  }
+  S.enemies = alive;
+
+  const pr = pickupR();
+  for (const g of S.gems) {
+    const dx = p.x - g.x, dy = p.y - g.y, d = Math.hypot(dx, dy) || 1;
+    if (d < pr) g.pull = true;
+    if (g.pull) { const sp2 = 400 + (pr - Math.min(d, pr)) * 4; g.x += dx / d * sp2 * dt; g.y += dy / d * sp2 * dt; }
+    if (d < 16) { g.got = true; gainXp(g.v); }
+  }
+  S.gems = S.gems.filter(g => !g.got);
+  if (S.gems.length > 400) S.gems.splice(0, S.gems.length - 400);
+  for (const s of S.snacks) {
+    if (Math.hypot(p.x - s.x, p.y - s.y) < 24) {
+      s.got = true; p.hp = Math.min(p.maxHp, p.hp + 30);
+      addText(p.x, p.y - 28, 'おやつ +30', '#5ad3a0', 15);
+    }
+  }
+  S.snacks = S.snacks.filter(s => !s.got);
+
+  for (const t of S.texts) { t.life -= dt; t.y -= 30 * dt; }
+  S.texts = S.texts.filter(t => t.life > 0);
+  for (const b of S.banners) b.life -= dt;
+  S.banners = S.banners.filter(b => b.life > 0);
+  S.shake = Math.max(0, S.shake - dt * 30);
+
+  if (p.hp <= 0) { p.hp = 0; endGame(); return; }
+  if (!S.overtime && S.t >= GAME_SEC) { S.t = GAME_SEC; S.paused = true; stick.id = null; $('teiji').classList.add('show'); }
+}
+
+// ---------- 終了 ----------
+const clock = t => {
+  const m = START_MIN + Math.floor(t);
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+};
+function endGame() {
+  S.running = false; stick.id = null;
+  $('teiji').classList.remove('show');
+  const home = !S.overtime && S.t >= GAME_SEC;      // 定時で帰った
+  const over = Math.max(0, Math.floor(S.t - GAME_SEC));
+  $('rTime').textContent = home ? '17:00' : clock(S.t);
+  let title, verdict;
+  if (home) {
+    title = '定時退社';
+    verdict = S.bossesBeaten ? '「ちょっといい？」すら退けた。伝説の定時退社。' : 'PCを閉じる音が、静かなフロアに響いた。';
+  } else if (!S.overtime) {
+    title = '残業確定';
+    verdict = S.t < 20 ? '開始早々、通知の波に飲まれた。' : S.t < 40 ? '会議が会議を呼んで、気づけば夕方。' : '「ちょっといい？」はちょっとではなかった。';
+  } else {
+    title = `残業 ${Math.floor(over / 60) ? Math.floor(over / 60) + '時間' : ''}${over % 60}分`;
+    verdict = over < 20 ? 'キリのいいところまで、のつもりだった。'
+      : over < 60 ? '気づけば警備員さんが見回りに来ていた。'
+      : over < 120 ? '終電の時刻を調べ始めた。' : '朝の通知で目が覚めた。';
+  }
+  $('rTitle').textContent = title;
+  $('rVerdict').textContent = verdict;
+  const learned = Object.keys(S.skills).map(k => `${SKILLS[k].name} Lv${S.skills[k]}`).join(' / ');
+  $('rStats').innerHTML = [
+    [S.kills, 'さばいた案件'], ['Lv ' + S.lv, '到達レベル'],
+    [fmt(S.damage), '総返信量'], [S.bossesBeaten + ' 体', '退けたボス'],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('')
+    + `<div class="stat" style="grid-column:1/-1;font-size:13px">${learned}</div>`;
+  $('result').classList.add('show');
+}
+
+// ---------- 描画 ----------
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#151b26'; ctx.fillRect(0, 0, W, H);
+  if (!S) return;
+  const p = S.p;
+  const sx = (Math.random() - .5) * S.shake, sy = (Math.random() - .5) * S.shake;
+  ctx.save();
+  ctx.translate(W / 2 + sx, H / 2 + sy);
+  ctx.scale(ZOOM, ZOOM);
+  ctx.translate(-p.x, -p.y);
+
+  // 床（オフィスのタイルカーペット）。残業中は照明が落ちる
+  const T = 64, hw = W / 2 / ZOOM + T, hh = H / 2 / ZOOM + T;
+  const x0 = Math.floor((p.x - hw) / T) * T, y0 = Math.floor((p.y - hh) / T) * T;
+  const dark = S.overtime;
+  for (let x = x0; x < p.x + hw; x += T) for (let y = y0; y < p.y + hh; y += T) {
+    ctx.fillStyle = ((x / T + y / T) & 1) ? (dark ? '#141824' : '#1b2331') : (dark ? '#11151f' : '#19202d');
+    ctx.fillRect(x, y, T, T);
+  }
+
+  if (lvOf('aura')) {
+    const R = W_AURA(lvOf('aura')).R;
+    ctx.fillStyle = 'rgba(143,211,255,.09)';
+    ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(143,211,255,.35)'; ctx.setLineDash([6, 8]); ctx.lineDashOffset = -S.t * 20;
+    ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  for (const g of S.gems) {
+    ctx.fillStyle = g.v >= 6 ? '#b58cff' : g.v >= 2 ? '#6aa8ff' : '#7fd1ff';
+    ctx.beginPath(); ctx.moveTo(g.x, g.y - 6); ctx.lineTo(g.x + 5, g.y); ctx.lineTo(g.x, g.y + 6); ctx.lineTo(g.x - 5, g.y); ctx.closePath(); ctx.fill();
+  }
+  ctx.font = `20px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const s of S.snacks) ctx.fillText('🍩', s.x, s.y);
+
+  for (const e of S.enemies) {
+    const r = e.def.r, boss = e.type === 'boss';
+    ctx.fillStyle = e.flash > 0 ? '#ffffff' : e.def.color;
+    const bw = boss ? Math.max(r * 2.7, e.def.label.length * 14 + 16) : r * 2.7;
+    roundRect(e.x - bw / 2, e.y - r * 0.85, bw, r * 1.7, 5); ctx.fill();
+    ctx.fillStyle = '#10151f';
+    ctx.font = `700 ${boss ? 13 : Math.max(9, r * 0.62)}px ${FONT}`;
+    ctx.fillText(e.def.label, e.x, e.y + 0.5, bw - 6);
+    if (boss) {
+      const w = 90;
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(e.x - w / 2, e.y - r - 14, w, 6);
+      ctx.fillStyle = e.def.color; ctx.fillRect(e.x - w / 2, e.y - r - 14, w * Math.max(0, e.hp / e.maxHp), 6);
+    }
+  }
+
+  const ol = lvOf('orbit');
+  if (ol) {
+    const w = W_ORBIT(ol);
+    for (let i = 0; i < w.n; i++) {
+      const a = S.t * w.spd + i / w.n * Math.PI * 2;
+      ctx.save(); ctx.translate(p.x + Math.cos(a) * w.R, p.y + Math.sin(a) * w.R); ctx.rotate(a);
+      ctx.fillStyle = '#f2f2f2'; ctx.fillRect(-9, -12, 18, 24);
+      ctx.fillStyle = '#9aa6bb'; for (let l = 0; l < 4; l++) ctx.fillRect(-6, -7 + l * 5, 12, 1.5);
+      ctx.restore();
+    }
+  }
+
+  for (const s of S.shots) {
+    ctx.font = `700 ${s.label === 'Re:' ? 12 : 11}px ${FONT}`;
+    const w = ctx.measureText(s.label).width + 10;
+    ctx.fillStyle = s.color; roundRect(s.x - w / 2, s.y - 9, w, 18, 9); ctx.fill();
+    ctx.fillStyle = '#10151f'; ctx.fillText(s.label, s.x, s.y + 0.5);
+  }
+
+  ctx.fillStyle = p.hurt > 0 ? '#ef5b6b' : '#eef2f8';
+  ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#10151f'; ctx.font = `800 12px ${FONT}`; ctx.fillText('私', p.x, p.y + 0.5);
+  ctx.strokeStyle = '#6aa8ff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(p.x - 6, p.y + 10); ctx.lineTo(p.x, p.y + 17); ctx.lineTo(p.x + 6, p.y + 10); ctx.stroke();
+
+  for (const t of S.texts) {
+    ctx.globalAlpha = Math.min(1, t.life * 2.5);
+    ctx.font = `800 ${t.size}px ${FONT}`;
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(t.str, t.x, t.y);
+    ctx.fillStyle = t.color; ctx.fillText(t.str, t.x, t.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  drawHud();
+  if (stick.id !== null && S.running && !S.paused) drawStick();
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+function drawHud() {
+  const top = 10 + safeTop(), pad = 12;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = `800 30px ${FONT}`;
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.55)';
+  const c = clock(S.t), left = GAME_SEC - S.t;
+  ctx.strokeText(c, W / 2, top);
+  ctx.fillStyle = S.overtime ? '#ef5b6b' : left < 10 ? '#5ad3a0' : '#eef2f8';
+  ctx.fillText(c, W / 2, top);
+  ctx.font = `600 12px ${FONT}`; ctx.fillStyle = S.overtime ? '#ef5b6b' : '#9aa6bb';
+  ctx.fillText(S.overtime ? `残業 ${Math.floor(S.t - GAME_SEC)} 分` : `定時まであと ${Math.max(0, Math.ceil(left))} 分`, W / 2, top + 36);
+
+  // 習得・ボス出現の告知
+  S.banners.forEach((b, i) => {
+    const a = Math.min(1, b.life / 0.25, (b.max - b.life) / 0.1 + 0.3);
+    ctx.globalAlpha = Math.max(0, a);
+    ctx.font = `800 16px ${FONT}`;
+    const w = ctx.measureText(b.str).width + 24, y = top + 58 + i * 30;
+    ctx.fillStyle = 'rgba(10,14,22,.75)'; roundRect(W / 2 - w / 2, y, w, 26, 13); ctx.fill();
+    ctx.fillStyle = b.color; ctx.fillText(b.str, W / 2, y + 4);
+  });
+  ctx.globalAlpha = 1;
+
+  const bw = Math.min(160, W * 0.32);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(pad, top + 4, bw, 10);
+  ctx.fillStyle = '#ef5b6b'; ctx.fillRect(pad, top + 4, bw * S.p.hp / S.p.maxHp, 10);
+  ctx.fillStyle = '#eef2f8'; ctx.font = `700 11px ${FONT}`; ctx.fillText(`HP ${Math.ceil(S.p.hp)}`, pad, top + 18);
+  ctx.textAlign = 'right';
+  ctx.font = `700 13px ${FONT}`; ctx.fillText(`Lv ${S.lv}`, W - pad, top + 2);
+  ctx.fillStyle = '#9aa6bb'; ctx.font = `600 11px ${FONT}`; ctx.fillText(`${S.kills} 件処理`, W - pad, top + 20);
+
+  const by = H - 8 - safeBottom();
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, by, W, 8);
+  ctx.fillStyle = '#6aa8ff'; ctx.fillRect(0, by, W * S.xp / S.xpNext, 8);
+}
+function drawStick() {
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = '#eef2f8'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(stick.ox, stick.oy, STICK_R, 0, Math.PI * 2); ctx.stroke();
+  const dx = stick.x - stick.ox, dy = stick.y - stick.oy, d = Math.hypot(dx, dy), m = Math.min(d, STICK_R) / (d || 1);
+  ctx.fillStyle = '#eef2f8';
+  ctx.beginPath(); ctx.arc(stick.ox + dx * m, stick.oy + dy * m, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+// iPhone のノッチ・ホームバーを避ける
+const probe = document.createElement('div');
+probe.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none';
+document.body.appendChild(probe);
+const safeTop = () => probe.getBoundingClientRect().top;
+const safeBottom = () => innerHeight - probe.getBoundingClientRect().bottom;
+
+// ---------- ループ ----------
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (S && S.running && !S.paused && !document.hidden) update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+document.addEventListener('visibilitychange', () => { last = performance.now(); });
+
+function start() {
+  newGame();
+  $('title').classList.remove('show'); $('result').classList.remove('show');
+  last = performance.now();
+}
+$('start').addEventListener('click', start);
+$('retry').addEventListener('click', start);
+$('goHome').addEventListener('click', () => { $('teiji').classList.remove('show'); endGame(); });
+$('overtime').addEventListener('click', () => {
+  $('teiji').classList.remove('show');
+  S.overtime = true; S.paused = false; last = performance.now();
+  banner('残業開始', '#ef5b6b', 1.5);
+});
+</script>
+</body>
+</html>
