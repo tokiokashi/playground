@@ -117,7 +117,7 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="rnum">点数</label><input id="rnum" type="range" min="2" max="13" step="1" value="7"><output id="rnum_o"></output></div>
     <div class="row"><label for="qs">共振器単体の Q<sub>s</sub>（3D の想定値）</label><input id="qs" type="range" min="1000" max="20000" step="500" value="5000"><output id="qs_o"></output></div>
     <div class="btns"><button id="bRsw">⑤ R スイープ</button></div>
-    <div class="cap">導波路などほかの構造はそのままにして、外周の補正を「変形率 100%・半径を指定」にした共振器の半径 R だけを振る。各 R で「WGM を探す」と同じ手順で基本 WGM を探し、波長と負荷 Q（Q<sub>L</sub>）を測る。探す範囲は、最初の点だけ「探す範囲」の設定を使い、2点目からは直前の2点の周波数を R について直線で延ばした値の ±0.008（a/λ）に自動で絞る。下に各 R のモード像を並べる（表示は ② の |H<sub>z</sub>|・符号付きの切り替えに従う）。左: 波長、右: Q<sub>L</sub>（橙、対数軸）と結合効率 η<sub>c</sub>（青、0〜1）。導波路ありの時は、最初に中央の R で導波路なしの Q<sub>0</sub> を1回だけ測り、導波路への結合だけの Q を 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub> で出す。η<sub>c</sub> = 1 − Q/Q<sub>s</sub> は、実際の素子の共振器単体の Q を Q<sub>s</sub> とみなして、Q<sub>wg</sub> と Q<sub>s</sub> から求める（2D の Q<sub>0</sub> は垂直放射を含まないので使わない）。近藤研の CirD の解析（Xiong et al., Photonics 2019）は η<sub>c</sub> ≈ 0.6、Q<sub>s</sub> &gt; 5000 を目安にしている。④ のバンドの端より長波長側（低周波側）では、導波路の基本モードが無いので結合が弱くなる。</div>
+    <div class="cap">導波路などほかの構造はそのままにして、外周の補正を「変形率 100%・半径を指定」にした共振器の半径 R だけを振る。各 R で「WGM を探す」と同じ手順で基本 WGM を探し、波長と負荷 Q（Q<sub>L</sub>）を測る。探す範囲は、最初の点だけ「探す範囲」の設定を使い、2点目からは直前の2点の周波数を R について直線で延ばした値の ±0.008（a/λ）に自動で絞る。下に各 R のモード像を並べる（表示は ② の |H<sub>z</sub>|・符号付きの切り替えに従う）。左: 波長、右: Q<sub>L</sub>（橙、対数軸）と結合効率 η<sub>c</sub>（青、0〜1）。導波路ありの時は、最初に中央の R で導波路なしの Q<sub>0</sub> を1回だけ測り、導波路への結合だけの Q を 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub> で出す。η<sub>c</sub> = 1 − Q/Q<sub>s</sub> は、実際の素子の共振器単体の Q を Q<sub>s</sub> とみなして、Q<sub>wg</sub> と Q<sub>s</sub> から求める（2D の Q<sub>0</sub> は垂直放射を含まないので使わない）。Q<sub>0</sub> が下限しか出ない時は、Q<sub>wg</sub> と η<sub>c</sub> を幅で表に出し、図の η<sub>c</sub> は Q<sub>wg</sub> = Q<sub>L</sub> とした上限を描く。近藤研の CirD の解析（Xiong et al., Photonics 2019）は、3D 計算で Q<sub>s</sub> &gt; 5000 を得ていて、η<sub>c</sub> ≈ 0.6 を適当な値としている。⑤ を回すと、構造パネルの補正の設定と ② の表示は最後の R のものになる。④ のバンドの端より長波長側（低周波側）では、導波路の基本モードが無いので結合が弱くなる。</div>
     <div class="tablewrap"><table id="rswTable"></table></div>
     <div id="rswImgs" class="thumbs"></div>
   </div>
@@ -574,7 +574,8 @@ function* runRSweep() {
   for (let i = 0; i < n; i++) {
     // The WGM moves to lower frequency as R grows. After the first found point, search only near the frequency
     // extrapolated from the last two found points, so a neighboring mode with the same m is not picked up instead.
-    const got = rsweep.pts.filter(q => isFinite(q.f)), w = 0.008;
+    // With one point there is no slope yet, so the window is wider until the second point fixes it.
+    const got = rsweep.pts.filter(q => isFinite(q.f)), w = got.length >= 2 ? 0.008 : 0.015;
     let fP = null;
     if (got.length >= 2) { const [u, v] = got.slice(-2); fP = v.f + (v.f - u.f) / (v.R - u.R) * (Rs[i] - v.R); }
     else if (got.length === 1) fP = got[0].f;
@@ -943,13 +944,13 @@ function drawSweep() {
     : `<tr><td>${Math.round(s.def * 100)}%</td><td colspan="6">近い周波数のピークが見つからない</td></tr>`).join('');
 }
 
-// Q_wg from 1/Q_wg = 1/Q_L - 1/Q0. When Q0 is only a lower bound (or unknown), Q_L is the best estimate and an upper
-// bound would need Q0, so the result is flagged as approximate.
+// Q_wg from 1/Q_wg = 1/Q_L - 1/Q0. When Q0 is only a lower bound, Q_wg lies between Q_L and the value at that bound
+// (no upper end without Q0), and eta_c = 1 - Q/Q_s with Q = 1/(1/Q_wg + 1/Q_s) has the matching range.
 function couplingOf(s, Q0, qs) {
-  const QL = isFinite(s.Q) && s.resolved ? s.Q : s.Qmin;
-  let Qwg = QL, approx = true;
-  if (Q0 && Q0.resolved && isFinite(Q0.Q) && Q0.Q > QL) { Qwg = 1 / (1 / QL - 1 / Q0.Q); approx = false; }
-  return { QL, Qwg, approx, eta: (1 / Qwg) / (1 / Qwg + 1 / qs) };
+  const QL = isFinite(s.Q) && s.resolved ? s.Q : s.Qmin, eta = Qwg => (1 / Qwg) / (1 / Qwg + 1 / qs);
+  const q0 = Q0 ? (Q0.resolved && isFinite(Q0.Q) ? Q0.Q : Q0.Qmin) : Infinity, exact = !!Q0 && Q0.resolved && isFinite(Q0.Q);
+  const hiQ = q0 > QL ? 1 / (1 / QL - 1 / q0) : Infinity;
+  return exact ? { QL, Qwg: hiQ, QwgHi: hiQ, eta: eta(hiQ), etaLo: eta(hiQ) } : { QL, Qwg: QL, QwgHi: hiQ, eta: eta(QL), etaLo: eta(hiQ) };
 }
 function drawRSweep() {
   const pts = rsweep.pts.filter(s => isFinite(s.f)), a = +$('a').value;
@@ -987,7 +988,9 @@ function drawRSweep() {
   $('rswTable').innerHTML = (q0 ? `<caption>${q0}</caption>` : '') + '<tr><th>R/a</th><th>a/λ</th><th>λ [nm]</th><th>Q<sub>L</sub></th>' + (rsweep.wg ? '<th>Q<sub>wg</sub></th><th>η<sub>c</sub></th>' : '') + '<th>m</th></tr>' + rsweep.pts.map(s => {
     if (!isFinite(s.f)) return `<tr><td>${s.R.toFixed(3)}</td><td colspan="${rsweep.wg ? 6 : 4}">${s.msg}</td></tr>`;
     const c = cp(s);
-    return `<tr><td>${s.R.toFixed(3)}</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${fmtQ(s)}</td>` + (rsweep.wg ? `<td>${c.approx ? '≈ ' : ''}${Math.round(c.Qwg).toLocaleString('en-US')}</td><td>${c.eta.toFixed(2)}</td>` : '') + `<td>${s.m}</td></tr>`;
+    const N = v => isFinite(v) ? Math.round(v).toLocaleString('en-US') : '∞', range = (a, b, f) => f(a) === f(b) ? f(a) : `${f(b)}〜${f(a)}`;
+    const mt = s.m === 3 * +$('n').value ? s.m : `${s.m}（WGM でない）`;
+    return `<tr><td>${s.R.toFixed(3)}</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${fmtQ(s)}</td>` + (rsweep.wg ? `<td>${range(c.QwgHi, c.Qwg, N)}</td><td>${range(c.eta, c.etaLo, v => v.toFixed(2))}</td>` : '') + `<td>${mt}</td></tr>`;
   }).join('');
 }
 
