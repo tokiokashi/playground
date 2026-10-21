@@ -585,9 +585,10 @@ function* runFields(S, freqs, label = '', src = null) {
   return F.map(([Fr, Fi]) => azimuthal(S, Fr, Fi));
 }
 // Finds the radially fundamental WGM (m = 3n) among the peaks inside the search window and measures its Q, with the
-// simulation's own excitation or with src. Returns { r, fund, hit } or { msg } when no such mode is found.
-function* pickWGM(S, sp, label = '', src = null) {
-  const p = S.p, mT = 3 * p.n, lo = Math.min(p.wlo, p.whi), hi = Math.max(p.wlo, p.whi);
+// simulation's own excitation or with src, inside the window [lo, hi] (a/λ; the panel's range by default).
+// Returns { r, fund, hit } or { msg } when no such mode is found.
+function* pickWGM(S, sp, label = '', src = null, lo = Math.min(S.p.wlo, S.p.whi), hi = Math.max(S.p.wlo, S.p.whi)) {
+  const p = S.p, mT = 3 * p.n;
   const cand = sp.peaks.filter(pk => pk.f >= lo && pk.f <= hi);
   if (!cand.length) return { msg: `範囲 ${lo.toFixed(3)}〜${hi.toFixed(3)} にピークが無い。範囲を広げる。` };
   const az = yield* runFields(S, cand.map(pk => pk.f), label, src);
@@ -607,6 +608,7 @@ function* pickWGM(S, sp, label = '', src = null) {
   }
   return { r, fund, hit };
 }
+const DIRWIN = 0.006; // a/λ, about ±37 nm at 1450 nm
 // Finds the WGM as pickWGM does. With a sub-cavity it also measures where each of the two split modes goes.
 // Returns { r, others } or { msg }.
 function* findWGM(S, sp, label = '') {
@@ -621,7 +623,8 @@ function* findWGM(S, sp, label = '') {
     r.dir = [];
     for (const par of [1, -1]) {
       const src = S.srcPar(par), name = `${label}[方向性 ${par > 0 ? '同相' : '逆相'}] `;
-      const spP = yield* runSpectrum(S, name, src), q = yield* pickWGM(S, spP, name, src), t = q.r;
+      // Only near the WGM found above, so that a radially higher-order mode with the same m is not taken instead.
+      const spP = yield* runSpectrum(S, name, src), q = yield* pickWGM(S, spP, name, src, r.f - DIRWIN, r.f + DIRWIN), t = q.r;
       r.dir.push(t ? { par, f: t.f, Q: t.Q, resolved: t.resolved, Qmin: t.Qmin, PL: t.PL, PR: t.PR, ccw: t.az.ccw, m: t.az.m }
         : { par, miss: true, f: NaN, Q: NaN, resolved: false, Qmin: NaN, PL: NaN, PR: NaN, ccw: NaN, m: null });
     }
