@@ -115,9 +115,12 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="neff">実効屈折率</label><input id="neff" type="range" min="2.4" max="3.5" step="0.05" value="3.40"><output id="neff_o"></output></div>
     <div class="row"><label for="a">a [nm]</label><input id="a" type="range" min="250" max="450" step="5" value="340"><output id="a_o"></output></div>
     <div class="row"><label for="nclad">クラッド屈折率</label><input id="nclad" type="range" min="1" max="2" step="0.05" value="1.6"><output id="nclad_o"></output></div>
+    <div class="row"><label for="wg">導波路</label><select id="wg"><option value="0" selected>なし</option><option value="1">共振器の上に W1 導波路</option></select><span></span></div>
+    <div class="row"><label for="wgsep">共振器との間の列数</label><input id="wgsep" type="range" min="1" max="5" step="1" value="1"><output id="wgsep_o"></output></div>
+    <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。</div>
     <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
     <h2 style="margin-top:12px">外周の円形補正</h2>
-    <div class="row"><label for="def">変形率</label><input id="def" type="range" min="0" max="1" step="0.05" value="0"><output id="def_o"></output></div>
+    <div class="row"><label for="def">変形率</label><input id="def" type="range" min="0" max="1" step="0.05" value="1"><output id="def_o"></output></div>
     <div class="row"><label for="rings">補正する列</label><input id="rings" type="range" min="1" max="3" step="1" value="1"><output id="rings_o"></output></div>
     <div class="row"><label for="target">目標の円</label><select id="target"><option value="mean">その列の平均半径</option><option value="in">内接円（辺の中点）</option><option value="out">外接円（角）</option><option value="custom">半径を指定</option></select><span></span></div>
     <div class="row"><label for="R">指定半径 R/a</label><input id="R" type="range" min="0.5" max="8" step="0.01" value="2.76"><output id="R_o"></output></div>
@@ -131,7 +134,7 @@ td:first-child,th:first-child{text-align:left}
     <div class="cap">1点の時は励振とプローブを同じ点に置く。WGM は外周に沿った腹を持つので、外周の穴の少し内側（H3 なら半径 2a 前後）が目安。角度 0° は外周の角の穴の方向で、WGM の対称・反対称の両方を拾えるように少しずらしてある。</div>
     <div class="row"><label for="wlo">探す範囲 下限</label><input id="wlo" type="range" min="0.18" max="0.45" step="0.005" value="0.22"><output id="wlo_o"></output></div>
     <div class="row"><label for="whi">探す範囲 上限</label><input id="whi" type="range" min="0.18" max="0.45" step="0.005" value="0.28"><output id="whi_o"></output></div>
-    <div class="cap">「WGM を探す」は、この範囲（a/λ）のピークだけを調べて、腹の数が外周の穴の数（Hn なら 6n 個）と同じモードを選び、② まで回す。スペクトル上では範囲を薄い帯で示す。</div>
+    <div class="cap">「WGM を探す」は、この範囲（a/λ）のピークだけを調べて、腹の数が外周の穴の数（Hn なら 6n 個）と同じモードのうち一番低い周波数のもの（径方向の基本モード）を選び、② まで回す。スペクトル上では範囲を薄い帯で示す。</div>
     <div class="row"><label for="tmeas">減衰の観測時間</label><select id="tmeas"><option value="300">300 a/c</option><option value="600" selected>600 a/c</option><option value="1500">1500 a/c（高Q用）</option></select><span></span></div>
     <div class="cap" id="gridinfo"></div>
     <div class="btns">
@@ -153,13 +156,14 @@ const SQ3 = Math.sqrt(3);
 const FMIN = 0.18, FMAX = 0.45;
 
 // ---------- parameters ----------
-const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
-const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
 function params() {
   const p = {};
   for (const k of ids) p[k] = +$(k).value;
   p.target = $('target').value;
   p.srcmode = $('srcmode').value;
+  p.wg = $('wg').value === '1';
   p.res = +$('res').value;
   p.tmeas = +$('tmeas').value;
   return p;
@@ -174,6 +178,8 @@ function makeHoles(p, X, Y) {
   for (let i = -L; i <= L; i++) for (let j = -L; j <= L; j++) {
     const ring = Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)), x = i + j / 2, y = j * SQ3 / 2;
     if (ring < p.n || Math.abs(x) > X + p.ra || Math.abs(y) > Y + p.ra) continue;
+    // W1 waveguide: drop one full row of holes above the cavity, leaving wgsep rows between it and the boundary row.
+    if (p.wg && j === p.n + p.wgsep + 1) continue;
     holes.push({ x, y, ring });
   }
   for (let k = 0; k < p.rings; k++) {
@@ -199,7 +205,7 @@ function countOverlaps(holes, r) {
 function buildSim(p) {
   const N = p.res, dx = 1 / N, dt = 0.99 * dx / Math.SQRT2;
   // "barrier" = rows of holes between the cavity and the PML along the shorter (y) direction.
-  const M = p.n - 1 + p.barrier;
+  const M = p.n - 1 + (p.wg ? Math.max(p.barrier, p.wgsep + 5) : p.barrier);
   const pml = Math.round(1.25 * N);
   const hy = (M + 0.5) * SQ3 / 2, hx = hy + 0.5;
   const nx = 2 * (Math.ceil(hx * N) + pml), ny = 2 * (Math.ceil(hy * N) + pml), NN = nx * ny;
@@ -495,18 +501,14 @@ function* runFind() {
   drawSpectrum();
   const hit = cand.filter(pk => pk.m === mT);
   if (!hit.length) { status(`範囲内の ${cand.length} 個のピークに、腹 ${2 * mT} 個（m = ${mT}）のモードが無かった。範囲か励振点を変える。`, 1); return; }
-  // Several peaks can share m (other radial orders, or modes leaking through the crystal): keep the highest Q.
-  const tries = hit.sort((x, y) => y.amp - x.amp).slice(0, 3), res = [];
-  for (const [i, pk] of tries.entries()) {
-    selected = pk.f; drawSpectrum();
-    res.push(yield* runMode(sim, pk.f, `[m = ${mT} の候補 ${i + 1}/${tries.length}] `, bandFor(spectrum, pk.f)));
-  }
-  const qOf = r => r.resolved ? r.Q : r.Qmin;
-  const r = res.reduce((x, y) => qOf(x) >= qOf(y) ? x : y);
-  selected = tries[res.indexOf(r)].f; drawSpectrum();
+  // Several peaks can share m. For a fixed m the radially fundamental WGM has the lowest frequency, so take that one.
+  const clean = hit.filter(pk => pk.purity >= 0.5), pool = clean.length ? clean : hit;
+  const fund = pool.reduce((x, y) => x.f <= y.f ? x : y);
+  selected = fund.f; drawSpectrum();
+  const r = yield* runMode(sim, fund.f, `[基本 WGM m = ${mT}] `, bandFor(spectrum, fund.f));
   lastMode = r; showMode(r);
-  const others = res.filter(x => x !== r).map(x => `${(p.a / x.f).toFixed(0)} nm（Q ${fmtQ(x)}）`).join('、');
-  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${others ? `。同じ m の他の候補: ${others}` : ''}`, 1);
+  const others = hit.filter(x => x !== fund).map(x => `${(p.a / x.f).toFixed(0)} nm`).join('、');
+  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
 }
 function* runSweep(fStart) {
   const p0 = params(), defs = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
@@ -544,7 +546,7 @@ function start(gen, onDone) {
 function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
-  for (const k of [...ids, 'target', 'srcmode', 'res', 'tmeas']) $(k).disabled = b;
+  for (const k of [...ids, 'target', 'srcmode', 'wg', 'res', 'tmeas']) $(k).disabled = b;
   $('bFind').disabled = b;
 }
 function tick() {
@@ -743,7 +745,7 @@ function meanRingRadius(n) {
     if (Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)) === n) { s += Math.hypot(i + j / 2, j * SQ3 / 2); c++; }
   return s / c;
 }
-for (const k of [...ids, 'target', 'srcmode', 'res', 'tmeas']) $(k).addEventListener('input', () => {
+for (const k of [...ids, 'target', 'srcmode', 'wg', 'res', 'tmeas']) $(k).addEventListener('input', () => {
   if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
   const structural = !['a', 'tmeas', 'wlo', 'whi'].includes(k);
   if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
@@ -752,7 +754,7 @@ for (const k of [...ids, 'target', 'srcmode', 'res', 'tmeas']) $(k).addEventList
 });
 $('bSpec').onclick = () => {
   sim = buildSim(params());
-  start(runSpectrum(sim), sp => { spectrum = sp; const f1310 = +$('a').value / 1310; selected = sp.peaks.length ? sp.peaks.reduce((x, y) => Math.abs(x.f - f1310) <= Math.abs(y.f - f1310) ? x : y).f : null; drawSpectrum(); setBusy(false); status(`① 完了。ピーク ${sp.peaks.length} 個。1310 nm に一番近いピークを選んである。別のモードはタップで選び直す。`, 1); });
+  start(runSpectrum(sim), sp => { spectrum = sp; const lo = Math.min(+$('wlo').value, +$('whi').value), hi = Math.max(+$('wlo').value, +$('whi').value), inW = sp.peaks.filter(pk => pk.f >= lo && pk.f <= hi), pool = inW.length ? inW : sp.peaks; selected = pool.length ? pool.reduce((x, y) => x.amp >= y.amp ? x : y).f : null; drawSpectrum(); setBusy(false); status(`① 完了。ピーク ${sp.peaks.length} 個。探す範囲で一番大きいピークを選んである。WGM かどうかは「WGM を探す」か ② の m で確かめる。`, 1); });
 };
 $('bMode').onclick = () => {
   if (selected == null) return;
