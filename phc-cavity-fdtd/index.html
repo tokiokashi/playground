@@ -86,7 +86,7 @@ td:first-child,th:first-child{text-align:left}
       <canvas id="sweepQ" height="180"></canvas>
       <canvas id="sweepE" height="180"></canvas>
     </div>
-    <div class="cap">左: 面内 Q（2D、対数軸）。右: 光円錐内の成分比 η（小さいほど垂直放射が少ない）。各点で ① と ② を自動で回し、直前の点に一番近い周波数のピークを追う。</div>
+    <div class="cap">左: 面内 Q（2D、対数軸）。右: 光円錐内の成分比 η（小さいほど垂直放射が少ない）。各点で ① と ② を自動で回し、直前の点に近い周波数のピークのうち、最初の点と同じ方位角次数 m のモードを追う（近い順に3つまで試す）。</div>
     <div class="tablewrap"><table id="sweepTable"></table></div>
   </div>
   <div class="panel notes">
@@ -95,7 +95,7 @@ td:first-child,th:first-child{text-align:left}
       <li>2D TE（E<sub>x</sub>, E<sub>y</sub>, H<sub>z</sub>）の Yee 格子。外周は誘電体（穴なしスラブ）を挟んで分割場 PML で吸収する。誘電率は 4×4 のサブサンプルで平均する。</li>
       <li>面内 Q は、共振器内のエネルギー U の指数減衰 U ∝ exp(−ωt/Q) の傾きから求める。2D なので面内の結晶層を抜ける漏れだけを見ている。</li>
       <li>実際のスラブで支配的な垂直放射は 2D では出てこない。代わりに、モード場の空間フーリエ成分のうちクラッドの光円錐 |k| &lt; n<sub>clad</sub>ω/c の内側にある割合 η を目安として出す（Vučković らの光円錐解析の簡略版。H<sub>z</sub> だけを使う）。η は相対比較用で、Q<sub>⊥</sub> の絶対値ではない。</li>
-      <li>実効屈折率の取り方で禁止帯の位置は数 % 動く。目安として、GaAs（n≈3.4）で厚さ 0.5a 前後のスラブなら TE 基本モードの実効屈折率は 2.8〜3.0 くらい。</li>
+      <li>屈折率の既定値 3.4 は GaAs（ε = 11.6）そのもので、CirD の学位論文が 2D の禁止帯の計算に使った値に合わせてある。空気クラッドの薄いスラブ（厚さ 0.5a 前後）を近似するなら TE 基本モードの実効屈折率 2.8〜3.0 くらいに下げる。下げると禁止帯とモードは高周波側（短波長側）へ動く。</li>
     </ul>
   </div>
 </div>
@@ -105,7 +105,7 @@ td:first-child,th:first-child{text-align:left}
     <h2>構造</h2>
     <div class="row"><label for="n">共振器 Hn</label><input id="n" type="range" min="1" max="7" step="1" value="3"><output id="n_o"></output></div>
     <div class="row"><label for="ra">r/a</label><input id="ra" type="range" min="0.20" max="0.42" step="0.01" value="0.30"><output id="ra_o"></output></div>
-    <div class="row"><label for="neff">実効屈折率</label><input id="neff" type="range" min="2.4" max="3.5" step="0.05" value="2.90"><output id="neff_o"></output></div>
+    <div class="row"><label for="neff">実効屈折率</label><input id="neff" type="range" min="2.4" max="3.5" step="0.05" value="3.40"><output id="neff_o"></output></div>
     <div class="row"><label for="a">a [nm]</label><input id="a" type="range" min="250" max="450" step="5" value="340"><output id="a_o"></output></div>
     <div class="row"><label for="nclad">クラッド屈折率</label><input id="nclad" type="range" min="1" max="2" step="0.05" value="1.6"><output id="nclad_o"></output></div>
     <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
@@ -118,6 +118,10 @@ td:first-child,th:first-child{text-align:left}
     <div id="overlap" class="warn"></div>
     <h2 style="margin-top:12px">計算</h2>
     <div class="row"><label for="res">分解能 [セル/a]</label><select id="res"><option value="12">12（速い）</option><option value="16" selected>16</option><option value="20">20</option><option value="24">24（遅い）</option></select><span></span></div>
+    <div class="row"><label for="srcmode">励振源</label><select id="srcmode"><option value="one" selected>1点（WGM の腹の位置）</option><option value="many">共振器内に散らした8点</option></select><span></span></div>
+    <div class="row"><label for="srcr">励振点の半径/a</label><input id="srcr" type="range" min="0" max="7" step="0.05" value="2.00"><output id="srcr_o"></output></div>
+    <div class="row"><label for="srcth">励振点の角度</label><input id="srcth" type="range" min="0" max="60" step="1" value="5"><output id="srcth_o"></output></div>
+    <div class="cap">1点の時は励振とプローブを同じ点に置く。WGM は外周に沿った腹を持つので、外周の穴の少し内側（H3 なら半径 2a 前後）が目安。角度 0° は外周の角の穴の方向で、WGM の対称・反対称の両方を拾えるように少しずらしてある。</div>
     <div class="row"><label for="tmeas">減衰の観測時間</label><select id="tmeas"><option value="300">300 a/c</option><option value="600" selected>600 a/c</option><option value="1500">1500 a/c（高Q用）</option></select><span></span></div>
     <div class="cap" id="gridinfo"></div>
     <div class="btns">
@@ -138,12 +142,13 @@ const SQ3 = Math.sqrt(3);
 const FMIN = 0.18, FMAX = 0.45;
 
 // ---------- parameters ----------
-const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'barrier', 'def', 'rings', 'R'];
-const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
 function params() {
   const p = {};
   for (const k of ids) p[k] = +$(k).value;
   p.target = $('target').value;
+  p.srcmode = $('srcmode').value;
   p.res = +$('res').value;
   p.tmeas = +$('tmeas').value;
   return p;
@@ -152,16 +157,16 @@ function params() {
 // ---------- geometry ----------
 // Triangular lattice in axial coordinates; ring index = hexagonal distance from the center.
 // Hn cavity removes rings 0..n-1; the first remaining ring (ring n) is the cavity boundary.
-function makeHoles(p) {
-  const M = p.n - 1 + p.barrier, holes = [];
-  for (let i = -M; i <= M; i++) for (let j = -M; j <= M; j++) {
-    const ring = Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j));
-    if (ring < p.n || ring > M) continue;
-    holes.push({ x: i + j / 2, y: j * SQ3 / 2, ring });
+// The crystal fills the whole rectangle |x| <= X, |y| <= Y (PML included), so nothing but crystal surrounds the cavity.
+function makeHoles(p, X, Y) {
+  const holes = [], L = Math.ceil(X + Y) + 2;
+  for (let i = -L; i <= L; i++) for (let j = -L; j <= L; j++) {
+    const ring = Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)), x = i + j / 2, y = j * SQ3 / 2;
+    if (ring < p.n || Math.abs(x) > X + p.ra || Math.abs(y) > Y + p.ra) continue;
+    holes.push({ x, y, ring });
   }
   for (let k = 0; k < p.rings; k++) {
     const ring = p.n + k;
-    if (ring > M) break;
     const hs = holes.filter(h => h.ring === ring);
     const R = p.target === 'in' ? ring * SQ3 / 2 : p.target === 'out' ? ring
       : p.target === 'custom' ? p.R + k * SQ3 / 2 : hs.reduce((s, h) => s + Math.hypot(h.x, h.y), 0) / hs.length;
@@ -182,11 +187,12 @@ function countOverlaps(holes, r) {
 // ---------- simulation setup ----------
 function buildSim(p) {
   const N = p.res, dx = 1 / N, dt = 0.99 * dx / Math.SQRT2;
+  // "barrier" = rows of holes between the cavity and the PML along the shorter (y) direction.
   const M = p.n - 1 + p.barrier;
   const pml = Math.round(1.25 * N);
-  const hx = M + p.ra + 1.5, hy = M * SQ3 / 2 + p.ra + 1.5;
+  const hy = (M + 0.5) * SQ3 / 2, hx = hy + 0.5;
   const nx = 2 * (Math.ceil(hx * N) + pml), ny = 2 * (Math.ceil(hy * N) + pml), NN = nx * ny;
-  const holes = makeHoles(p);
+  const holes = makeHoles(p, nx / 2 * dx, ny / 2 * dx);
   const fillAir = (ox, oy) => {
     const arr = new Float32Array(NN), r = p.ra, S = 4, m = 0.75 * dx;
     for (const h of holes) {
@@ -231,15 +237,14 @@ function buildSim(p) {
   // Sources and probes at fixed pseudo-random points inside the cavity so modes of every symmetry are excited.
   let seed = 12345;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const rIn = Math.max(0.25, (p.n - 1) * 0.8);
-  const pts = cnt => Array.from({ length: cnt }, () => {
-    const r = rIn * Math.sqrt(rnd()), th = 2 * Math.PI * rnd();
-    const i = Math.round(nx / 2 + r * Math.cos(th) * N - 0.5), j = Math.round(ny / 2 + r * Math.sin(th) * N - 0.5);
-    return { k: j * nx + i, w: rnd() < 0.5 ? -1 : 1 };
-  });
+  // Spread them up to just inside the boundary ring: whispering-gallery modes vanish near the center.
+  const rIn = Math.max(0.25, p.n * SQ3 / 2 - 0.5);
+  const at = (r, th, w) => ({ k: Math.round(ny / 2 + r * Math.sin(th) * N - 0.5) * nx + Math.round(nx / 2 + r * Math.cos(th) * N - 0.5), w });
+  const pts = cnt => p.srcmode === 'one' ? [at(p.srcr, p.srcth * Math.PI / 180, 1)]
+    : Array.from({ length: cnt }, () => at(rIn * Math.sqrt(rnd()), 2 * Math.PI * rnd(), rnd() < 0.5 ? -1 : 1));
   return {
     p, N, dx, dt, nx, ny, NN, pml, holes, iEx, iEy, airHz, caX, cbX, daX, dbX, caY, cbY, daY, dbY,
-    cav: Int32Array.from(cav), src: pts(5), probes: pts(5),
+    cav: Int32Array.from(cav), src: pts(8), probes: pts(8),
     Ex: new Float32Array(NN), Ey: new Float32Array(NN), Hzx: new Float32Array(NN), Hzy: new Float32Array(NN), Hz: new Float32Array(NN), t: 0
   };
 }
@@ -355,13 +360,37 @@ function lightCone(S, Fr, Fi, f) {
   return { eta: inside / tot, pw, P, dk, k0 };
 }
 
+// Dominant azimuthal order m of the mode field on the circle where its intensity peaks inside the cavity.
+// A whispering-gallery mode along k holes on the boundary has m = k / 2 (k antinodes in the standing wave).
+function azimuthal(S, Fr, Fi) {
+  const { nx, ny, dx } = S, A = 180;
+  const at = (x, y) => { const i = Math.round(x / dx + nx / 2 - 0.5), j = Math.round(y / dx + ny / 2 - 0.5), k = j * nx + i; return [Fr[k], Fi[k]]; };
+  const rMax = S.p.n * SQ3 / 2 + 0.3;
+  let best = 0, rho = 0;
+  for (let r = 0.2; r <= rMax; r += dx) {
+    let s = 0;
+    for (let a = 0; a < A; a++) { const [u, v] = at(r * Math.cos(2 * Math.PI * a / A), r * Math.sin(2 * Math.PI * a / A)); s += u * u + v * v; }
+    if (s > best) { best = s; rho = r; }
+  }
+  const re = new Float64Array(A), im = new Float64Array(A);
+  for (let a = 0; a < A; a++) [re[a], im[a]] = at(rho * Math.cos(2 * Math.PI * a / A), rho * Math.sin(2 * Math.PI * a / A));
+  const pw = m => {
+    let cr = 0, ci = 0;
+    for (let a = 0; a < A; a++) { const t = -2 * Math.PI * m * a / A, c = Math.cos(t), s = Math.sin(t); cr += re[a] * c - im[a] * s; ci += re[a] * s + im[a] * c; }
+    return cr * cr + ci * ci;
+  };
+  let tot = 0, bm = 0, bp = 0;
+  for (let m = 0; m <= 40; m++) { const v = m ? pw(m) + pw(-m) : pw(0); tot += v; if (v > bp) { bp = v; bm = m; } }
+  return { m: bm, rho, purity: bp / tot };
+}
+
 // ---------- jobs (generators driven by requestAnimationFrame) ----------
 let sim = null, job = null, spectrum = null, selected = null, sweep = [], lastMode = null;
 const status = (s, frac) => { $('status').textContent = s; if (frac != null) $('prog').style.width = (100 * frac).toFixed(1) + '%'; };
 
 function* runSpectrum(S, label = '') {
   resetFields(S);
-  const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = 400;
+  const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = S.p.tmeas + 200;
   const total = Math.ceil((tRec + T) / S.dt), sig = [];
   for (let n = 0; n < total; n++) {
     if (S.t < tRec) inject(S, pulse(S.t, f0, tau, t0));
@@ -374,9 +403,10 @@ function* runSpectrum(S, label = '') {
   return { fs, amp, peaks: peakFind(fs, amp) };
 }
 
-function* runMode(S, fGuess, label = '') {
+// df: excitation bandwidth; keep it below the spacing to neighboring peaks so only one mode rings down.
+function* runMode(S, fGuess, label = '', df = 0.006) {
   resetFields(S);
-  const tau = 1 / (Math.PI * 0.006), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.p.tmeas;
+  const tau = 1 / (Math.PI * df), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.p.tmeas;
   const tA = tWait + Tm / 2, tEnd = tWait + Tm;
   const total = Math.ceil(tEnd / S.dt);
   const sig = [], us = [], ts = [];
@@ -386,9 +416,9 @@ function* runMode(S, fGuess, label = '') {
     step(S);
     if (S.t >= tWait) {
       if (n % 8 === 0) { us.push(energy(S)); ts.push(S.t); }
-      if (S.t < tA) sig.push(probe(S));
-      else {
-        if (!Fr) { f = refineFreq(sig, S.dt, fGuess, 0.006); Fr = new Float32Array(S.NN); Fi = new Float32Array(S.NN); }
+      sig.push(probe(S));
+      if (S.t >= tA) {
+        if (!Fr) { f = refineFreq(sig, S.dt, fGuess, df); Fr = new Float32Array(S.NN); Fi = new Float32Array(S.NN); }
         if (n % 4 === 0) {
           const w = 2 * Math.PI * f * S.t, c = Math.cos(w), s = Math.sin(w), Hz = S.Hz;
           for (let k = 0; k < S.NN; k++) { Fr[k] += Hz[k] * c; Fi[k] += Hz[k] * s; }
@@ -401,6 +431,7 @@ function* runMode(S, fGuess, label = '') {
       yield;
     }
   }
+  f = refineFreq(sig, S.dt, f, df / 2);
   // Least-squares slope of ln U(t).
   const L = us.map(Math.log), m = ts.length;
   const mt = ts.reduce((a, b) => a + b, 0) / m, ml = L.reduce((a, b) => a + b, 0) / m;
@@ -413,26 +444,38 @@ function* runMode(S, fGuess, label = '') {
   status(`${label}② 光円錐の解析（2D FFT）`, 1);
   yield;
   const lc = lightCone(S, Fr, Fi, f);
-  return { f, Q, resolved: drop > 1.02, Qmin, eta: lc.eta, lc, Fr, Fi };
+  return { f, Q, resolved: drop > 1.02, Qmin, eta: lc.eta, lc, Fr, Fi, az: azimuthal(S, Fr, Fi) };
 }
 
+function bandFor(sp, f) {
+  let d = Infinity;
+  for (const pk of sp.peaks) if (Math.abs(pk.f - f) > 1e-9) d = Math.min(d, Math.abs(pk.f - f));
+  return Math.min(0.006, Math.max(0.0015, d / 2));
+}
 function* runSweep(fStart) {
   const p0 = params(), defs = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
   sweep = []; drawSweep();
-  let fPrev = fStart;
+  let fPrev = fStart, mTarget = null;
   for (let i = 0; i < defs.length; i++) {
     const p = { ...p0, def: defs[i] };
     $('def').value = defs[i]; syncLabels();
     sim = buildSim(p);
     const label = `[変形率 ${Math.round(defs[i] * 100)}% ${i + 1}/${defs.length}] `;
     const sp = yield* runSpectrum(sim, label);
-    const cand = sp.peaks.filter(pk => Math.abs(pk.f - fPrev) < 0.02);
+    // Nearest peaks first; from the second point on, keep the azimuthal order m of the first point's mode.
+    const cand = sp.peaks.filter(pk => Math.abs(pk.f - fPrev) < 0.02).sort((a, b) => Math.abs(a.f - fPrev) - Math.abs(b.f - fPrev)).slice(0, 3);
     if (!cand.length) { sweep.push({ def: defs[i], f: NaN }); drawSweep(); continue; }
-    const pk = cand.reduce((a, b) => Math.abs(a.f - fPrev) <= Math.abs(b.f - fPrev) ? a : b);
-    spectrum = sp; selected = pk.f; drawSpectrum();
-    const r = yield* runMode(sim, pk.f, label);
+    spectrum = sp; drawSpectrum();
+    let r = null;
+    for (const pk of cand) {
+      selected = pk.f; drawSpectrum();
+      const t = yield* runMode(sim, pk.f, label, bandFor(sp, pk.f));
+      if (!r) r = t;
+      if (mTarget == null || t.az.m === mTarget) { r = t; break; }
+    }
+    if (mTarget == null) mTarget = r.az.m;
     fPrev = r.f; lastMode = r; showMode(r);
-    sweep.push({ def: defs[i], f: r.f, Q: r.Q, resolved: r.resolved, Qmin: r.Qmin, eta: r.eta });
+    sweep.push({ def: defs[i], f: r.f, Q: r.Q, resolved: r.resolved, Qmin: r.Qmin, eta: r.eta, m: r.az.m });
     drawSweep();
   }
   status('③ スイープ完了。', 1);
@@ -445,7 +488,7 @@ function start(gen, onDone) {
 function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
-  for (const k of [...ids, 'target', 'res', 'tmeas']) $(k).disabled = b;
+  for (const k of [...ids, 'target', 'srcmode', 'res', 'tmeas']) $(k).disabled = b;
 }
 function tick() {
   if (job) {
@@ -483,6 +526,8 @@ function drawField() {
     }
   }
   fctx.putImageData(img, 0, 0);
+  fctx.strokeStyle = '#fff'; fctx.lineWidth = Math.max(1, S.N / 12);
+  for (const q of S.src) { const i = q.k % nx, j = (q.k - i) / nx; fctx.beginPath(); fctx.arc(i + 0.5, ny - 0.5 - j, S.N * 0.25, 0, 7); fctx.stroke(); }
 }
 function sizeCanvas(c) {
   const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = +(c.dataset.h ||= c.getAttribute('height'));
@@ -534,7 +579,9 @@ function showMode(r) {
     <dt>a/λ</dt><dd>${r.f.toFixed(5)}</dd>
     <dt>λ</dt><dd>${(a / r.f).toFixed(1)} nm</dd>
     <dt>面内 Q（2D）</dt><dd>${fmtQ(r)}</dd>
-    <dt>光円錐内の比 η</dt><dd>${r.eta.toExponential(2)}</dd>`;
+    <dt>光円錐内の比 η</dt><dd>${r.eta.toExponential(2)}</dd>
+    <dt>方位角次数 m</dt><dd>${r.az.m}（腹 ${2 * r.az.m} 個、純度 ${Math.round(r.az.purity * 100)}%）</dd>
+    <dt>強度最大の半径</dt><dd>${r.az.rho.toFixed(2)} a</dd>`;
   const c = $('kspace'), ctx = c.getContext('2d'), W = c.width, { pw, P, dk, k0 } = r.lc, kmax = 5;
   const im = ctx.createImageData(W, W);
   let mx = 0; for (let q = 0; q < pw.length; q++) if (pw[q] > mx) mx = pw[q];
@@ -576,9 +623,9 @@ function drawSweep() {
   plot('sweepQ', s => isFinite(s.Q) && s.resolved ? s.Q : s.Qmin, true, '面内 Q');
   plot('sweepE', s => s.eta, false, 'η');
   const a = +$('a').value;
-  $('sweepTable').innerHTML = '<tr><th>変形率</th><th>a/λ</th><th>λ [nm]</th><th>面内 Q</th><th>η</th></tr>' + sweep.map(s => isFinite(s.f)
-    ? `<tr><td>${Math.round(s.def * 100)}%</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${fmtQ(s)}</td><td>${s.eta.toExponential(2)}</td></tr>`
-    : `<tr><td>${Math.round(s.def * 100)}%</td><td colspan="4">近い周波数のピークが見つからない</td></tr>`).join('');
+  $('sweepTable').innerHTML = '<tr><th>変形率</th><th>a/λ</th><th>λ [nm]</th><th>面内 Q</th><th>η</th><th>m</th></tr>' + sweep.map(s => isFinite(s.f)
+    ? `<tr><td>${Math.round(s.def * 100)}%</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${fmtQ(s)}</td><td>${s.eta.toExponential(2)}</td><td>${s.m}</td></tr>`
+    : `<tr><td>${Math.round(s.def * 100)}%</td><td colspan="5">近い周波数のピークが見つからない</td></tr>`).join('');
 }
 
 // ---------- wiring ----------
@@ -603,8 +650,8 @@ function meanRingRadius(n) {
     if (Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)) === n) { s += Math.hypot(i + j / 2, j * SQ3 / 2); c++; }
   return s / c;
 }
-for (const k of [...ids, 'target', 'res', 'tmeas']) $(k).addEventListener('input', () => {
-  if (k === 'n') $('R').value = meanRingRadius(+$('n').value).toFixed(2);
+for (const k of [...ids, 'target', 'srcmode', 'res', 'tmeas']) $(k).addEventListener('input', () => {
+  if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
   const structural = k !== 'a' && k !== 'tmeas';
   if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
   preview();
@@ -616,7 +663,7 @@ $('bSpec').onclick = () => {
 };
 $('bMode').onclick = () => {
   if (selected == null) return;
-  start(runMode(sim, selected), r => { lastMode = r; showMode(r); status(`② 完了。a/λ = ${r.f.toFixed(5)}、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}`, 1); });
+  start(runMode(sim, selected, '', bandFor(spectrum, selected)), r => { lastMode = r; showMode(r); status(`② 完了。a/λ = ${r.f.toFixed(5)}、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}`, 1); });
 };
 $('bSweep').onclick = () => { if (selected != null) start(runSweep(selected)); };
 $('bStop').onclick = stop;
