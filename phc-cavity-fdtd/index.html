@@ -184,7 +184,7 @@ td:first-child,th:first-child{text-align:left}
     <div class="cap">「WGM を探す」は、この範囲（a/λ）のピークだけを調べて、腹の数が外周の穴の数（Hn なら 6n 個）と同じモードのうち一番低い周波数のもの（径方向の基本モード）を選び、② まで回す。スペクトル上では範囲を薄い帯で示す。</div>
     <div class="row"><label for="tmeas">減衰の観測時間</label><select id="tmeas"><option value="300">300 a/c</option><option value="600" selected>600 a/c</option><option value="1500">1500 a/c（高Q用）</option></select><span></span></div>
     <div class="row"><label for="tdir">左右比の観測時間</label><select id="tdir"><option value="1500">1500 a/c</option><option value="3000" selected>3000 a/c</option><option value="6000">6000 a/c</option></select><span></span></div>
-    <div class="cap">サブ共振器を置いた時の ②（「WGM を探す」と ⑥ を含む）は、減衰の観測時間をこの値以上にする。導波路の左右への出力は観測区間全体の時間 DFT で WGM の周波数の成分だけを取り出して比べるが、WGM の 2 nm 前後の近くには導波路に強く出る別のモードがあり、観測時間が短いと周波数で分けられずに左右比が混ざる。3000 a/c で周波数の分解能は約 0.0007（a/λ、1450 nm で約 4 nm）。</div>
+    <div class="cap">サブ共振器を置いた時の ②（「WGM を探す」と ⑥ を含む）は、減衰の観測時間をこの値以上にする。導波路の左右への出力は観測区間全体の時間 DFT で WGM の周波数の成分だけを取り出して比べるが、WGM の 2 nm 前後の近くには導波路に強く出る別のモードがあり、観測時間が短いと周波数で分けられずに左右比が混ざる。3000 a/c で周波数の分解能は約 0.0007（a/λ、1450 nm で約 4 nm）。1点励振は鏡映に対して奇のモードも励振するので、WGM の近くの奇のモードが残っていると、1点励振の左右比は同相の値から外れる。左右比は同相の値を主に読み、1点励振の値は食い違いの目安に使う。</div>
     <div class="cap" id="gridinfo"></div>
     <div class="btns">
       <button class="primary" id="bSpec">① スペクトル</button>
