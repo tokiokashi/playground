@@ -96,6 +96,12 @@ td:first-child,th:first-child{text-align:left}
     <div class="cap">左: 面内 Q（2D、対数軸）。右: 光円錐内の成分比 η（小さいほど垂直放射が少ない）。各点で ① と ② を自動で回し、直前の点に近い周波数のピークのうち、最初の点と同じ方位角次数 m のモードを追う（近い順に3つまで試す）。</div>
     <div class="tablewrap"><table id="sweepTable"></table></div>
   </div>
+  <div class="panel">
+    <h2>④ W1 導波路の分散曲線</h2>
+    <canvas id="bands" height="260"></canvas>
+    <div class="btns"><button id="bBands">W1 のバンドを計算</button></div>
+    <div class="cap">導波路の方向（x）に1周期ぶんの単位セルを取り、x に Bloch の周期境界 H(x + a) = H(x) e<sup>ika</sup>、y に PML を置いて、k ごとに広帯域パルスのスペクトルからモードの周波数を拾う。r/a・屈折率・分解能は構造パネルの値を使う。橙が H<sub>z</sub> が導波路の中心線に対して偶のモード、青が奇のモードで、色が濃いほど導波路に局在している（薄い点は結晶全体に広がるバルクのモード）。破線は ② で測ったモードの周波数、灰色の線はクラッドの光円錐 a/λ = k/(2π n<sub>clad</sub>/a)。破線と濃い点が交わる所に導波モードがあれば、共振器は導波路と結合できる。</div>
+  </div>
   <div class="panel notes">
     <h2>モデルと限界</h2>
     <ul>
@@ -510,6 +516,123 @@ function* runFind() {
   const others = hit.filter(x => x !== fund).map(x => `${(p.a / x.f).toFixed(0)} nm`).join('、');
   status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
 }
+// W1 supercell: one period along x with a Bloch phase, |y| up to K rows of holes on each side, PML in y only.
+// Complex fields (re, im) are needed because the Bloch boundary mixes them.
+function* runW1Bands(p) {
+  const N = p.res, dx = 1 / N, dt = 0.99 * dx / Math.SQRT2, K = 7, pml = Math.round(1.25 * N);
+  const nx = N, hy = (K + 0.5) * SQ3 / 2, ny = 2 * (Math.ceil(hy * N) + pml), NN = nx * ny, eps = p.neff * p.neff;
+  const air = (ox, oy) => {
+    const arr = new Float32Array(NN), r = p.ra, S = 4;
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      let c = 0;
+      for (let a = 0; a < S; a++) for (let b = 0; b < S; b++) {
+        const x = (i + ox + (a + 0.5) / S - 0.5) * dx, y = (j + oy + (b + 0.5) / S - 0.5 - ny / 2) * dx;
+        const row = Math.round(y / (SQ3 / 2));
+        for (const jr of [row - 1, row, row + 1]) {
+          if (jr === 0 || Math.abs(jr) > K + 1) continue;
+          const yc = jr * SQ3 / 2, xc = ((jr / 2) % 1 + 1) % 1;
+          let dxm = x - xc; dxm -= Math.round(dxm);
+          if (dxm * dxm + (y - yc) ** 2 < r * r) { c++; break; }
+        }
+      }
+      arr[j * nx + i] = c / (S * S);
+    }
+    return arr;
+  };
+  const inv = a => Float32Array.from(a, v => 1 / (eps * (1 - v) + v));
+  const iEx = inv(air(0.5, 0)), iEy = inv(air(0, 0.5));
+  const smax = 4 * Math.log(1e6) / (2 * pml * dx);
+  const sAt = pos => { const d = Math.max(pml - pos, pos - (ny - pml), 0) / pml; return smax * d * d * d; };
+  const caY = new Float32Array(ny), cbY = new Float32Array(ny), daY = new Float32Array(ny), dbY = new Float32Array(ny);
+  for (let j = 0; j < ny; j++) {
+    let s = sAt(j) * dt / 2; caY[j] = (1 - s) / (1 + s); cbY[j] = (dt / dx) / (1 + s);
+    s = sAt(j + 0.5) * dt / 2; daY[j] = (1 - s) / (1 + s); dbY[j] = (dt / dx) / (1 + s);
+  }
+  const cb = dt / dx, jc = ny / 2;
+  // Sources a little off the center line, mirrored in y; probes in the guide and deep in the crystal.
+  const srcRows = [Math.round(0.15 * N), Math.round(0.35 * N)], srcCols = [Math.round(0.2 * N), Math.round(0.7 * N)];
+  const pWg = [(jc + Math.round(0.25 * N)) * nx + Math.round(0.4 * N), (jc - Math.round(0.25 * N)) * nx + Math.round(0.4 * N)];
+  const pBulk = [(jc + Math.round(5 * SQ3 / 2 * N)) * nx + Math.round(0.1 * N), (jc - Math.round(5 * SQ3 / 2 * N)) * nx + Math.round(0.1 * N)];
+  const tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = 300, total = Math.ceil((tRec + T) / dt);
+  const F0 = 0.18, F1 = 0.36, ks = Array.from({ length: 21 }, (_, i) => 0.5 * i / 20), pts = [];
+  const fields = () => ({ Exr: new Float32Array(NN), Exi: new Float32Array(NN), Eyr: new Float32Array(NN), Eyi: new Float32Array(NN),
+    Hxr: new Float32Array(NN), Hxi: new Float32Array(NN), Hyr: new Float32Array(NN), Hyi: new Float32Array(NN), Hr: new Float32Array(NN), Hi: new Float32Array(NN) });
+  for (const [ki, k] of ks.entries()) for (const par of [1, -1]) {
+    const F = fields(), c = Math.cos(2 * Math.PI * k), sn = Math.sin(2 * Math.PI * k);
+    const sigW = [], sigB = [];
+    for (let n = 0; n < total; n++) {
+      const t = n * dt;
+      // E update (Ex: y-derivative only; Ey: x-derivative with the Bloch wrap at i = 0)
+      for (let j = 1; j < ny - 1; j++) {
+        const row = j * nx, ca = caY[j], cbj = cbY[j];
+        for (let i = 0; i < nx; i++) {
+          const q = row + i;
+          F.Exr[q] = ca * F.Exr[q] + cbj * iEx[q] * (F.Hr[q] - F.Hr[q - nx]);
+          F.Exi[q] = ca * F.Exi[q] + cbj * iEx[q] * (F.Hi[q] - F.Hi[q - nx]);
+          let lr, li;
+          if (i > 0) { lr = F.Hr[q - 1]; li = F.Hi[q - 1]; }
+          else { const w = row + nx - 1; lr = F.Hr[w] * c + F.Hi[w] * sn; li = F.Hi[w] * c - F.Hr[w] * sn; }
+          F.Eyr[q] -= cb * iEy[q] * (F.Hr[q] - lr);
+          F.Eyi[q] -= cb * iEy[q] * (F.Hi[q] - li);
+        }
+      }
+      for (let j = 0; j < ny - 1; j++) {
+        const row = j * nx, da = daY[j], db = dbY[j];
+        for (let i = 0; i < nx; i++) {
+          const q = row + i;
+          let rr, ri;
+          if (i < nx - 1) { rr = F.Eyr[q + 1]; ri = F.Eyi[q + 1]; }
+          else { const w = row; rr = F.Eyr[w] * c - F.Eyi[w] * sn; ri = F.Eyi[w] * c + F.Eyr[w] * sn; }
+          const ar = F.Hxr[q] - cb * (rr - F.Eyr[q]), ai = F.Hxi[q] - cb * (ri - F.Eyi[q]);
+          const br = da * F.Hyr[q] + db * (F.Exr[q + nx] - F.Exr[q]), bi = da * F.Hyi[q] + db * (F.Exi[q + nx] - F.Exi[q]);
+          F.Hxr[q] = ar; F.Hxi[q] = ai; F.Hyr[q] = br; F.Hyi[q] = bi; F.Hr[q] = ar + br; F.Hi[q] = ai + bi;
+        }
+      }
+      if (t < tRec) {
+        const v = pulse(t, (F0 + F1) / 2, tau, t0);
+        for (const dr of srcRows) for (const ci of srcCols) {
+          for (const [sgn, jj] of [[1, jc + dr], [par, jc - dr]]) { const q = jj * nx + ci; F.Hxr[q] += 0.5 * sgn * v; F.Hyr[q] += 0.5 * sgn * v; F.Hr[q] += sgn * v; }
+        }
+      } else {
+        sigW.push(F.Hr[pWg[0]] + par * F.Hr[pWg[1]]);
+        sigB.push(F.Hr[pBulk[0]] + par * F.Hr[pBulk[1]]);
+      }
+      if (n % 200 === 0) { status(`④ W1 のバンド k = ${k.toFixed(3)}（${ki + 1}/${ks.length}）${par > 0 ? '偶' : '奇'}`, (2 * ki + (par > 0 ? 0 : 1) + n / total) / (2 * ks.length)); yield; }
+    }
+    const fs = [], amp = [];
+    for (let i = 0; i < 400; i++) { const f = F0 + (F1 - F0) * i / 399; fs.push(f); amp.push(dft(sigW, dt, f) + dft(sigB, dt, f)); }
+    // The Hann window's first sidelobes sit 2.5/T away from a strong peak and pass peakFind's threshold, so keep only peaks with no stronger one within 3/T.
+    const pks = peakFind(fs, amp);
+    for (const pk of pks.filter(a => !pks.some(b => b.amp > a.amp && Math.abs(b.f - a.f) < 3 / T))) {
+      const aw = dft(sigW, dt, pk.f), ab = dft(sigB, dt, pk.f);
+      pts.push({ k, f: pk.f, par, loc: aw / (aw + ab + 1e-30), amp: pk.amp });
+    }
+    bandPts = pts; drawBands();
+  }
+  status(`④ 完了。${pts.length} 点。`, 1);
+}
+let bandPts = [];
+function drawBands() {
+  const { ctx, w, h } = sizeCanvas($('bands')), l = 44, r = 10, t = 10, b = 26, F0 = 0.18, F1 = 0.36;
+  ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
+  const X = k => l + k / 0.5 * (w - l - r), Y = f => t + (1 - (f - F0) / (F1 - F0)) * (h - t - b);
+  ctx.font = '11px system-ui'; ctx.fillStyle = '#8d9ab0'; ctx.strokeStyle = '#26344b'; ctx.textAlign = 'center';
+  for (let k = 0; k <= 0.5001; k += 0.1) { ctx.beginPath(); ctx.moveTo(X(k), t); ctx.lineTo(X(k), h - b); ctx.stroke(); ctx.fillText(k.toFixed(1), X(k), h - 8); }
+  ctx.textAlign = 'right';
+  for (let f = 0.2; f <= F1 + 1e-9; f += 0.04) { ctx.beginPath(); ctx.moveTo(l, Y(f)); ctx.lineTo(w - r, Y(f)); ctx.stroke(); ctx.fillText(f.toFixed(2), l - 4, Y(f) + 4); }
+  ctx.textAlign = 'left'; ctx.fillText('k [2π/a]', w - r - 52, h - 8);
+  const nc = +$('nclad').value;
+  ctx.strokeStyle = '#777'; ctx.beginPath(); ctx.moveTo(X(F0 * nc), Y(F0)); ctx.lineTo(X(Math.min(0.5, F1 * nc)), Y(Math.min(F1, 0.5 / nc))); ctx.stroke();
+  if (lastMode) {
+    ctx.strokeStyle = '#e4eaf4'; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(l, Y(lastMode.f)); ctx.lineTo(w - r, Y(lastMode.f)); ctx.stroke(); ctx.setLineDash([]);
+  }
+  for (const q of bandPts) {
+    if (q.f < F0 || q.f > F1) continue;
+    const a = Math.max(0.12, Math.min(1, (q.loc - 0.3) / 0.6));
+    ctx.fillStyle = q.par > 0 ? `rgba(255,138,92,${a})` : `rgba(111,211,255,${a})`;
+    ctx.beginPath(); ctx.arc(X(q.k) + (q.par > 0 ? -1.5 : 1.5), Y(q.f), 3, 0, 7); ctx.fill();
+  }
+}
 function* runSweep(fStart) {
   const p0 = params(), defs = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
   sweep = []; drawSweep();
@@ -547,7 +670,7 @@ function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
   for (const k of [...ids, 'target', 'srcmode', 'wg', 'res', 'tmeas']) $(k).disabled = b;
-  $('bFind').disabled = b;
+  $('bFind').disabled = b; $('bBands').disabled = b;
 }
 function tick() {
   if (job) {
@@ -762,9 +885,10 @@ $('bMode').onclick = () => {
 };
 $('bSweep').onclick = () => { if (selected != null) start(runSweep(selected)); };
 $('bFind').onclick = () => start(runFind());
+$('bBands').onclick = () => start(runW1Bands(params()));
 $('bStop').onclick = stop;
-window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); });
-preview(); drawSweep();
+window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); drawBands(); });
+preview(); drawSweep(); drawBands();
 requestAnimationFrame(tick);
 </script>
 </body>
