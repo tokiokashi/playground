@@ -131,7 +131,7 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="sshi">シフトの終了</label><input id="sshi" type="range" min="0" max="0.4" step="0.01" value="0.3"><output id="sshi_o"></output></div>
     <div class="row"><label for="ssnum">点数</label><input id="ssnum" type="range" min="2" max="13" step="1" value="7"><output id="ssnum_o"></output></div>
     <div class="btns"><button id="bSsw">⑥ シフトのスイープ</button></div>
-    <div class="cap">導波路とサブ共振器を置いた構造で、Ln の両端の穴のシフトだけを振る。シフトで Ln の共振周波数が動き、WGM との離調が変わる。各点で「WGM を探す」と同じ手順で WGM を探し、波長、負荷 Q（Q<sub>L</sub>）、導波路の左右へ出ていったエネルギーの比を測る。探す範囲は、最初の点だけ「探す範囲」の設定を使い、2点目からは直前の点の周波数の ±0.01（a/λ）に絞る。左: 波長、右: Q<sub>L</sub>（橙、対数軸）と、右へ出た割合（0〜1、0.5 で左右対称。青が同相励振、紫が逆相励振）。下に各点のモード像を並べる。WGM と Ln が強く結合すると、2つが混ざったモードになって、腹の数で WGM を判定できなくなることがある。</div>
+    <div class="cap">導波路とサブ共振器を置いた構造で、Ln の両端の穴のシフトだけを振る。シフトで Ln の共振周波数が動き、WGM との離調が変わる。各点で「WGM を探す」と同じ手順で WGM を探し、波長、負荷 Q（Q<sub>L</sub>）、導波路の左右への出力の比を測る。探す範囲は、最初の点だけ「探す範囲」の設定を使い、2点目からは直前の点の周波数の ±0.01（a/λ）に絞る。左: 波長、右: Q<sub>L</sub>（橙、対数軸）と、右へ出た割合（0〜1、0.5 で左右対称。青が同相励振、紫が逆相励振）。下に各点のモード像を並べる。WGM と Ln が強く結合すると、2つが混ざったモードになって、腹の数で WGM を判定できなくなることがある。</div>
     <div class="tablewrap"><table id="sswTable"></table></div>
     <div id="sswImgs" class="thumbs"></div>
   </div>
@@ -163,7 +163,7 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="subrow">置く列</label><input id="subrow" type="range" min="1" max="5" step="1" value="1"><output id="subrow_o"></output></div>
     <div class="row"><label for="subx">横位置 x/a</label><input id="subx" type="range" min="-6" max="6" step="0.5" value="1.5"><output id="subx_o"></output></div>
     <div class="row"><label for="subs">両端の穴のシフト</label><input id="subs" type="range" min="0" max="0.4" step="0.01" value="0"><output id="subs_o"></output></div>
-    <div class="cap">サブ共振器 Ln は、共振器と導波路の間の列から、横位置 x に近い穴を n 個抜いた線欠陥。「置く列」は共振器側から数えた列の番号で、共振器との間の列数より大きい値は一番導波路側の列になる。x = 0 は共振器の中心の真上で、0 からずらすと共振器と導波路の配置が左右非対称になる。穴の横位置は、共振器側から奇数番目の列（H3 なら 1 列目）では整数、偶数番目の列では半整数（a 単位）なので、左右対称に置けるのは、奇数番目の列では n が奇数で x = 0、偶数番目の列では n が偶数で x = 0 の時だけ。両端の穴は外向きにシフトして、Ln の共振周波数を WGM に合わせ込む。導波路があるときだけ使う。サブ共振器を置いて「WGM を探す」か ⑥ を回すと、見つけた WGM について、励振点とその鏡像（x = 0 について折り返した点）を同相と逆相で鳴らす2回の測定を足す。WGM は2つのモードが縮退した組で、1点の励振ではその混ぜ方で左右の出力比が変わるため。各回で、導波路の左右の端（PML の手前）のポインティングベクトルを導波路の断面にわたって積分し、減衰の観測区間に左右へ出ていったエネルギーの比を出す。左右対称な構造なら、どちらの励振でも 50 : 50 になる。あわせて、モード場を外周に沿って角度でフーリエ分解し、e<sup>∓imφ</sup> の成分の比から共振器の中の反時計回りと時計回りの割合を出す（② には1点励振の場合の値も出す）。</div>
+    <div class="cap">サブ共振器 Ln は、共振器と導波路の間の列から、横位置 x に近い穴を n 個抜いた線欠陥。「置く列」は共振器側から数えた列の番号で、共振器との間の列数より大きい値は一番導波路側の列になる。x = 0 は共振器の中心の真上で、0 からずらすと共振器と導波路の配置が左右非対称になる。穴の横位置は、共振器側から奇数番目の列（H3 なら 1 列目）では整数、偶数番目の列では半整数（a 単位）なので、左右対称に置けるのは、奇数番目の列では n が奇数で x = 0、偶数番目の列では n が偶数で x = 0 の時だけ。両端の穴は外向きにシフトして、Ln の共振周波数を WGM に合わせ込む。導波路があるときだけ使う。サブ共振器を置いて「WGM を探す」か ⑥ を回すと、見つけた WGM とは別に、励振点とその鏡像（x = 0 について折り返した点）を同相と逆相で励振して、それぞれスペクトルから WGM を探し直す。左右対称な構造なら、同相は鏡映に対して偶、逆相は奇のモードだけを励振する。WGM は偶と奇の2つの定在波の組で、共振器の六角形の対称性やサブ共振器で別々の周波数に割れるので、それぞれを自分の周波数で測るため。非対称な構造では偶・奇は近似になる。H3 の m = 9 は、六角形の対称性から、偶（外周の 18 個の穴が定在波の節に来る）と奇（穴に腹が乗る）に必ず分かれる。既定の構造（H3、変形率 100%）の 2D では、奇で m = 9 と判定されるモードは 1279 nm 付近（Q は数百）にしか無く、見つけた WGM の ±0.006（a/λ）に入らないので、逆相の欄は「WGM が見つからない」になる。各モードで、導波路の左右の端（PML の手前）のポインティングベクトルを導波路の断面にわたって積分し、狭帯域の励振の中心周波数の成分（観測区間全体の時間 DFT）について左右へ出ていく出力の比を出す（「左右比の観測時間」の説明を参照）。左右対称な構造なら、どちらの励振でも 50 : 50 になる。あわせて、モード場を外周に沿って角度でフーリエ分解し、e<sup>∓imφ</sup> の成分の比から共振器の中の反時計回りと時計回りの割合を出す（② には1点励振の場合の値も出す）。</div>
     <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。「両側の列」は導波路のすぐ両側の2列で、シフトは導波路から遠ざける向きを正とする（単位 a）。正で導波路が広がってバンドが下がり、負で狭まって上がる。穴を大きくしてもバンドは上がる。この2つは ④ のバンド計算にも同じように入る。既定の −0.165a は、偶モードのバンドの端（k = 0.5）を WGM の少し下まで上げて、遅い光の領域で WGM と交差させる設定。この 2D モデルでは、間の列数 1 で Q<sub>L</sub> は 3,000〜4,000 程度になる（分解能と観測時間で変わる）。</div>
     <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
     <h2 style="margin-top:12px">外周の円形補正</h2>
@@ -183,6 +183,8 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="whi">探す範囲 上限</label><input id="whi" type="range" min="0.18" max="0.45" step="0.005" value="0.28"><output id="whi_o"></output></div>
     <div class="cap">「WGM を探す」は、この範囲（a/λ）のピークだけを調べて、腹の数が外周の穴の数（Hn なら 6n 個）と同じモードのうち一番低い周波数のもの（径方向の基本モード）を選び、② まで回す。スペクトル上では範囲を薄い帯で示す。</div>
     <div class="row"><label for="tmeas">減衰の観測時間</label><select id="tmeas"><option value="300">300 a/c</option><option value="600" selected>600 a/c</option><option value="1500">1500 a/c（高Q用）</option></select><span></span></div>
+    <div class="row"><label for="tdir">左右比の観測時間</label><select id="tdir"><option value="1500">1500 a/c</option><option value="3000" selected>3000 a/c</option><option value="6000">6000 a/c</option></select><span></span></div>
+    <div class="cap">サブ共振器を置いた時の ②（「WGM を探す」と ⑥ を含む）は、減衰の観測時間をこの値以上にする。導波路の左右への出力は観測区間全体の時間 DFT で WGM の周波数の成分だけを取り出して比べるが、WGM から 12〜20 nm ほど離れたところ（a/λ で約 0.002〜0.003）に導波路へ強く出る別のモードがあり、観測時間が短いと周波数で分けられずに左右比が混ざる。3000 a/c で周波数の分解能は約 0.0007（a/λ、1450 nm で約 4 nm）。1点励振は鏡映に対して奇のモードも励振するので、WGM の近くの奇のモードが残っていると、1点励振の左右比は同相の値から外れる。左右比は同相の値を主に読み、1点励振の値は食い違いの目安に使う。</div>
     <div class="cap" id="gridinfo"></div>
     <div class="btns">
       <button class="primary" id="bSpec">① スペクトル</button>
@@ -214,6 +216,7 @@ function params() {
   p.sub = $('sub').value === '1';
   p.res = +$('res').value;
   p.tmeas = +$('tmeas').value;
+  p.tdir = +$('tdir').value;
   return p;
 }
 
@@ -479,8 +482,9 @@ function azimuthal(S, Fr, Fi) {
 let sim = null, job = null, spectrum = null, selected = null, sweep = [], lastMode = null;
 const status = (s, frac) => { $('status').textContent = s; if (frac != null) $('prog').style.width = (100 * frac).toFixed(1) + '%'; };
 
-function* runSpectrum(S, label = '') {
-  usePoints(S);
+// src: optional excitation points in place of the simulation's own (see usePoints).
+function* runSpectrum(S, label = '', src = null) {
+  usePoints(S, src);
   resetFields(S);
   const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = S.p.tmeas + 200;
   const total = Math.ceil((tRec + T) / S.dt), sig = [];
@@ -507,24 +511,27 @@ function usePoints(S, src = null) {
 function* runMode(S, fGuess, label = '', df = 0.006, src = null) {
   usePoints(S, src);
   resetFields(S);
-  const tau = 1 / (Math.PI * df), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.p.tmeas;
+  const tau = 1 / (Math.PI * df), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.flux && S.p.sub ? Math.max(S.p.tmeas, S.p.tdir) : S.p.tmeas;
   const tA = tWait + Tm / 2, tEnd = tWait + Tm;
   const total = Math.ceil(tEnd / S.dt);
   const sig = [], us = [], ts = [];
-  let f = fGuess, Fr = null, Fi = null, n = 0, PL = 0, PR = 0;
+  let f = fGuess, Fr = null, Fi = null, n = 0;
+  // Time-DFT at fGuess of Ey and Hz (Hz averaged onto the Ey point: Ey[k] sits between Hz[k - 1] and Hz[k]) on the
+  // two flux lines, over the whole window [tWait, tEnd] under a Hann window, so that the output to each side is that
+  // of the mode alone: modes about 0.002 (a/λ) away also ring in the same run and couple to the guide more strongly.
+  const nf = S.flux ? S.flux.rows.length : 0, D = new Float64Array(8 * nf);
   for (; n < total; n++) {
     if (S.t < tOff) inject(S, pulse(S.t, fGuess, tau, t0));
     step(S);
-    if (S.t >= tWait && S.flux) {
-      // Sx = Ey Hz, with Hz averaged onto the Ey point (Ey[k] sits between Hz[k - 1] and Hz[k]).
-      const { iL, iR, rows } = S.flux, { Ey, Hz, nx } = S;
-      for (const j of rows) {
-        const kL = j * nx + iL, kR = j * nx + iR;
-        PL -= Ey[kL] * (Hz[kL - 1] + Hz[kL]) / 2; PR += Ey[kR] * (Hz[kR - 1] + Hz[kR]) / 2;
-      }
-    }
     if (S.t >= tWait) {
       if (n % 8 === 0) { us.push(energy(S)); ts.push(S.t); }
+      if (S.flux && n % 4 === 0) {
+        const { iL, iR, rows } = S.flux, { Ey, Hz, nx } = S, hw = Math.sin(Math.PI * (S.t - tWait) / Tm) ** 2, w = 2 * Math.PI * fGuess * S.t, c = hw * Math.cos(w), s = hw * Math.sin(w);
+        rows.forEach((j, q) => {
+          const kL = j * nx + iL, kR = j * nx + iR, v = [Ey[kL], (Hz[kL - 1] + Hz[kL]) / 2, Ey[kR], (Hz[kR - 1] + Hz[kR]) / 2];
+          for (let u = 0; u < 4; u++) { D[8 * q + 2 * u] += v[u] * c; D[8 * q + 2 * u + 1] += v[u] * s; }
+        });
+      }
       sig.push(probe(S));
       if (S.t >= tA) {
         if (!Fr) { f = refineFreq(sig, S.dt, fGuess, df); Fr = new Float32Array(S.NN); Fi = new Float32Array(S.NN); }
@@ -541,6 +548,12 @@ function* runMode(S, fGuess, label = '', df = 0.006, src = null) {
     }
   }
   f = refineFreq(sig, S.dt, f, df / 2);
+  // Time-averaged Sx at f is Re(Ey conj(Hz)) / 2; the left line counts flow toward -x.
+  let PL = 0, PR = 0;
+  for (let q = 0; q < nf; q++) {
+    const o = 8 * q;
+    PL -= D[o] * D[o + 2] + D[o + 1] * D[o + 3]; PR += D[o + 4] * D[o + 6] + D[o + 5] * D[o + 7];
+  }
   // Least-squares slope of ln U(t).
   const L = us.map(Math.log), m = ts.length;
   const mt = ts.reduce((a, b) => a + b, 0) / m, ml = L.reduce((a, b) => a + b, 0) / m;
@@ -563,8 +576,8 @@ function bandFor(sp, f) {
 }
 // Second broadband run that stores the time-DFT field at each candidate frequency, so the azimuthal order of every
 // candidate comes out of one simulation instead of one narrowband run per peak.
-function* runFields(S, freqs, label = '') {
-  usePoints(S);
+function* runFields(S, freqs, label = '', src = null) {
+  usePoints(S, src);
   resetFields(S);
   const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = S.p.tmeas + 200;
   const total = Math.ceil((tRec + T) / S.dt);
@@ -583,13 +596,14 @@ function* runFields(S, freqs, label = '') {
   }
   return F.map(([Fr, Fi]) => azimuthal(S, Fr, Fi));
 }
-// Finds the radially fundamental WGM (m = 3n) among the peaks inside the search window and measures its Q.
-// Returns { r, others } or { msg } when no such mode is found.
-function* findWGM(S, sp, label = '') {
-  const p = S.p, mT = 3 * p.n, lo = Math.min(p.wlo, p.whi), hi = Math.max(p.wlo, p.whi);
+// Finds the radially fundamental WGM (m = 3n) among the peaks inside the search window and measures its Q, with the
+// simulation's own excitation or with src, inside the window [lo, hi] (a/λ; the panel's range by default).
+// Returns { r, fund, hit } or { msg } when no such mode is found.
+function* pickWGM(S, sp, label = '', src = null, lo = Math.min(S.p.wlo, S.p.whi), hi = Math.max(S.p.wlo, S.p.whi)) {
+  const p = S.p, mT = 3 * p.n;
   const cand = sp.peaks.filter(pk => pk.f >= lo && pk.f <= hi);
   if (!cand.length) return { msg: `範囲 ${lo.toFixed(3)}〜${hi.toFixed(3)} にピークが無い。範囲を広げる。` };
-  const az = yield* runFields(S, cand.map(pk => pk.f), label);
+  const az = yield* runFields(S, cand.map(pk => pk.f), label, src);
   cand.forEach((pk, i) => { pk.m = az[i].m; pk.purity = az[i].purity; });
   const hit = cand.filter(pk => pk.m === mT);
   if (!hit.length) return { msg: `範囲内の ${cand.length} 個のピークに、腹 ${2 * mT} 個（m = ${mT}）のモードが無かった。範囲か励振点を変える。` };
@@ -599,23 +613,35 @@ function* findWGM(S, sp, label = '') {
   const order = [...pool].sort((x, y) => x.f - y.f);
   let r = null, fund = null;
   for (const pk of order) {
-    selected = pk.f; drawSpectrum();
-    const t = yield* runMode(S, pk.f, `${label}[基本 WGM m = ${mT}] `, bandFor(sp, pk.f));
+    if (!src) { selected = pk.f; drawSpectrum(); }
+    const t = yield* runMode(S, pk.f, `${label}[基本 WGM m = ${mT}] `, bandFor(sp, pk.f), src);
     if (!r) { r = t; fund = pk; }
     if (t.az.m === mT) { r = t; fund = pk; break; }
   }
-  // A WGM is a degenerate pair (two standing waves, or clockwise and counterclockwise), and the left/right split of
-  // one ringdown depends on how the source mixes the pair. Exciting the point and its mirror image in phase and out of
-  // phase picks the two standing waves apart when the structure is mirror-symmetric; with a sub-cavity off the axis
-  // the two runs show how the split changes with the excitation.
-  if (S.flux && p.sub) {
+  return { r, fund, hit };
+}
+const DIRWIN = 0.006; // a/λ, about ±37 nm at 1450 nm
+// Finds the WGM as pickWGM does. With a sub-cavity it also measures where each of the two split modes goes.
+// Returns { r, others } or { msg }.
+function* findWGM(S, sp, label = '') {
+  const res = yield* pickWGM(S, sp, label);
+  if (!res.r) return res;
+  const r = res.r;
+  // A WGM is a pair of standing waves, even and odd under the mirror x -> -x. Breaking the symmetry splits the pair,
+  // and the two modes can sit at different frequencies, so the narrowband run at the frequency found above would ring
+  // whatever mode of the other parity lies near it. Exciting the point and its mirror image in phase (even) or out of
+  // phase (odd) and searching the spectrum again picks out each mode at its own frequency.
+  if (S.flux && S.p.sub) {
     r.dir = [];
     for (const par of [1, -1]) {
-      const t = yield* runMode(S, r.f, `${label}[方向性 ${par > 0 ? '同相' : '逆相'}] `, bandFor(sp, r.f), S.srcPar(par));
-      r.dir.push({ par, f: t.f, Q: t.Q, resolved: t.resolved, Qmin: t.Qmin, PL: t.PL, PR: t.PR, ccw: t.az.ccw });
+      const src = S.srcPar(par), name = `${label}[方向性 ${par > 0 ? '同相' : '逆相'}] `;
+      // Only near the WGM found above, so that a radially higher-order mode with the same m is not taken instead.
+      const spP = yield* runSpectrum(S, name, src), q = yield* pickWGM(S, spP, name, src, r.f - DIRWIN, r.f + DIRWIN), t = q.r;
+      r.dir.push(t ? { par, f: t.f, Q: t.Q, resolved: t.resolved, Qmin: t.Qmin, PL: t.PL, PR: t.PR, ccw: t.az.ccw, m: t.az.m }
+        : { par, miss: true, f: NaN, Q: NaN, resolved: false, Qmin: NaN, PL: NaN, PR: NaN, ccw: NaN, m: null });
     }
   }
-  return { r, others: hit.filter(x => x !== fund) };
+  return { r, others: res.hit.filter(x => x !== res.fund) };
 }
 function* runFind() {
   const p = params();
@@ -627,7 +653,7 @@ function* runFind() {
   const r = res.r;
   lastMode = r; showMode(r);
   const others = res.others.map(x => `${(p.a / x.f).toFixed(0)} nm`).join('、');
-  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${r.dir ? `、導波路への出力 左 : 右 = ${fmtDir(r.dir)}` : ''}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
+  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${r.dir ? `、導波路への出力 左 : 右 = 1点励振 ${fmtLR(r)}、${fmtDir(r.dir)}` : ''}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
 }
 // Sweeps the cavity radius R (deformation 100%, custom radius) with everything else fixed, the knob a CirD laser array
 // uses to set each channel's wavelength. With a waveguide, Q0 is measured once at the middle R to split off Q_wg.
@@ -847,7 +873,7 @@ function start(gen, onDone) {
 function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
-  for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas']) $(k).disabled = b;
+  for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas', 'tdir']) $(k).disabled = b;
   $('bFind').disabled = b; $('bBands').disabled = b; $('bRsw').disabled = b; $('bSsw').disabled = b;
 }
 function tick() {
@@ -944,7 +970,8 @@ $('spec').addEventListener('click', e => {
 });
 const fmtLR = r => { const t = r.PL + r.PR; return t > 0 ? `${Math.round(100 * r.PL / t)} : ${Math.round(100 * r.PR / t)}` : '—'; };
 const fmtRot = ccw => `反時計 ${Math.round(100 * ccw)} : 時計 ${Math.round(100 * (1 - ccw))}`;
-const fmtDir = dir => dir.map(d => `${d.par > 0 ? '同相' : '逆相'}励振 ${fmtLR(d)}（Q ${fmtQ(d)}、共振器内の回転 ${fmtRot(d.ccw)}）`).join('、');
+// One line per split mode; a mode whose azimuthal order is not 3n is flagged, a parity with no WGM in the window says so.
+const fmtDir = dir => dir.map(d => `${d.par > 0 ? '同相' : '逆相'}励振 ` + (d.miss ? 'WGM が見つからない' : `${fmtLR(d)}（λ ${(+$('a').value / d.f).toFixed(1)} nm、Q ${fmtQ(d)}、共振器内の回転 ${fmtRot(d.ccw)}${d.m === 3 * +$('n').value ? '' : `、m = ${d.m} で WGM でない`}）`)).join('、');
 const fmtQ = r => !isFinite(r.Q) || !r.resolved ? `> ${Math.round(r.Qmin).toLocaleString()}` : Math.round(r.Q).toLocaleString();
 let mfKind = 'abs';
 // The crop reaches past the waveguide row when there is one, so the light leaking into it shows.
@@ -1000,7 +1027,7 @@ function showMode(r) {
     <dt>方位角次数 m</dt><dd>${r.az.m}（腹 ${2 * r.az.m} 個、純度 ${Math.round(r.az.purity * 100)}%）</dd>
     <dt>強度最大の半径</dt><dd>${r.az.rho.toFixed(2)} a</dd>
     <dt>共振器内の回転</dt><dd>${fmtRot(r.az.ccw)}</dd>${r.dir ? `
-    <dt>導波路への出力 左 : 右</dt><dd>${fmtDir(r.dir)}</dd>` : ''}`;
+    <dt>導波路への出力 左 : 右</dt><dd>1点励振 ${fmtLR(r)}、${fmtDir(r.dir)}</dd>` : ''}`;
   const c = $('kspace'), ctx = c.getContext('2d'), W = c.width, { pw, P, dk, k0 } = r.lc, kmax = 5;
   const im = ctx.createImageData(W, W);
   let mx = 0; for (let q = 0; q < pw.length; q++) if (pw[q] > mx) mx = pw[q];
@@ -1088,10 +1115,10 @@ function drawSSweep() {
   const plot = (id, series, name) => plotSweep(id, pts, q => q.s, lo, hi, v => v.toFixed(2), series, name);
   plot('sswL', [{ get: q => a / q.f, tick: v => v.toFixed(1), color: '#ff8a5c' }], 'λ [nm]');
   plot('sswQ', [{ get: q => isFinite(q.Q) && q.resolved ? q.Q : q.Qmin, log: true, tick: v => (10 ** v).toPrecision(2), color: '#ff8a5c' },
-    ...[0, 1].map(i => ({ get: q => q.dir[i].PR / (q.dir[i].PL + q.dir[i].PR || 1), range: [0, 1], right: true, tick: v => v.toFixed(2), color: i ? '#b48cff' : '#5cc8ff' }))], 'Q_L と右への割合');
+    ...[0, 1].map(i => ({ get: q => q.dir[i].miss ? NaN : q.dir[i].PR / (q.dir[i].PL + q.dir[i].PR || 1), range: [0, 1], right: true, tick: v => v.toFixed(2), color: i ? '#b48cff' : '#5cc8ff' }))], 'Q_L と右への割合');
   $('sswTable').innerHTML = '<tr><th>シフト</th><th>a/λ</th><th>λ [nm]</th><th>Q<sub>L</sub></th><th>同相励振 左 : 右（Q、回転）</th><th>逆相励振 左 : 右（Q、回転）</th><th>m</th></tr>' + ssweep.pts.map(q => {
     if (!isFinite(q.f)) return `<tr><td>${q.s.toFixed(2)}a</td><td colspan="6">${q.msg}</td></tr>`;
-    const mt = q.m === 3 * +$('n').value ? q.m : `${q.m}（WGM でない）`, d = i => `${fmtLR(q.dir[i])}（${fmtQ(q.dir[i])}、${fmtRot(q.dir[i].ccw)}）`;
+    const mt = q.m === 3 * +$('n').value ? q.m : `${q.m}（WGM でない）`, d = i => q.dir[i].miss ? 'WGM が見つからない' : `${fmtLR(q.dir[i])}（λ ${(a / q.dir[i].f).toFixed(1)} nm、${fmtQ(q.dir[i])}、${fmtRot(q.dir[i].ccw)}${q.dir[i].m === 3 * +$('n').value ? '' : `、m = ${q.dir[i].m}`}）`;
     return `<tr><td>${q.s.toFixed(2)}a</td><td>${q.f.toFixed(5)}</td><td>${(a / q.f).toFixed(1)}</td><td>${fmtQ(q)}</td><td>${d(0)}</td><td>${d(1)}</td><td>${mt}</td></tr>`;
   }).join('');
 }
@@ -1135,9 +1162,9 @@ function meanRingRadius(n) {
     if (Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)) === n) { s += Math.hypot(i + j / 2, j * SQ3 / 2); c++; }
   return s / c;
 }
-for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas']) $(k).addEventListener('input', () => {
+for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas', 'tdir']) $(k).addEventListener('input', () => {
   if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
-  const structural = !['a', 'tmeas', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs', 'sslo', 'sshi', 'ssnum'].includes(k);
+  const structural = !['a', 'tmeas', 'tdir', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs', 'sslo', 'sshi', 'ssnum'].includes(k);
   if (k === 'qs') { rsweep.qs = +$('qs').value; drawRSweep(); }
   if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
   preview();
