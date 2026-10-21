@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhC共振器 FDTD</title>
+<style>
+:root{--bg:#0b0f17;--panel:#121a27;--line:#26344b;--ink:#e4eaf4;--mute:#8d9ab0;--acc:#6fd3ff;--warm:#ff8a5c;--ok:#8be08b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,"Hiragino Sans","Yu Gothic",sans-serif}
+main{max-width:1120px;margin:0 auto;padding:16px}
+a{color:var(--acc)}
+a.back{display:inline-block;margin-bottom:8px;text-decoration:none;font-size:13px}
+h1{margin:0 0 4px;font-size:clamp(20px,4.4vw,28px);line-height:1.3}
+p.lead{margin:0 0 16px;color:var(--mute)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+@media(max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}.grid>div:last-child{order:-1}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}
+.panel+.panel{margin-top:12px}
+h2{margin:0 0 8px;font-size:15px}
+canvas{width:100%;display:block;border-radius:6px;background:#000;touch-action:manipulation}
+#field{image-rendering:pixelated}
+.row{display:grid;grid-template-columns:7.5em minmax(0,1fr) 3.6em;gap:8px;align-items:center;margin:6px 0}
+.row label{font-size:13px;color:var(--mute)}
+.row output{font-variant-numeric:tabular-nums;text-align:right;font-size:13px}
+input[type=range]{width:100%;accent-color:var(--acc)}
+select{width:100%;background:#0b111c;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+button{background:#1b2a42;color:var(--ink);border:1px solid #34507a;border-radius:6px;padding:8px 12px;font:inherit;cursor:pointer;min-height:40px}
+button:hover:not(:disabled){border-color:var(--acc)}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:#164a66;border-color:#2b86b3}
+#status{margin-top:8px;font-size:13px;color:var(--mute);min-height:1.6em;overflow-wrap:anywhere}
+.bar{height:4px;background:#1b2536;border-radius:2px;overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;width:0;background:var(--acc)}
+.warn{color:var(--warm);font-size:13px;margin-top:6px}
+.peaks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.peaks button{min-height:34px;padding:4px 8px;font-size:12.5px;font-variant-numeric:tabular-nums}
+.peaks button.sel{background:#5a3a14;border-color:var(--warm)}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+td,th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:right}
+th{color:var(--mute);font-weight:500}
+td:first-child,th:first-child{text-align:left}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px}
+.kv dt{color:var(--mute)}
+.kv dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
+.cap{font-size:12px;color:var(--mute);margin-top:4px}
+.notes{color:var(--mute);font-size:13px}
+.notes li{margin:4px 0}
+.tablewrap{overflow-x:auto}
+@media(max-width:520px){.two{grid-template-columns:minmax(0,1fr)}#kspace{max-width:240px}}
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="../">← 作品一覧</a>
+<h1>フォトニック結晶 H<span id="tn">3</span> 共振器の 2D FDTD</h1>
+<p class="lead">三角格子エアホールの Hn 共振器を、スラブの実効屈折率で 2D に落として TE 偏光で解く。外周の穴を円形に寄せる変形率を変えて、共振周波数・面内 Q・垂直放射の目安がどう変わるかを見る。</p>
+
+<div class="grid">
+<div>
+  <div class="panel">
+    <canvas id="field"></canvas>
+    <div class="cap">色: H<sub>z</sub>（赤 正／青 負、毎フレーム最大値で正規化）。灰色が誘電体、黒が空気穴、縁の暗い帯が PML。</div>
+    <div id="status">パラメータを決めて「① スペクトル」を押す。</div>
+    <div class="bar"><i id="prog"></i></div>
+  </div>
+  <div class="panel">
+    <h2>① 共振スペクトル（プローブ点の |H<sub>z</sub>(f)|、対数）</h2>
+    <canvas id="spec" height="200"></canvas>
+    <div class="cap">横軸は規格化周波数 a/λ、上の目盛りは波長 nm（格子定数 a から換算）。ピークをタップするか下のボタンでモードを選ぶ。</div>
+    <div class="peaks" id="peaks"></div>
+  </div>
+  <div class="panel">
+    <h2>② 選んだモード</h2>
+    <div class="two">
+      <dl class="kv" id="modeinfo"><dt>未測定</dt><dd></dd></dl>
+      <div><canvas id="kspace" width="240" height="240"></canvas>
+      <div class="cap">モード場の空間フーリエ |H̃<sub>z</sub>(k)|²（対数）。白い円が光円錐 |k| = n<sub>clad</sub>ω/c。中の成分がスラブの上下（クラッド側）に漏れる。</div></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>③ 変形率スイープ</h2>
+    <div class="two">
+      <canvas id="sweepQ" height="180"></canvas>
+      <canvas id="sweepE" height="180"></canvas>
+    </div>
+    <div class="cap">左: 面内 Q（2D、対数軸）。右: 光円錐内の成分比 η（小さいほど垂直放射が少ない）。各点で ① と ② を自動で回し、直前の点に一番近い周波数のピークを追う。</div>
+    <div class="tablewrap"><table id="sweepTable"></table></div>
+  </div>
+  <div class="panel notes">
+    <h2>モデルと限界</h2>
+    <ul>
+      <li>2D TE（E<sub>x</sub>, E<sub>y</sub>, H<sub>z</sub>）の Yee 格子。外周は誘電体（穴なしスラブ）を挟んで分割場 PML で吸収する。誘電率は 4×4 のサブサンプルで平均する。</li>
+      <li>面内 Q は、共振器内のエネルギー U の指数減衰 U ∝ exp(−ωt/Q) の傾きから求める。2D なので面内の結晶層を抜ける漏れだけを見ている。</li>
+      <li>実際のスラブで支配的な垂直放射は 2D では出てこない。代わりに、モード場の空間フーリエ成分のうちクラッドの光円錐 |k| &lt; n<sub>clad</sub>ω/c の内側にある割合 η を目安として出す（Vučković らの光円錐解析の簡略版。H<sub>z</sub> だけを使う）。η は相対比較用で、Q<sub>⊥</sub> の絶対値ではない。</li>
+      <li>実効屈折率の取り方で禁止帯の位置は数 % 動く。目安として、GaAs（n≈3.4）で厚さ 0.5a 前後のスラブなら TE 基本モードの実効屈折率は 2.8〜3.0 くらい。</li>
+    </ul>
+  </div>
+</div>
+
+<div>
+  <div class="panel">
+    <h2>構造</h2>
+    <div class="row"><label for="n">共振器 Hn</label><input id="n" type="range" min="1" max="7" step="1" value="3"><output id="n_o"></output></div>
+    <div class="row"><label for="ra">r/a</label><input id="ra" type="range" min="0.20" max="0.42" step="0.01" value="0.30"><output id="ra_o"></output></div>
+    <div class="row"><label for="neff">実効屈折率</label><input id="neff" type="range" min="2.4" max="3.5" step="0.05" value="2.90"><output id="neff_o"></output></div>
+    <div class="row"><label for="a">a [nm]</label><input id="a" type="range" min="250" max="450" step="5" value="340"><output id="a_o"></output></div>
+    <div class="row"><label for="nclad">クラッド屈折率</label><input id="nclad" type="range" min="1" max="2" step="0.05" value="1.6"><output id="nclad_o"></output></div>
+    <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
+    <h2 style="margin-top:12px">外周の円形補正</h2>
+    <div class="row"><label for="def">変形率</label><input id="def" type="range" min="0" max="1" step="0.05" value="0"><output id="def_o"></output></div>
+    <div class="row"><label for="rings">補正する列</label><input id="rings" type="range" min="1" max="3" step="1" value="1"><output id="rings_o"></output></div>
+    <div class="row"><label for="target">目標の円</label><select id="target"><option value="mean">その列の平均半径</option><option value="in">内接円（辺の中点）</option><option value="out">外接円（角）</option><option value="custom">半径を指定</option></select><span></span></div>
+    <div class="row"><label for="R">指定半径 R/a</label><input id="R" type="range" min="0.5" max="8" step="0.01" value="2.76"><output id="R_o"></output></div>
+    <div class="cap">穴の位置 ρ を半径方向に ρ + 変形率 ×（R − ρ）へ動かす。0 で元の六角形、1 で半径 R の円周上にそろう。「補正する列」は共振器のすぐ外の列から数えた列数で、2列目以降も同じ種類の円（平均半径・内接円・外接円はその列のもの、指定時は R + 列の差×√3/2）へ寄せる。Hn は一辺 n 個の穴を抜いた六角形。大阪大学 近藤研の CirD レーザーは H3 の外周 18 個を半径 R ≈ 2.75a の円に移した modified H3 で、ここでは変形率 100%・平均半径（2.76a）がほぼそれに当たる。</div>
+    <div id="overlap" class="warn"></div>
+    <h2 style="margin-top:12px">計算</h2>
+    <div class="row"><label for="res">分解能 [セル/a]</label><select id="res"><option value="12">12（速い）</option><option value="16" selected>16</option><option value="20">20</option><option value="24">24（遅い）</option></select><span></span></div>
+    <div class="row"><label for="tmeas">減衰の観測時間</label><select id="tmeas"><option value="300">300 a/c</option><option value="600" selected>600 a/c</option><option value="1500">1500 a/c（高Q用）</option></select><span></span></div>
+    <div class="cap" id="gridinfo"></div>
+    <div class="btns">
+      <button class="primary" id="bSpec">① スペクトル</button>
+      <button id="bMode" disabled>② モードの Q</button>
+      <button id="bSweep" disabled>③ スイープ</button>
+      <button id="bStop" disabled>停止</button>
+    </div>
+  </div>
+</div>
+</div>
+</main>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const SQ3 = Math.sqrt(3);
+const FMIN = 0.18, FMAX = 0.45;
+
+// ---------- parameters ----------
+const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'barrier', 'def', 'rings', 'R'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+function params() {
+  const p = {};
+  for (const k of ids) p[k] = +$(k).value;
+  p.target = $('target').value;
+  p.res = +$('res').value;
+  p.tmeas = +$('tmeas').value;
+  return p;
+}
+
+// ---------- geometry ----------
+// Triangular lattice in axial coordinates; ring index = hexagonal distance from the center.
+// Hn cavity removes rings 0..n-1; the first remaining ring (ring n) is the cavity boundary.
+function makeHoles(p) {
+  const M = p.n - 1 + p.barrier, holes = [];
+  for (let i = -M; i <= M; i++) for (let j = -M; j <= M; j++) {
+    const ring = Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j));
+    if (ring < p.n || ring > M) continue;
+    holes.push({ x: i + j / 2, y: j * SQ3 / 2, ring });
+  }
+  for (let k = 0; k < p.rings; k++) {
+    const ring = p.n + k;
+    if (ring > M) break;
+    const hs = holes.filter(h => h.ring === ring);
+    const R = p.target === 'in' ? ring * SQ3 / 2 : p.target === 'out' ? ring
+      : p.target === 'custom' ? p.R + k * SQ3 / 2 : hs.reduce((s, h) => s + Math.hypot(h.x, h.y), 0) / hs.length;
+    for (const h of hs) {
+      const r = Math.hypot(h.x, h.y), r2 = r + p.def * (R - r);
+      h.x *= r2 / r; h.y *= r2 / r;
+    }
+  }
+  return holes;
+}
+function countOverlaps(holes, r) {
+  let c = 0;
+  for (let i = 0; i < holes.length; i++) for (let j = i + 1; j < holes.length; j++)
+    if (Math.hypot(holes[i].x - holes[j].x, holes[i].y - holes[j].y) < 2 * r) c++;
+  return c;
+}
+
+// ---------- simulation setup ----------
+function buildSim(p) {
+  const N = p.res, dx = 1 / N, dt = 0.99 * dx / Math.SQRT2;
+  const M = p.n - 1 + p.barrier;
+  const pml = Math.round(1.25 * N);
+  const hx = M + p.ra + 1.5, hy = M * SQ3 / 2 + p.ra + 1.5;
+  const nx = 2 * (Math.ceil(hx * N) + pml), ny = 2 * (Math.ceil(hy * N) + pml), NN = nx * ny;
+  const holes = makeHoles(p);
+  const fillAir = (ox, oy) => {
+    const arr = new Float32Array(NN), r = p.ra, S = 4, m = 0.75 * dx;
+    for (const h of holes) {
+      const i0 = Math.max(0, Math.floor((h.x - r) * N + nx / 2 - ox) - 1), i1 = Math.min(nx - 1, Math.ceil((h.x + r) * N + nx / 2 - ox) + 1);
+      const j0 = Math.max(0, Math.floor((h.y - r) * N + ny / 2 - oy) - 1), j1 = Math.min(ny - 1, Math.ceil((h.y + r) * N + ny / 2 - oy) + 1);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const x = (i + ox - nx / 2) * dx, y = (j + oy - ny / 2) * dx, d = Math.hypot(x - h.x, y - h.y);
+        if (d > r + m) continue;
+        let f = 1;
+        if (d > r - m) {
+          let c = 0;
+          for (let a = 0; a < S; a++) for (let b = 0; b < S; b++)
+            if (Math.hypot(x + ((a + 0.5) / S - 0.5) * dx - h.x, y + ((b + 0.5) / S - 0.5) * dx - h.y) < r) c++;
+          f = c / (S * S);
+        }
+        const k = j * nx + i;
+        arr[k] = Math.min(1, arr[k] + f);
+      }
+    }
+    return arr;
+  };
+  const eps = p.neff * p.neff;
+  const inv = air => { const o = new Float32Array(NN); for (let k = 0; k < NN; k++) o[k] = 1 / (eps * (1 - air[k]) + air[k]); return o; };
+  const iEx = inv(fillAir(0.5, 0)), iEy = inv(fillAir(0, 0.5)), airHz = fillAir(0.5, 0.5);
+
+  // Graded (cubic) PML loss rate, matched for any permittivity because E and H use the same rate.
+  const smax = 4 * Math.log(1e6) / (2 * pml * dx);
+  const sAt = (pos, n) => { const d = Math.max(pml - pos, pos - (n - pml), 0) / pml; return smax * d * d * d; };
+  const coef = (n, off) => {
+    const ca = new Float32Array(n), cb = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const s = sAt(i + off, n) * dt / 2; ca[i] = (1 - s) / (1 + s); cb[i] = (dt / dx) / (1 + s); }
+    return [ca, cb];
+  };
+  const [caX, cbX] = coef(nx, 0), [daX, dbX] = coef(nx, 0.5), [caY, cbY] = coef(ny, 0), [daY, dbY] = coef(ny, 0.5);
+
+  // Cavity region for the energy integral: inside the deformed boundary ring plus a little.
+  const Rc = Math.max(0.8, p.n * SQ3 / 2 + 0.6);
+  const cav = [];
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    if (Math.hypot((i + 0.5 - nx / 2) * dx, (j + 0.5 - ny / 2) * dx) < Rc) cav.push(j * nx + i);
+  }
+  // Sources and probes at fixed pseudo-random points inside the cavity so modes of every symmetry are excited.
+  let seed = 12345;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const rIn = Math.max(0.25, (p.n - 1) * 0.8);
+  const pts = cnt => Array.from({ length: cnt }, () => {
+    const r = rIn * Math.sqrt(rnd()), th = 2 * Math.PI * rnd();
+    const i = Math.round(nx / 2 + r * Math.cos(th) * N - 0.5), j = Math.round(ny / 2 + r * Math.sin(th) * N - 0.5);
+    return { k: j * nx + i, w: rnd() < 0.5 ? -1 : 1 };
+  });
+  return {
+    p, N, dx, dt, nx, ny, NN, pml, holes, iEx, iEy, airHz, caX, cbX, daX, dbX, caY, cbY, daY, dbY,
+    cav: Int32Array.from(cav), src: pts(5), probes: pts(5),
+    Ex: new Float32Array(NN), Ey: new Float32Array(NN), Hzx: new Float32Array(NN), Hzy: new Float32Array(NN), Hz: new Float32Array(NN), t: 0
+  };
+}
+function resetFields(S) { for (const f of ['Ex', 'Ey', 'Hzx', 'Hzy', 'Hz']) S[f].fill(0); S.t = 0; }
+
+function step(S) {
+  const { nx, ny, Ex, Ey, Hzx, Hzy, Hz, iEx, iEy, caX, cbX, caY, cbY, daX, dbX, daY, dbY } = S;
+  for (let j = 1; j < ny - 1; j++) {
+    const ca = caY[j], cb = cbY[j], row = j * nx;
+    for (let i = 1; i < nx - 1; i++) { const k = row + i; Ex[k] = ca * Ex[k] + cb * iEx[k] * (Hz[k] - Hz[k - nx]); }
+  }
+  for (let j = 1; j < ny - 1; j++) {
+    const row = j * nx;
+    for (let i = 1; i < nx - 1; i++) { const k = row + i; Ey[k] = caX[i] * Ey[k] - cbX[i] * iEy[k] * (Hz[k] - Hz[k - 1]); }
+  }
+  for (let j = 0; j < ny - 1; j++) {
+    const da = daY[j], db = dbY[j], row = j * nx;
+    for (let i = 0; i < nx - 1; i++) {
+      const k = row + i;
+      const a = daX[i] * Hzx[k] - dbX[i] * (Ey[k + 1] - Ey[k]);
+      const b = da * Hzy[k] + db * (Ex[k + nx] - Ex[k]);
+      Hzx[k] = a; Hzy[k] = b; Hz[k] = a + b;
+    }
+  }
+  S.t += S.dt;
+}
+function inject(S, amp) {
+  for (const s of S.src) { const v = 0.5 * amp * s.w; S.Hzx[s.k] += v; S.Hzy[s.k] += v; S.Hz[s.k] += 2 * v; }
+}
+const probe = S => S.probes.reduce((s, q) => s + q.w * S.Hz[q.k], 0);
+function energy(S) {
+  const { cav, Ex, Ey, Hz, iEx, iEy } = S;
+  let u = 0;
+  for (let n = 0; n < cav.length; n++) { const k = cav[n]; u += Ex[k] * Ex[k] / iEx[k] + Ey[k] * Ey[k] / iEy[k] + Hz[k] * Hz[k]; }
+  return u;
+}
+const pulse = (t, f0, tau, t0) => Math.exp(-(((t - t0) / tau) ** 2)) * Math.sin(2 * Math.PI * f0 * (t - t0));
+
+// ---------- signal analysis ----------
+function dft(sig, dt, f) {
+  // Hann-windowed DFT magnitude at frequency f via a rotating phasor.
+  const n = sig.length, w = -2 * Math.PI * f * dt, cr = Math.cos(w), ci = Math.sin(w);
+  let zr = 1, zi = 0, sr = 0, si = 0;
+  for (let k = 0; k < n; k++) {
+    const h = 0.5 - 0.5 * Math.cos(2 * Math.PI * k / (n - 1)), v = sig[k] * h;
+    sr += v * zr; si += v * zi;
+    const t = zr * cr - zi * ci; zi = zr * ci + zi * cr; zr = t;
+  }
+  return Math.hypot(sr, si);
+}
+function peakFind(fs, amp) {
+  const max = Math.max(...amp), out = [];
+  for (let i = 1; i < amp.length - 1; i++) {
+    if (amp[i] > amp[i - 1] && amp[i] >= amp[i + 1] && amp[i] > 0.02 * max) {
+      const a = Math.log(amp[i - 1]), b = Math.log(amp[i]), c = Math.log(amp[i + 1]);
+      const d = 0.5 * (a - c) / (a - 2 * b + c);
+      out.push({ f: fs[i] + d * (fs[1] - fs[0]), amp: amp[i] });
+    }
+  }
+  return out.sort((x, y) => y.amp - x.amp).slice(0, 14).sort((x, y) => x.f - y.f);
+}
+function refineFreq(sig, dt, f0, span) {
+  const n = 161; let bi = 0, bv = -1; const fs = [], am = [];
+  for (let i = 0; i < n; i++) { const f = f0 - span + 2 * span * i / (n - 1); fs.push(f); am.push(dft(sig, dt, f)); if (am[i] > bv) { bv = am[i]; bi = i; } }
+  if (bi === 0 || bi === n - 1) return fs[bi];
+  const a = Math.log(am[bi - 1]), b = Math.log(am[bi]), c = Math.log(am[bi + 1]);
+  return fs[bi] + 0.5 * (a - c) / (a - 2 * b + c) * (fs[1] - fs[0]);
+}
+function fft1(re, im, n) {
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const a = i + k, b = a + len / 2;
+        const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+      }
+    }
+  }
+}
+// Fraction of the mode's spatial spectrum inside the light cone |k| < n_clad·2πf.
+function lightCone(S, Fr, Fi, f) {
+  const P = 1024, { nx, ny, dx } = S;
+  const re = new Float64Array(P * P), im = new Float64Array(P * P);
+  const ox = (P - nx) >> 1, oy = (P - ny) >> 1;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const k = j * nx + i, q = (j + oy) * P + i + ox; re[q] = Fr[k]; im[q] = Fi[k]; }
+  const rr = new Float64Array(P), ri = new Float64Array(P);
+  for (let j = 0; j < P; j++) { const o = j * P; rr.set(re.subarray(o, o + P)); ri.set(im.subarray(o, o + P)); fft1(rr, ri, P); re.set(rr, o); im.set(ri, o); }
+  for (let i = 0; i < P; i++) {
+    for (let j = 0; j < P; j++) { rr[j] = re[j * P + i]; ri[j] = im[j * P + i]; }
+    fft1(rr, ri, P);
+    for (let j = 0; j < P; j++) { re[j * P + i] = rr[j]; im[j * P + i] = ri[j]; }
+  }
+  const dk = 2 * Math.PI / (P * dx), k0 = 2 * Math.PI * f * S.p.nclad;
+  let tot = 0, inside = 0;
+  const pw = new Float64Array(P * P);
+  for (let j = 0; j < P; j++) {
+    const ky = (j < P / 2 ? j : j - P) * dk;
+    for (let i = 0; i < P; i++) {
+      const kx = (i < P / 2 ? i : i - P) * dk, q = j * P + i, v = re[q] * re[q] + im[q] * im[q];
+      pw[q] = v; tot += v;
+      if (kx * kx + ky * ky < k0 * k0) inside += v;
+    }
+  }
+  return { eta: inside / tot, pw, P, dk, k0 };
+}
+
+// ---------- jobs (generators driven by requestAnimationFrame) ----------
+let sim = null, job = null, spectrum = null, selected = null, sweep = [], lastMode = null;
+const status = (s, frac) => { $('status').textContent = s; if (frac != null) $('prog').style.width = (100 * frac).toFixed(1) + '%'; };
+
+function* runSpectrum(S, label = '') {
+  resetFields(S);
+  const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = 400;
+  const total = Math.ceil((tRec + T) / S.dt), sig = [];
+  for (let n = 0; n < total; n++) {
+    if (S.t < tRec) inject(S, pulse(S.t, f0, tau, t0));
+    step(S);
+    if (S.t >= tRec) sig.push(probe(S));
+    if (n % 25 === 0) { status(`${label}① 広帯域パルスで励振中 t = ${S.t.toFixed(0)} / ${(tRec + T).toFixed(0)} a/c`, n / total); yield; }
+  }
+  const fs = [], amp = [];
+  for (let i = 0; i < 700; i++) { const f = FMIN + (FMAX - FMIN) * i / 699; fs.push(f); amp.push(dft(sig, S.dt, f)); }
+  return { fs, amp, peaks: peakFind(fs, amp) };
+}
+
+function* runMode(S, fGuess, label = '') {
+  resetFields(S);
+  const tau = 1 / (Math.PI * 0.006), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.p.tmeas;
+  const tA = tWait + Tm / 2, tEnd = tWait + Tm;
+  const total = Math.ceil(tEnd / S.dt);
+  const sig = [], us = [], ts = [];
+  let f = fGuess, Fr = null, Fi = null, n = 0;
+  for (; n < total; n++) {
+    if (S.t < tOff) inject(S, pulse(S.t, fGuess, tau, t0));
+    step(S);
+    if (S.t >= tWait) {
+      if (n % 8 === 0) { us.push(energy(S)); ts.push(S.t); }
+      if (S.t < tA) sig.push(probe(S));
+      else {
+        if (!Fr) { f = refineFreq(sig, S.dt, fGuess, 0.006); Fr = new Float32Array(S.NN); Fi = new Float32Array(S.NN); }
+        if (n % 4 === 0) {
+          const w = 2 * Math.PI * f * S.t, c = Math.cos(w), s = Math.sin(w), Hz = S.Hz;
+          for (let k = 0; k < S.NN; k++) { Fr[k] += Hz[k] * c; Fi[k] += Hz[k] * s; }
+        }
+      }
+    }
+    if (n % 25 === 0) {
+      const ph = S.t < tOff ? '狭帯域パルスで励振' : S.t < tWait ? '過渡の待ち' : S.t < tA ? '減衰を観測・周波数を精密化' : '減衰を観測・モード場を蓄積';
+      status(`${label}② ${ph} t = ${S.t.toFixed(0)} / ${tEnd.toFixed(0)} a/c`, n / total);
+      yield;
+    }
+  }
+  // Least-squares slope of ln U(t).
+  const L = us.map(Math.log), m = ts.length;
+  const mt = ts.reduce((a, b) => a + b, 0) / m, ml = L.reduce((a, b) => a + b, 0) / m;
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < m; i++) { sxy += (ts[i] - mt) * (L[i] - ml); sxx += (ts[i] - mt) ** 2; }
+  const slope = sxy / sxx, w = 2 * Math.PI * f;
+  const drop = us[0] / us[m - 1];
+  const Q = slope < 0 ? -w / slope : Infinity;
+  const Qmin = w * Tm / Math.log(1.02); // a 2% drop over the window is about the resolution limit
+  status(`${label}② 光円錐の解析（2D FFT）`, 1);
+  yield;
+  const lc = lightCone(S, Fr, Fi, f);
+  return { f, Q, resolved: drop > 1.02, Qmin, eta: lc.eta, lc, Fr, Fi };
+}
+
+function* runSweep(fStart) {
+  const p0 = params(), defs = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+  sweep = []; drawSweep();
+  let fPrev = fStart;
+  for (let i = 0; i < defs.length; i++) {
+    const p = { ...p0, def: defs[i] };
+    $('def').value = defs[i]; syncLabels();
+    sim = buildSim(p);
+    const label = `[変形率 ${Math.round(defs[i] * 100)}% ${i + 1}/${defs.length}] `;
+    const sp = yield* runSpectrum(sim, label);
+    const cand = sp.peaks.filter(pk => Math.abs(pk.f - fPrev) < 0.02);
+    if (!cand.length) { sweep.push({ def: defs[i], f: NaN }); drawSweep(); continue; }
+    const pk = cand.reduce((a, b) => Math.abs(a.f - fPrev) <= Math.abs(b.f - fPrev) ? a : b);
+    spectrum = sp; selected = pk.f; drawSpectrum();
+    const r = yield* runMode(sim, pk.f, label);
+    fPrev = r.f; lastMode = r; showMode(r);
+    sweep.push({ def: defs[i], f: r.f, Q: r.Q, resolved: r.resolved, Qmin: r.Qmin, eta: r.eta });
+    drawSweep();
+  }
+  status('③ スイープ完了。', 1);
+}
+
+function start(gen, onDone) {
+  job = { gen, onDone };
+  setBusy(true);
+}
+function stop() { job = null; setBusy(false); status('停止した。'); }
+function setBusy(b) {
+  $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
+  for (const k of [...ids, 'target', 'res', 'tmeas']) $(k).disabled = b;
+}
+function tick() {
+  if (job) {
+    const t0 = performance.now();
+    try {
+      while (performance.now() - t0 < 16) {
+        const r = job.gen.next();
+        if (r.done) { const j = job; job = null; setBusy(false); j.onDone && j.onDone(r.value); break; }
+      }
+    } catch (e) { job = null; setBusy(false); status('エラー: ' + e.message); console.error(e); }
+    drawField();
+  }
+  requestAnimationFrame(tick);
+}
+
+// ---------- drawing ----------
+const fc = $('field'), fctx = fc.getContext('2d');
+let img = null;
+function drawField() {
+  const S = sim; if (!S) return;
+  if (fc.width !== S.nx || fc.height !== S.ny) { fc.width = S.nx; fc.height = S.ny; img = fctx.createImageData(S.nx, S.ny); }
+  const d = img.data, { nx, ny, Hz, airHz, pml } = S;
+  let mx = 0;
+  for (let k = 0; k < S.NN; k++) { const v = Math.abs(Hz[k]); if (v > mx) mx = v; }
+  const inv = mx > 0 ? 1 / mx : 0;
+  for (let j = 0; j < ny; j++) {
+    const inP = j < pml || j >= ny - pml;
+    for (let i = 0; i < nx; i++) {
+      const k = j * nx + i, q = ((ny - 1 - j) * nx + i) * 4, a = airHz[k];
+      let g = 70 * (1 - a) + 8 * a;
+      if (inP || i < pml || i >= nx - pml) g *= 0.55;
+      const v = Hz[k] * inv, s = Math.pow(Math.abs(v), 0.6);
+      const cr = v > 0 ? 255 : 40, cg = v > 0 ? 70 : 120, cb = v > 0 ? 50 : 255;
+      d[q] = g + (cr - g) * s; d[q + 1] = g + (cg - g) * s; d[q + 2] = g + (cb - g) * s; d[q + 3] = 255;
+    }
+  }
+  fctx.putImageData(img, 0, 0);
+}
+function sizeCanvas(c) {
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = +(c.dataset.h ||= c.getAttribute('height'));
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.height = h + 'px';
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const specX = { l: 40, r: 10 };
+function drawSpectrum() {
+  const c = $('spec'), { ctx, w, h } = sizeCanvas(c), t = 22, b = 22;
+  ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
+  const X = f => specX.l + (f - FMIN) / (FMAX - FMIN) * (w - specX.l - specX.r);
+  ctx.font = '11px system-ui'; ctx.fillStyle = '#8d9ab0'; ctx.strokeStyle = '#26344b';
+  ctx.textAlign = 'center';
+  for (let f = 0.2; f <= FMAX + 1e-9; f += 0.05) { const x = X(f); ctx.beginPath(); ctx.moveTo(x, t); ctx.lineTo(x, h - b); ctx.stroke(); ctx.fillText(f.toFixed(2), x, h - 6); }
+  const a = +$('a').value;
+  for (const lam of [800, 1000, 1310, 1550]) { const f = a / lam; if (f < FMIN || f > FMAX) continue; const x = X(f); ctx.fillStyle = lam === 1310 ? '#ff8a5c' : '#8d9ab0'; ctx.fillText(lam + '', x, 14); }
+  if (!spectrum) { ctx.fillStyle = '#8d9ab0'; ctx.fillText('未測定', w / 2, h / 2); return; }
+  const L = spectrum.amp.map(v => Math.log10(v + 1e-30)), mx = Math.max(...L), mn = mx - 5;
+  const Y = v => t + (1 - (Math.max(v, mn) - mn) / (mx - mn)) * (h - t - b);
+  ctx.strokeStyle = '#6fd3ff'; ctx.lineWidth = 1.2; ctx.beginPath();
+  spectrum.fs.forEach((f, i) => { const x = X(f), y = Y(L[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+  for (const pk of spectrum.peaks) {
+    const x = X(pk.f), sel = selected != null && Math.abs(pk.f - selected) < 1e-9;
+    ctx.fillStyle = sel ? '#ff8a5c' : '#e4eaf4'; ctx.beginPath(); ctx.arc(x, Y(Math.log10(pk.amp)), sel ? 4.5 : 3, 0, 7); ctx.fill();
+  }
+  ctx.textAlign = 'left'; ctx.fillStyle = '#8d9ab0'; ctx.fillText('a/λ', 4, h - 6);
+  const box = $('peaks'); box.innerHTML = '';
+  for (const pk of spectrum.peaks) {
+    const bt = document.createElement('button');
+    bt.textContent = `${pk.f.toFixed(4)}（${Math.round(a / pk.f)} nm）`;
+    if (selected != null && Math.abs(pk.f - selected) < 1e-9) bt.className = 'sel';
+    bt.onclick = () => { if (job) return; selected = pk.f; drawSpectrum(); setBusy(false); };
+    box.appendChild(bt);
+  }
+}
+$('spec').addEventListener('click', e => {
+  if (!spectrum || job) return;
+  const r = e.currentTarget.getBoundingClientRect(), w = r.width;
+  const f = FMIN + (e.clientX - r.left - specX.l) / (w - specX.l - specX.r) * (FMAX - FMIN);
+  let best = null;
+  for (const pk of spectrum.peaks) if (!best || Math.abs(pk.f - f) < Math.abs(best.f - f)) best = pk;
+  if (best) { selected = best.f; drawSpectrum(); setBusy(false); }
+});
+const fmtQ = r => !isFinite(r.Q) || !r.resolved ? `> ${Math.round(r.Qmin).toLocaleString()}` : Math.round(r.Q).toLocaleString();
+function showMode(r) {
+  const a = +$('a').value;
+  $('modeinfo').innerHTML = `
+    <dt>a/λ</dt><dd>${r.f.toFixed(5)}</dd>
+    <dt>λ</dt><dd>${(a / r.f).toFixed(1)} nm</dd>
+    <dt>面内 Q（2D）</dt><dd>${fmtQ(r)}</dd>
+    <dt>光円錐内の比 η</dt><dd>${r.eta.toExponential(2)}</dd>`;
+  const c = $('kspace'), ctx = c.getContext('2d'), W = c.width, { pw, P, dk, k0 } = r.lc, kmax = 5;
+  const im = ctx.createImageData(W, W);
+  let mx = 0; for (let q = 0; q < pw.length; q++) if (pw[q] > mx) mx = pw[q];
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+    const kx = (x / (W - 1) * 2 - 1) * kmax, ky = (1 - y / (W - 1) * 2) * kmax;
+    const i = ((Math.round(kx / dk) % P) + P) % P, j = ((Math.round(ky / dk) % P) + P) % P;
+    const v = Math.max(0, 1 + Math.log10(pw[j * P + i] / mx + 1e-12) / 6), o = (y * W + x) * 4;
+    im.data[o] = 255 * Math.min(1, v * 1.6); im.data[o + 1] = 255 * Math.max(0, Math.min(1, v * 1.6 - 0.6)); im.data[o + 2] = 255 * Math.max(0, v * 1.6 - 1.2) + 40 * v; im.data[o + 3] = 255;
+  }
+  ctx.putImageData(im, 0, 0);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(W / 2, W / 2, k0 / kmax * W / 2, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#ccc'; ctx.font = '11px system-ui'; ctx.fillText(`|k| ≤ ${kmax}/a`, 6, 14);
+}
+function drawSweep() {
+  const pts = sweep.filter(s => isFinite(s.f));
+  const plot = (id, get, logY, name) => {
+    const { ctx, w, h } = sizeCanvas($(id)), l = 44, r = 8, t = 14, b = 22;
+    ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
+    ctx.font = '11px system-ui'; ctx.fillStyle = '#8d9ab0'; ctx.strokeStyle = '#26344b';
+    const X = d => l + d * (w - l - r);
+    ctx.textAlign = 'center';
+    for (let d = 0; d <= 1.001; d += w < 260 ? 0.5 : 0.2) { const x = X(d); ctx.beginPath(); ctx.moveTo(x, t); ctx.lineTo(x, h - b); ctx.stroke(); ctx.fillText(Math.round(d * 100) + '%', x, h - 6); }
+    ctx.textAlign = 'left'; ctx.fillText(name, l + 4, t + 2);
+    if (!pts.length) return;
+    const vs = pts.map(s => logY ? Math.log10(get(s)) : get(s));
+    let lo = Math.min(...vs), hi = Math.max(...vs);
+    if (hi - lo < 1e-9) { lo -= logY ? 0.5 : Math.abs(lo) * 0.1 + 1e-9; hi += logY ? 0.5 : Math.abs(hi) * 0.1 + 1e-9; }
+    const pad = (hi - lo) * 0.1; lo -= pad; hi += pad;
+    const Y = v => t + (1 - (v - lo) / (hi - lo)) * (h - t - b);
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 3; i++) {
+      const v = lo + (hi - lo) * i / 3, y = Y(v);
+      ctx.fillText(logY ? (10 ** v).toPrecision(2) : v.toExponential(1), l - 4, y + 4);
+    }
+    ctx.strokeStyle = '#ff8a5c'; ctx.fillStyle = '#ff8a5c'; ctx.lineWidth = 1.5; ctx.beginPath();
+    pts.forEach((s, i) => { const x = X(s.def), y = Y(vs[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    pts.forEach((s, i) => { ctx.beginPath(); ctx.arc(X(s.def), Y(vs[i]), 3, 0, 7); ctx.fill(); });
+  };
+  plot('sweepQ', s => isFinite(s.Q) && s.resolved ? s.Q : s.Qmin, true, '面内 Q');
+  plot('sweepE', s => s.eta, false, 'η');
+  const a = +$('a').value;
+  $('sweepTable').innerHTML = '<tr><th>変形率</th><th>a/λ</th><th>λ [nm]</th><th>面内 Q</th><th>η</th></tr>' + sweep.map(s => isFinite(s.f)
+    ? `<tr><td>${Math.round(s.def * 100)}%</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${fmtQ(s)}</td><td>${s.eta.toExponential(2)}</td></tr>`
+    : `<tr><td>${Math.round(s.def * 100)}%</td><td colspan="4">近い周波数のピークが見つからない</td></tr>`).join('');
+}
+
+// ---------- wiring ----------
+function syncLabels() {
+  for (const k of ids) $(k + '_o').textContent = fmt[k]($(k).value);
+  $('tn').textContent = $('n').value;
+}
+function preview() {
+  syncLabels();
+  if (job) return;
+  const p = params();
+  sim = buildSim(p);
+  const ov = countOverlaps(sim.holes, p.ra);
+  $('overlap').textContent = ov ? `穴どうしが ${ov} 組重なっている。変形率か r/a を下げるか、目標の円を変える。` : '';
+  $('gridinfo').textContent = `格子 ${sim.nx}×${sim.ny} = ${(sim.NN / 1e3).toFixed(0)}k セル、Δt = ${sim.dt.toFixed(4)} a/c、穴 ${sim.holes.length} 個`;
+  drawField(); drawSpectrum();
+}
+// Default the custom radius to the mean radius of the boundary ring when the cavity size changes.
+function meanRingRadius(n) {
+  let s = 0, c = 0;
+  for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++)
+    if (Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)) === n) { s += Math.hypot(i + j / 2, j * SQ3 / 2); c++; }
+  return s / c;
+}
+for (const k of [...ids, 'target', 'res', 'tmeas']) $(k).addEventListener('input', () => {
+  if (k === 'n') $('R').value = meanRingRadius(+$('n').value).toFixed(2);
+  const structural = k !== 'a' && k !== 'tmeas';
+  if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
+  preview();
+  if (k === 'a' && lastMode) { showMode(lastMode); drawSweep(); }
+});
+$('bSpec').onclick = () => {
+  sim = buildSim(params());
+  start(runSpectrum(sim), sp => { spectrum = sp; const f1310 = +$('a').value / 1310; selected = sp.peaks.length ? sp.peaks.reduce((x, y) => Math.abs(x.f - f1310) <= Math.abs(y.f - f1310) ? x : y).f : null; drawSpectrum(); setBusy(false); status(`① 完了。ピーク ${sp.peaks.length} 個。1310 nm に一番近いピークを選んである。別のモードはタップで選び直す。`, 1); });
+};
+$('bMode').onclick = () => {
+  if (selected == null) return;
+  start(runMode(sim, selected), r => { lastMode = r; showMode(r); status(`② 完了。a/λ = ${r.f.toFixed(5)}、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}`, 1); });
+};
+$('bSweep').onclick = () => { if (selected != null) start(runSweep(selected)); };
+$('bStop').onclick = stop;
+window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); });
+preview(); drawSweep();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
