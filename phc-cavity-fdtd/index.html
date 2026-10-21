@@ -55,7 +55,7 @@ td:first-child,th:first-child{text-align:left}
 <body>
 <main>
 <a class="back" href="../">← 作品一覧</a>
-<h1>フォトニック結晶 H<span id="tn">6</span> 共振器の 2D FDTD</h1>
+<h1>フォトニック結晶 H<span id="tn">3</span> 共振器の 2D FDTD</h1>
 <p class="lead">三角格子エアホールの Hn 共振器を、スラブの実効屈折率で 2D に落として TE 偏光で解く。外周の穴を円形に寄せる変形率を変えて、共振周波数・面内 Q・垂直放射の目安がどう変わるかを見る。</p>
 
 <div class="grid">
@@ -103,7 +103,7 @@ td:first-child,th:first-child{text-align:left}
 <div>
   <div class="panel">
     <h2>構造</h2>
-    <div class="row"><label for="n">共振器 Hn</label><input id="n" type="range" min="1" max="7" step="1" value="6"><output id="n_o"></output></div>
+    <div class="row"><label for="n">共振器 Hn</label><input id="n" type="range" min="1" max="7" step="1" value="3"><output id="n_o"></output></div>
     <div class="row"><label for="ra">r/a</label><input id="ra" type="range" min="0.20" max="0.42" step="0.01" value="0.30"><output id="ra_o"></output></div>
     <div class="row"><label for="neff">実効屈折率</label><input id="neff" type="range" min="2.4" max="3.5" step="0.05" value="2.90"><output id="neff_o"></output></div>
     <div class="row"><label for="a">a [nm]</label><input id="a" type="range" min="250" max="450" step="5" value="340"><output id="a_o"></output></div>
@@ -113,8 +113,8 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="def">変形率</label><input id="def" type="range" min="0" max="1" step="0.05" value="0"><output id="def_o"></output></div>
     <div class="row"><label for="rings">補正する列</label><input id="rings" type="range" min="1" max="3" step="1" value="1"><output id="rings_o"></output></div>
     <div class="row"><label for="target">目標の円</label><select id="target"><option value="mean">その列の平均半径</option><option value="in">内接円（辺の中点）</option><option value="out">外接円（角）</option><option value="custom">半径を指定</option></select><span></span></div>
-    <div class="row"><label for="R">指定半径 R/a</label><input id="R" type="range" min="0.5" max="8" step="0.01" value="5.49"><output id="R_o"></output></div>
-    <div class="cap">穴の位置 ρ を半径方向に ρ + 変形率 ×（R − ρ）へ動かす。0 で元の六角形、1 で半径 R の円周上にそろう。「補正する列」は共振器のすぐ外の列から数えた列数で、2列目以降はその列の平均半径（指定時は R + 列の差×√3/2）へ寄せる。Hn は一辺 n 個の穴を抜いた六角形（近藤研の modified H3 は n = 3、外周 18 個、R ≈ 2.75a）。</div>
+    <div class="row"><label for="R">指定半径 R/a</label><input id="R" type="range" min="0.5" max="8" step="0.01" value="2.76"><output id="R_o"></output></div>
+    <div class="cap">穴の位置 ρ を半径方向に ρ + 変形率 ×（R − ρ）へ動かす。0 で元の六角形、1 で半径 R の円周上にそろう。「補正する列」は共振器のすぐ外の列から数えた列数で、2列目以降も同じ種類の円（平均半径・内接円・外接円はその列のもの、指定時は R + 列の差×√3/2）へ寄せる。Hn は一辺 n 個の穴を抜いた六角形。大阪大学 近藤研の CirD レーザーは H3 の外周 18 個を半径 R ≈ 2.75a の円に移した modified H3 で、ここでは変形率 100%・平均半径（2.76a）がほぼそれに当たる。</div>
     <div id="overlap" class="warn"></div>
     <h2 style="margin-top:12px">計算</h2>
     <div class="row"><label for="res">分解能 [セル/a]</label><select id="res"><option value="12">12（速い）</option><option value="16" selected>16</option><option value="20">20</option><option value="24">24（遅い）</option></select><span></span></div>
