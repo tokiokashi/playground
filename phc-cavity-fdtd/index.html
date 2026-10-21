@@ -121,6 +121,20 @@ td:first-child,th:first-child{text-align:left}
     <div class="tablewrap"><table id="rswTable"></table></div>
     <div id="rswImgs" class="thumbs"></div>
   </div>
+  <div class="panel">
+    <h2>⑥ サブ共振器の両端シフトのスイープ（出力の方向）</h2>
+    <div class="two">
+      <canvas id="sswL" height="180"></canvas>
+      <canvas id="sswQ" height="180"></canvas>
+    </div>
+    <div class="row"><label for="sslo">シフトの開始</label><input id="sslo" type="range" min="0" max="0.4" step="0.01" value="0"><output id="sslo_o"></output></div>
+    <div class="row"><label for="sshi">シフトの終了</label><input id="sshi" type="range" min="0" max="0.4" step="0.01" value="0.3"><output id="sshi_o"></output></div>
+    <div class="row"><label for="ssnum">点数</label><input id="ssnum" type="range" min="2" max="13" step="1" value="7"><output id="ssnum_o"></output></div>
+    <div class="btns"><button id="bSsw">⑥ シフトのスイープ</button></div>
+    <div class="cap">導波路とサブ共振器を置いた構造で、Ln の両端の穴のシフトだけを振る。シフトで Ln の共振周波数が動き、WGM との離調が変わる。各点で「WGM を探す」と同じ手順で WGM を探し、波長、負荷 Q（Q<sub>L</sub>）、導波路の左右へ出ていったエネルギーの比を測る。探す範囲は、最初の点だけ「探す範囲」の設定を使い、2点目からは直前の点の周波数の ±0.01（a/λ）に絞る。左: 波長、右: Q<sub>L</sub>（橙、対数軸）と、右へ出た割合（0〜1、0.5 で左右対称。青が同相励振、紫が逆相励振）。下に各点のモード像を並べる。WGM と Ln が強く結合すると、2つが混ざったモードになって、腹の数で WGM を判定できなくなることがある。</div>
+    <div class="tablewrap"><table id="sswTable"></table></div>
+    <div id="sswImgs" class="thumbs"></div>
+  </div>
   <div class="panel notes">
     <h2>モデルと限界</h2>
     <ul>
@@ -144,6 +158,12 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="wgsep">共振器との間の列数</label><input id="wgsep" type="range" min="1" max="5" step="1" value="1"><output id="wgsep_o"></output></div>
     <div class="row"><label for="wgs">両側の列のシフト</label><input id="wgs" type="range" min="-0.25" max="0.25" step="0.005" value="-0.165"><output id="wgs_o"></output></div>
     <div class="row"><label for="wgr">両側の列の r/a</label><input id="wgr" type="range" min="0.20" max="0.42" step="0.01" value="0.30"><output id="wgr_o"></output></div>
+    <div class="row"><label for="sub">サブ共振器</label><select id="sub"><option value="0" selected>なし</option><option value="1">共振器と導波路の間に Ln</option></select><span></span></div>
+    <div class="row"><label for="subn">Ln の n</label><input id="subn" type="range" min="1" max="5" step="1" value="2"><output id="subn_o"></output></div>
+    <div class="row"><label for="subrow">置く列</label><input id="subrow" type="range" min="1" max="5" step="1" value="1"><output id="subrow_o"></output></div>
+    <div class="row"><label for="subx">横位置 x/a</label><input id="subx" type="range" min="-6" max="6" step="0.5" value="1.5"><output id="subx_o"></output></div>
+    <div class="row"><label for="subs">両端の穴のシフト</label><input id="subs" type="range" min="0" max="0.4" step="0.01" value="0"><output id="subs_o"></output></div>
+    <div class="cap">サブ共振器 Ln は、共振器と導波路の間の列から、横位置 x に近い穴を n 個抜いた線欠陥。「置く列」は共振器側から数えた列の番号で、共振器との間の列数より大きい値は一番導波路側の列になる。x = 0 は共振器の中心の真上で、0 からずらすと共振器と導波路の配置が左右非対称になる。穴の横位置は、共振器側から奇数番目の列（H3 なら 1 列目）では整数、偶数番目の列では半整数（a 単位）なので、左右対称に置けるのは、奇数番目の列では n が奇数で x = 0、偶数番目の列では n が偶数で x = 0 の時だけ。両端の穴は外向きにシフトして、Ln の共振周波数を WGM に合わせ込む。導波路があるときだけ使う。サブ共振器を置いて「WGM を探す」か ⑥ を回すと、見つけた WGM について、励振点とその鏡像（x = 0 について折り返した点）を同相と逆相で鳴らす2回の測定を足す。WGM は2つのモードが縮退した組で、1点の励振ではその混ぜ方で左右の出力比が変わるため。各回で、導波路の左右の端（PML の手前）のポインティングベクトルを導波路の断面にわたって積分し、減衰の観測区間に左右へ出ていったエネルギーの比を出す。左右対称な構造なら、どちらの励振でも 50 : 50 になる。あわせて、モード場を外周に沿って角度でフーリエ分解し、e<sup>∓imφ</sup> の成分の比から共振器の中の反時計回りと時計回りの割合を出す（② には1点励振の場合の値も出す）。</div>
     <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。「両側の列」は導波路のすぐ両側の2列で、シフトは導波路から遠ざける向きを正とする（単位 a）。正で導波路が広がってバンドが下がり、負で狭まって上がる。穴を大きくしてもバンドは上がる。この2つは ④ のバンド計算にも同じように入る。既定の −0.165a は、偶モードのバンドの端（k = 0.5）を WGM の少し下まで上げて、遅い光の領域で WGM と交差させる設定。この 2D モデルでは、間の列数 1 で Q<sub>L</sub> ≈ 3,300 になる。</div>
     <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
     <h2 style="margin-top:12px">外周の円形補正</h2>
@@ -183,14 +203,15 @@ const SQ3 = Math.sqrt(3);
 const FMIN = 0.18, FMAX = 0.45;
 
 // ---------- parameters ----------
-const ids = ['rlo', 'rhi', 'rnum', 'qs', 'n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'wgs', 'wgr', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
-const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, rlo: v => (+v).toFixed(3), rhi: v => (+v).toFixed(3), rnum: v => v, qs: v => (+v).toLocaleString('en-US'), wgs: v => (v > 0 ? '+' : '') + (+v).toFixed(2) + 'a', wgr: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+const ids = ['sslo', 'sshi', 'ssnum', 'subn', 'subrow', 'subx', 'subs', 'rlo', 'rhi', 'rnum', 'qs', 'n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'wgs', 'wgr', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, sslo: v => (+v).toFixed(2) + 'a', sshi: v => (+v).toFixed(2) + 'a', ssnum: v => v, subn: v => 'L' + v, subrow: v => v + ' 列目', subx: v => (v > 0 ? '+' : '') + (+v).toFixed(1) + 'a', subs: v => (+v).toFixed(2) + 'a', rlo: v => (+v).toFixed(3), rhi: v => (+v).toFixed(3), rnum: v => v, qs: v => (+v).toLocaleString('en-US'), wgs: v => (v > 0 ? '+' : '') + (+v).toFixed(2) + 'a', wgr: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
 function params() {
   const p = {};
   for (const k of ids) p[k] = +$(k).value;
   p.target = $('target').value;
   p.srcmode = $('srcmode').value;
   p.wg = $('wg').value === '1';
+  p.sub = $('sub').value === '1';
   p.res = +$('res').value;
   p.tmeas = +$('tmeas').value;
   return p;
@@ -209,8 +230,18 @@ function makeHoles(p, X, Y) {
     // The rows on both sides of it move away from the guide by wgs and take radius wgr.
     const jw = p.n + p.wgsep + 1;
     if (p.wg && j === jw) continue;
-    if (p.wg && Math.abs(j - jw) === 1) { holes.push({ x, y: y + Math.sign(j - jw) * p.wgs, ring, r: p.wgr }); continue; }
-    holes.push({ x, y, ring });
+    if (p.wg && Math.abs(j - jw) === 1) { holes.push({ x, y: y + Math.sign(j - jw) * p.wgs, ring, j, r: p.wgr }); continue; }
+    holes.push({ x, y, ring, j });
+  }
+  // Sub-cavity Ln: drop the n holes of row js nearest to x = subx, then push the two end holes outward by subs.
+  if (p.wg && p.sub) {
+    const js = p.n + Math.min(p.subrow, p.wgsep), row = holes.filter(h => h.j === js);
+    const gone = new Set([...row].sort((a, b) => Math.abs(a.x - p.subx) - Math.abs(b.x - p.subx)).slice(0, p.subn));
+    const xs = [...gone].map(h => h.x), x0 = Math.min(...xs), x1 = Math.max(...xs), rest = row.filter(h => !gone.has(h));
+    const left = rest.filter(h => h.x < x0).sort((a, b) => b.x - a.x)[0], right = rest.filter(h => h.x > x1).sort((a, b) => a.x - b.x)[0];
+    if (left) left.x -= p.subs;
+    if (right) right.x += p.subs;
+    for (let i = holes.length - 1; i >= 0; i--) if (gone.has(holes[i])) holes.splice(i, 1);
   }
   for (let k = 0; k < p.rings; k++) {
     const ring = p.n + k;
@@ -290,9 +321,18 @@ function buildSim(p) {
   const at = (r, th, w) => ({ k: Math.round(ny / 2 + r * Math.sin(th) * N - 0.5) * nx + Math.round(nx / 2 + r * Math.cos(th) * N - 0.5), w });
   const pts = cnt => p.srcmode === 'one' ? [at(p.srcr, p.srcth * Math.PI / 180, 1)]
     : Array.from({ length: cnt }, () => at(rIn * Math.sqrt(rnd()), 2 * Math.PI * rnd(), rnd() < 0.5 ? -1 : 1));
+  // Vertical lines across the waveguide just inside the PML on both ends, for the power leaving left and right.
+  function fluxLines() {
+    if (!p.wg) return null;
+    const yw = (p.n + p.wgsep + 1) * SQ3 / 2, rows = [];
+    for (let j = 0; j < ny; j++) if (Math.abs((j + 0.5 - ny / 2) * dx - yw) < 1.5) rows.push(j);
+    return { iL: pml + 3, iR: nx - pml - 4, rows };
+  }
   return {
     p, N, dx, dt, nx, ny, NN, pml, holes, iEx, iEy, airHz, caX, cbX, daX, dbX, caY, cbY, daY, dbY,
-    cav: Int32Array.from(cav), src: pts(8), probes: pts(8),
+    cav: Int32Array.from(cav), src: pts(8), probes: pts(8), flux: fluxLines(),
+    // The excitation point and its mirror image across x = 0, in phase (par = 1) or out of phase (par = -1).
+    srcPar: par => [at(p.srcr, p.srcth * Math.PI / 180, 1), at(p.srcr, Math.PI - p.srcth * Math.PI / 180, par)],
     Ex: new Float32Array(NN), Ey: new Float32Array(NN), Hzx: new Float32Array(NN), Hzy: new Float32Array(NN), Hz: new Float32Array(NN), t: 0
   };
 }
@@ -429,7 +469,10 @@ function azimuthal(S, Fr, Fi) {
   };
   let tot = 0, bm = 0, bp = 0;
   for (let m = 0; m <= 40; m++) { const v = m ? pw(m) + pw(-m) : pw(0); tot += v; if (v > bp) { bp = v; bm = m; } }
-  return { m: bm, rho, purity: bp / tot };
+  // F = sum Hz e^{+i w t} picks the amplitude A of Hz = Re[A e^{-i w t}], and A = e^{+i m phi} is a wave running
+  // counterclockwise (phi counterclockwise as drawn), so pw(+m) is the counterclockwise part and pw(-m) the clockwise one.
+  const ccw = bm ? pw(bm) : 0, cw = bm ? pw(-bm) : 0;
+  return { m: bm, rho, purity: bp / tot, ccw: cw + ccw > 0 ? ccw / (cw + ccw) : 0.5 };
 }
 
 // ---------- jobs (generators driven by requestAnimationFrame) ----------
@@ -452,16 +495,27 @@ function* runSpectrum(S, label = '') {
 }
 
 // df: excitation bandwidth; keep it below the spacing to neighboring peaks so only one mode rings down.
-function* runMode(S, fGuess, label = '', df = 0.006) {
+// src: optional excitation points (also used as probes) in place of the simulation's own.
+function* runMode(S, fGuess, label = '', df = 0.006, src = null) {
+  const own = [S.src, S.probes];
+  if (src) { S.src = src; S.probes = src; }
   resetFields(S);
   const tau = 1 / (Math.PI * df), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.p.tmeas;
   const tA = tWait + Tm / 2, tEnd = tWait + Tm;
   const total = Math.ceil(tEnd / S.dt);
   const sig = [], us = [], ts = [];
-  let f = fGuess, Fr = null, Fi = null, n = 0;
+  let f = fGuess, Fr = null, Fi = null, n = 0, PL = 0, PR = 0;
   for (; n < total; n++) {
     if (S.t < tOff) inject(S, pulse(S.t, fGuess, tau, t0));
     step(S);
+    if (S.t >= tWait && S.flux) {
+      // Sx = Ey Hz, with Hz averaged onto the Ey point (Ey[k] sits between Hz[k - 1] and Hz[k]).
+      const { iL, iR, rows } = S.flux, { Ey, Hz, nx } = S;
+      for (const j of rows) {
+        const kL = j * nx + iL, kR = j * nx + iR;
+        PL -= Ey[kL] * (Hz[kL - 1] + Hz[kL]) / 2; PR += Ey[kR] * (Hz[kR - 1] + Hz[kR]) / 2;
+      }
+    }
     if (S.t >= tWait) {
       if (n % 8 === 0) { us.push(energy(S)); ts.push(S.t); }
       sig.push(probe(S));
@@ -492,7 +546,8 @@ function* runMode(S, fGuess, label = '', df = 0.006) {
   status(`${label}② 光円錐の解析（2D FFT）`, 1);
   yield;
   const lc = lightCone(S, Fr, Fi, f);
-  return { f, Q, resolved: drop > 1.02, Qmin, eta: lc.eta, lc, Fr, Fi, S, az: azimuthal(S, Fr, Fi) };
+  [S.src, S.probes] = own;
+  return { f, Q, resolved: drop > 1.02, Qmin, eta: lc.eta, lc, Fr, Fi, S, az: azimuthal(S, Fr, Fi), PL, PR };
 }
 
 function bandFor(sp, f) {
@@ -542,6 +597,17 @@ function* findWGM(S, sp, label = '') {
     if (!r) { r = t; fund = pk; }
     if (t.az.m === mT) { r = t; fund = pk; break; }
   }
+  // A WGM is a degenerate pair (two standing waves, or clockwise and counterclockwise), and the left/right split of
+  // one ringdown depends on how the source mixes the pair. Exciting the point and its mirror image in phase and out of
+  // phase picks the two standing waves apart when the structure is mirror-symmetric; with a sub-cavity off the axis
+  // the two runs show how the split changes with the excitation.
+  if (S.flux && p.sub) {
+    r.dir = [];
+    for (const par of [1, -1]) {
+      const t = yield* runMode(S, r.f, `${label}[方向性 ${par > 0 ? '同相' : '逆相'}] `, bandFor(sp, r.f), S.srcPar(par));
+      r.dir.push({ par, f: t.f, Q: t.Q, resolved: t.resolved, Qmin: t.Qmin, PL: t.PL, PR: t.PR, ccw: t.az.ccw });
+    }
+  }
   return { r, others: hit.filter(x => x !== fund) };
 }
 function* runFind() {
@@ -554,7 +620,7 @@ function* runFind() {
   const r = res.r;
   lastMode = r; showMode(r);
   const others = res.others.map(x => `${(p.a / x.f).toFixed(0)} nm`).join('、');
-  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
+  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${r.dir ? `、導波路への出力 左 : 右 = ${fmtDir(r.dir)}` : ''}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
 }
 // Sweeps the cavity radius R (deformation 100%, custom radius) with everything else fixed, the knob a CirD laser array
 // uses to set each channel's wavelength. With a waveguide, Q0 is measured once at the middle R to split off Q_wg.
@@ -593,6 +659,31 @@ function* runRSweep() {
     drawRSweep();
   }
   status('⑤ R スイープ完了。', 1);
+}
+// Sweeps the end-hole shift of the sub-cavity, which tunes its resonance across the WGM, and records Q_L and the
+// left/right split of the power leaving through the waveguide.
+function* runSSweep() {
+  const p0 = params(), n = p0.ssnum, lo = Math.min(p0.sslo, p0.sshi), hi = Math.max(p0.sslo, p0.sshi);
+  ssweep = { pts: [] }; drawSSweep(); $('sswImgs').innerHTML = '';
+  if (!p0.wg || !p0.sub) { status('⑥ は導波路とサブ共振器の両方を置いた時だけ使える。', 1); return; }
+  const ss = Array.from({ length: n }, (_, i) => lo + (hi - lo) * i / Math.max(1, n - 1));
+  for (let i = 0; i < n; i++) {
+    // The shift moves the WGM only through its coupling to the sub-cavity, so stay near the last found frequency.
+    const got = ssweep.pts.filter(q => isFinite(q.f)), fP = got.length ? got[got.length - 1].f : null, w = 0.01;
+    const p = { ...p0, subs: ss[i], ...(fP == null ? {} : { wlo: fP - w, whi: fP + w }) };
+    $('subs').value = ss[i]; syncLabels();
+    sim = buildSim(p);
+    const label = `[シフト ${ss[i].toFixed(2)}a ${i + 1}/${n}] `;
+    spectrum = yield* runSpectrum(sim, label); drawSpectrum();
+    const res = yield* findWGM(sim, spectrum, label);
+    if (!res.r) { ssweep.pts.push({ s: ss[i], f: NaN, msg: res.msg }); drawSSweep(); continue; }
+    const r = res.r;
+    lastMode = r; showMode(r);
+    ssweep.pts.push({ s: ss[i], f: r.f, Q: r.Q, resolved: r.resolved, Qmin: r.Qmin, m: r.az.m, dir: r.dir });
+    addThumb(r, `シフト ${ss[i].toFixed(2)}a　${(p.a / r.f).toFixed(1)} nm　Q ${fmtQ(r)}`, 'sswImgs');
+    drawSSweep();
+  }
+  status('⑥ シフトのスイープ完了。', 1);
 }
 // W1 supercell: one period along x with a Bloch phase, |y| up to K rows of holes on each side, PML in y only.
 // Complex fields (re, im) are needed because the Bloch boundary mixes them.
@@ -691,7 +782,7 @@ function* runW1Bands(p) {
   status(`④ 完了。${bandPts.length} 点。`, 1);
 }
 let bandPts = [];
-let rsweep = { pts: [], Q0: null, qs: 5000, wg: false };
+let rsweep = { pts: [], Q0: null, qs: 5000, wg: false }, ssweep = { pts: [] };
 function drawBands() {
   const { ctx, w, h } = sizeCanvas($('bands')), l = 44, r = 10, t = 10, b = 26, F0 = 0.18, F1 = 0.36;
   ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
@@ -749,8 +840,8 @@ function start(gen, onDone) {
 function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
-  for (const k of [...ids, 'target', 'srcmode', 'wg', 'res', 'tmeas']) $(k).disabled = b;
-  $('bFind').disabled = b; $('bBands').disabled = b; $('bRsw').disabled = b;
+  for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas']) $(k).disabled = b;
+  $('bFind').disabled = b; $('bBands').disabled = b; $('bRsw').disabled = b; $('bSsw').disabled = b;
 }
 function tick() {
   if (job) {
@@ -844,6 +935,9 @@ $('spec').addEventListener('click', e => {
   for (const pk of spectrum.peaks) if (!best || Math.abs(pk.f - f) < Math.abs(best.f - f)) best = pk;
   if (best) { selected = best.f; drawSpectrum(); setBusy(false); }
 });
+const fmtLR = r => { const t = r.PL + r.PR; return t > 0 ? `${Math.round(100 * r.PL / t)} : ${Math.round(100 * r.PR / t)}` : '—'; };
+const fmtRot = ccw => `反時計 ${Math.round(100 * ccw)} : 時計 ${Math.round(100 * (1 - ccw))}`;
+const fmtDir = dir => dir.map(d => `${d.par > 0 ? '同相' : '逆相'}励振 ${fmtLR(d)}（Q ${fmtQ(d)}、共振器内の回転 ${fmtRot(d.ccw)}）`).join('、');
 const fmtQ = r => !isFinite(r.Q) || !r.resolved ? `> ${Math.round(r.Qmin).toLocaleString()}` : Math.round(r.Q).toLocaleString();
 let mfKind = 'abs';
 // The crop reaches past the waveguide row when there is one, so the light leaking into it shows.
@@ -881,12 +975,12 @@ function drawModeField(r, c = $('modefield'), kind = mfKind) {
 $('mfAbs').onclick = () => { mfKind = 'abs'; if (lastMode) drawModeField(lastMode); syncThumbs(); };
 $('mfSigned').onclick = () => { mfKind = 'signed'; if (lastMode) drawModeField(lastMode); syncThumbs(); };
 // Each R-sweep thumbnail keeps both views as canvases (the fields themselves are too large to keep per point).
-function syncThumbs() { for (const c of document.querySelectorAll('#rswImgs canvas')) c.style.display = c.dataset.kind === mfKind ? 'block' : 'none'; }
-function addThumb(r, title) {
+function syncThumbs() { for (const c of document.querySelectorAll('.thumbs canvas')) c.style.display = c.dataset.kind === mfKind ? 'block' : 'none'; }
+function addThumb(r, title, box = 'rswImgs') {
   const fig = document.createElement('figure');
   for (const kind of ['abs', 'signed']) { const c = document.createElement('canvas'); c.dataset.kind = kind; drawModeField(r, c, kind); fig.append(c); }
   const cap = document.createElement('figcaption'); cap.textContent = title; fig.append(cap);
-  $('rswImgs').append(fig); syncThumbs();
+  $(box).append(fig); syncThumbs();
 }
 function showMode(r) {
   drawModeField(r);
@@ -897,7 +991,9 @@ function showMode(r) {
     <dt>面内 Q（2D）</dt><dd>${fmtQ(r)}</dd>
     <dt>光円錐内の比 η</dt><dd>${r.eta.toExponential(2)}</dd>
     <dt>方位角次数 m</dt><dd>${r.az.m}（腹 ${2 * r.az.m} 個、純度 ${Math.round(r.az.purity * 100)}%）</dd>
-    <dt>強度最大の半径</dt><dd>${r.az.rho.toFixed(2)} a</dd>`;
+    <dt>強度最大の半径</dt><dd>${r.az.rho.toFixed(2)} a</dd>
+    <dt>共振器内の回転</dt><dd>${fmtRot(r.az.ccw)}</dd>${r.dir ? `
+    <dt>導波路への出力 左 : 右</dt><dd>${fmtDir(r.dir)}</dd>` : ''}`;
   const c = $('kspace'), ctx = c.getContext('2d'), W = c.width, { pw, P, dk, k0 } = r.lc, kmax = 5;
   const im = ctx.createImageData(W, W);
   let mx = 0; for (let q = 0; q < pw.length; q++) if (pw[q] > mx) mx = pw[q];
@@ -952,34 +1048,50 @@ function couplingOf(s, Q0, qs) {
   const hiQ = q0 > QL ? 1 / (1 / QL - 1 / q0) : Infinity;
   return exact ? { QL, Qwg: hiQ, QwgHi: hiQ, eta: eta(hiQ), etaLo: eta(hiQ) } : { QL, Qwg: QL, QwgHi: hiQ, eta: eta(QL), etaLo: eta(hiQ) };
 }
+// Shared line plot for the sweeps: x from xOf(point) over [lo, hi]; each series has get, color, and optional log / range / right axis.
+function plotSweep(id, pts, xOf, lo, hi, xfmt, series, name) {
+  const { ctx, w, h } = sizeCanvas($(id)), l = 44, r = 34, t = 14, b = 22;
+  ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
+  ctx.font = '11px system-ui'; ctx.fillStyle = '#8d9ab0'; ctx.strokeStyle = '#26344b'; ctx.lineWidth = 1;
+  const X = x => l + (hi > lo ? (x - lo) / (hi - lo) : 0.5) * (w - l - r);
+  ctx.textAlign = 'center';
+  const nt = w < 260 ? 2 : 4;
+  for (let i = 0; i <= nt; i++) { const v = lo + (hi - lo) * i / nt, x = X(v); ctx.beginPath(); ctx.moveTo(x, t); ctx.lineTo(x, h - b); ctx.stroke(); ctx.fillText(xfmt(v), x, h - 6); }
+  ctx.textAlign = 'left'; ctx.fillText(name, l + 4, t + 2);
+  if (!pts.length) return;
+  for (const sr of series) {
+    const vs = pts.map(q => sr.log ? Math.log10(sr.get(q)) : sr.get(q));
+    let vlo = sr.range ? sr.range[0] : Math.min(...vs), vhi = sr.range ? sr.range[1] : Math.max(...vs);
+    if (!sr.range) {
+      if (vhi - vlo < 1e-9) { vlo -= sr.log ? 0.5 : Math.abs(vlo) * 0.01 + 1; vhi += sr.log ? 0.5 : Math.abs(vhi) * 0.01 + 1; }
+      const pad = (vhi - vlo) * 0.1; vlo -= pad; vhi += pad;
+    }
+    const Y = v => t + (1 - (v - vlo) / (vhi - vlo)) * (h - t - b);
+    ctx.fillStyle = sr.color; ctx.textAlign = sr.right ? 'left' : 'right';
+    for (let i = 0; i <= 3; i++) { const v = vlo + (vhi - vlo) * i / 3; ctx.fillText(sr.tick(v), sr.right ? w - r + 4 : l - 4, Y(v) + 4); }
+    ctx.strokeStyle = sr.color; ctx.lineWidth = 1.5; ctx.beginPath();
+    pts.forEach((q, i) => { const x = X(xOf(q)), y = Y(vs[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    pts.forEach((q, i) => { ctx.beginPath(); ctx.arc(X(xOf(q)), Y(vs[i]), 3, 0, 7); ctx.fill(); });
+  }
+}
+// Sub-cavity end-shift sweep: wavelength, Q_L and the share of the output going right.
+function drawSSweep() {
+  const pts = ssweep.pts.filter(q => isFinite(q.f) && q.dir), a = +$('a').value;
+  const lo = Math.min(+$('sslo').value, +$('sshi').value), hi = Math.max(+$('sslo').value, +$('sshi').value);
+  const plot = (id, series, name) => plotSweep(id, pts, q => q.s, lo, hi, v => v.toFixed(2), series, name);
+  plot('sswL', [{ get: q => a / q.f, tick: v => v.toFixed(1), color: '#ff8a5c' }], 'λ [nm]');
+  plot('sswQ', [{ get: q => isFinite(q.Q) && q.resolved ? q.Q : q.Qmin, log: true, tick: v => (10 ** v).toPrecision(2), color: '#ff8a5c' },
+    ...[0, 1].map(i => ({ get: q => q.dir[i].PR / (q.dir[i].PL + q.dir[i].PR || 1), range: [0, 1], right: true, tick: v => v.toFixed(2), color: i ? '#b48cff' : '#5cc8ff' }))], 'Q_L と右への割合');
+  $('sswTable').innerHTML = '<tr><th>シフト</th><th>a/λ</th><th>λ [nm]</th><th>Q<sub>L</sub></th><th>同相励振 左 : 右（Q、回転）</th><th>逆相励振 左 : 右（Q、回転）</th><th>m</th></tr>' + ssweep.pts.map(q => {
+    if (!isFinite(q.f)) return `<tr><td>${q.s.toFixed(2)}a</td><td colspan="6">${q.msg}</td></tr>`;
+    const mt = q.m === 3 * +$('n').value ? q.m : `${q.m}（WGM でない）`, d = i => `${fmtLR(q.dir[i])}（${fmtQ(q.dir[i])}、${fmtRot(q.dir[i].ccw)}）`;
+    return `<tr><td>${q.s.toFixed(2)}a</td><td>${q.f.toFixed(5)}</td><td>${(a / q.f).toFixed(1)}</td><td>${fmtQ(q)}</td><td>${d(0)}</td><td>${d(1)}</td><td>${mt}</td></tr>`;
+  }).join('');
+}
 function drawRSweep() {
   const pts = rsweep.pts.filter(s => isFinite(s.f)), a = +$('a').value;
   const lo = Math.min(+$('rlo').value, +$('rhi').value), hi = Math.max(+$('rlo').value, +$('rhi').value);
-  const plot = (id, series, name) => {
-    const { ctx, w, h } = sizeCanvas($(id)), l = 44, r = 34, t = 14, b = 22;
-    ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
-    ctx.font = '11px system-ui'; ctx.fillStyle = '#8d9ab0'; ctx.strokeStyle = '#26344b'; ctx.lineWidth = 1;
-    const X = R => l + (hi > lo ? (R - lo) / (hi - lo) : 0.5) * (w - l - r);
-    ctx.textAlign = 'center';
-    const nt = w < 260 ? 2 : 4;
-    for (let i = 0; i <= nt; i++) { const R = lo + (hi - lo) * i / nt, x = X(R); ctx.beginPath(); ctx.moveTo(x, t); ctx.lineTo(x, h - b); ctx.stroke(); ctx.fillText(R.toFixed(3), x, h - 6); }
-    ctx.textAlign = 'left'; ctx.fillText(name, l + 4, t + 2);
-    if (!pts.length) return;
-    for (const sr of series) {
-      const vs = pts.map(s => sr.log ? Math.log10(sr.get(s)) : sr.get(s));
-      let vlo = sr.range ? sr.range[0] : Math.min(...vs), vhi = sr.range ? sr.range[1] : Math.max(...vs);
-      if (!sr.range) {
-        if (vhi - vlo < 1e-9) { vlo -= sr.log ? 0.5 : Math.abs(vlo) * 0.01 + 1; vhi += sr.log ? 0.5 : Math.abs(vhi) * 0.01 + 1; }
-        const pad = (vhi - vlo) * 0.1; vlo -= pad; vhi += pad;
-      }
-      const Y = v => t + (1 - (v - vlo) / (vhi - vlo)) * (h - t - b);
-      ctx.fillStyle = sr.color; ctx.textAlign = sr.right ? 'left' : 'right';
-      for (let i = 0; i <= 3; i++) { const v = vlo + (vhi - vlo) * i / 3; ctx.fillText(sr.tick(v), sr.right ? w - r + 4 : l - 4, Y(v) + 4); }
-      ctx.strokeStyle = sr.color; ctx.lineWidth = 1.5; ctx.beginPath();
-      pts.forEach((s, i) => { const x = X(s.R), y = Y(vs[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
-      pts.forEach((s, i) => { ctx.beginPath(); ctx.arc(X(s.R), Y(vs[i]), 3, 0, 7); ctx.fill(); });
-    }
-  };
+  const plot = (id, series, name) => plotSweep(id, pts, q => q.R, lo, hi, v => v.toFixed(3), series, name);
   plot('rswL', [{ get: s => a / s.f, tick: v => v.toFixed(0), color: '#ff8a5c' }], 'λ [nm]');
   const cp = s => couplingOf(s, rsweep.Q0, rsweep.qs);
   plot('rswQ', [{ get: s => cp(s).QL, log: true, tick: v => (10 ** v).toPrecision(2), color: '#ff8a5c' }]
@@ -1016,13 +1128,13 @@ function meanRingRadius(n) {
     if (Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)) === n) { s += Math.hypot(i + j / 2, j * SQ3 / 2); c++; }
   return s / c;
 }
-for (const k of [...ids, 'target', 'srcmode', 'wg', 'res', 'tmeas']) $(k).addEventListener('input', () => {
+for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas']) $(k).addEventListener('input', () => {
   if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
-  const structural = !['a', 'tmeas', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs'].includes(k);
+  const structural = !['a', 'tmeas', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs', 'sslo', 'sshi', 'ssnum'].includes(k);
   if (k === 'qs') { rsweep.qs = +$('qs').value; drawRSweep(); }
   if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
   preview();
-  if (k === 'a') { if (lastMode) { showMode(lastMode); drawSweep(); } drawRSweep(); }
+  if (k === 'a') { if (lastMode) { showMode(lastMode); drawSweep(); } drawRSweep(); drawSSweep(); }
 });
 $('bSpec').onclick = () => {
   sim = buildSim(params());
@@ -1036,9 +1148,10 @@ $('bSweep').onclick = () => { if (selected != null) start(runSweep(selected)); }
 $('bFind').onclick = () => start(runFind());
 $('bBands').onclick = () => start(runW1Bands(params()));
 $('bRsw').onclick = () => start(runRSweep());
+$('bSsw').onclick = () => start(runSSweep());
 $('bStop').onclick = stop;
-window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); drawBands(); drawRSweep(); });
-preview(); drawSweep(); drawBands(); drawRSweep();
+window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); drawBands(); drawRSweep(); drawSSweep(); });
+preview(); drawSweep(); drawBands(); drawRSweep(); drawSSweep();
 schedule();
 </script>
 </body>
