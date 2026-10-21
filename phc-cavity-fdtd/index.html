@@ -674,17 +674,25 @@ function setBusy(b) {
 }
 function tick() {
   if (job) {
-    const t0 = performance.now();
+    const t0 = performance.now(), slice = document.hidden ? 200 : 16;
     try {
-      while (performance.now() - t0 < 16) {
+      while (performance.now() - t0 < slice) {
         const r = job.gen.next();
         if (r.done) { const j = job; job = null; setBusy(false); j.onDone && j.onDone(r.value); break; }
       }
     } catch (e) { job = null; setBusy(false); status('エラー: ' + e.message); console.error(e); }
-    drawField();
+    if (!document.hidden) drawField();
   }
-  requestAnimationFrame(tick);
 }
+// Browsers pause requestAnimationFrame in background tabs and throttle setTimeout there, but not MessageChannel,
+// so a hidden tab keeps computing through the channel. A new schedule() call orphans the previous loop.
+const loopCh = new MessageChannel();
+let loopId = 0;
+function schedule() {
+  const id = ++loopId, run = () => { if (id !== loopId) return; tick(); schedule(); };
+  if (document.hidden) { loopCh.port1.onmessage = run; loopCh.port2.postMessage(0); } else requestAnimationFrame(run);
+}
+document.addEventListener('visibilitychange', schedule);
 
 // ---------- drawing ----------
 const fc = $('field'), fctx = fc.getContext('2d');
@@ -889,7 +897,7 @@ $('bBands').onclick = () => start(runW1Bands(params()));
 $('bStop').onclick = stop;
 window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); drawBands(); });
 preview(); drawSweep(); drawBands();
-requestAnimationFrame(tick);
+schedule();
 </script>
 </body>
 </html>
