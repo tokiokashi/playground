@@ -158,11 +158,14 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="wgsep">共振器との間の列数</label><input id="wgsep" type="range" min="1" max="5" step="1" value="1"><output id="wgsep_o"></output></div>
     <div class="row"><label for="wgs">両側の列のシフト</label><input id="wgs" type="range" min="-0.25" max="0.25" step="0.005" value="-0.165"><output id="wgs_o"></output></div>
     <div class="row"><label for="wgr">両側の列の r/a</label><input id="wgr" type="range" min="0.20" max="0.42" step="0.01" value="0.30"><output id="wgr_o"></output></div>
-    <div class="row"><label for="sub">サブ共振器</label><select id="sub"><option value="0" selected>なし</option><option value="1">共振器と導波路の間に Ln</option></select><span></span></div>
+    <div class="row"><label for="sub">サブ共振器</label><select id="sub"><option value="0" selected>なし</option><option value="1">共振器と導波路の間に Ln</option><option value="2">結晶内の任意の列に Ln</option></select><span></span></div>
     <div class="row"><label for="subn">Ln の n</label><input id="subn" type="range" min="1" max="5" step="1" value="2"><output id="subn_o"></output></div>
     <div class="row"><label for="subrow">置く列</label><input id="subrow" type="range" min="1" max="5" step="1" value="1"><output id="subrow_o"></output></div>
+    <div class="row"><label for="subj">任意の列の番号</label><input id="subj" type="range" min="-8" max="8" step="1" value="-3"><output id="subj_o"></output></div>
     <div class="row"><label for="subx">横位置 x/a</label><input id="subx" type="range" min="-6" max="6" step="0.5" value="1.5"><output id="subx_o"></output></div>
     <div class="row"><label for="subs">両端の穴のシフト</label><input id="subs" type="range" min="0" max="0.4" step="0.01" value="0"><output id="subs_o"></output></div>
+    <div class="row"><label for="subside">シフトする端</label><select id="subside"><option value="both" selected>両端</option><option value="left">左端だけ</option><option value="right">右端だけ</option></select><span></span></div>
+    <div class="cap">「結晶内の任意の列に Ln」は、共振器の中心を通る横の列を 0 とし、上（導波路の側）を正にした番号の列から、横位置 x に近い穴を n 個抜く。導波路が無くても置ける。共振器の下側（負の番号）や、共振器の横の列（|番号| が小さい列。共振器の穴の無い所は飛ばす）にも置ける。導波路の列は穴が無いので何も抜かない。穴の横位置は、偶数番号の列では整数、奇数番号の列では半整数（a 単位）。この時「置く列」は使わない。「シフトする端」を片側だけにすると、Ln 自体が左右非対称になる。</div>
     <div class="cap">サブ共振器 Ln は、共振器と導波路の間の列から、横位置 x に近い穴を n 個抜いた線欠陥。「置く列」は共振器側から数えた列の番号で、共振器との間の列数より大きい値は一番導波路側の列になる。x = 0 は共振器の中心の真上で、0 からずらすと共振器と導波路の配置が左右非対称になる。穴の横位置は、共振器側から奇数番目の列（H3 なら 1 列目）では整数、偶数番目の列では半整数（a 単位）なので、左右対称に置けるのは、奇数番目の列では n が奇数で x = 0、偶数番目の列では n が偶数で x = 0 の時だけ。両端の穴は外向きにシフトして、Ln の共振周波数を WGM に合わせ込む。導波路があるときだけ使う。サブ共振器を置いて「WGM を探す」か ⑥ を回すと、見つけた WGM とは別に、励振点とその鏡像（x = 0 について折り返した点）を同相と逆相で励振して、それぞれスペクトルから WGM を探し直す。左右対称な構造なら、同相は鏡映に対して偶、逆相は奇のモードだけを励振する。WGM は偶と奇の2つの定在波の組で、共振器の六角形の対称性やサブ共振器で別々の周波数に割れるので、それぞれを自分の周波数で測るため。非対称な構造では偶・奇は近似になる。既定の構造（H3、変形率 100%）では、外周に並ぶ 18 個の穴が m = ±9 を強く結び付けるので、偶（穴が定在波の節に来る）と奇は 2D で約 40 nm 離れる。逆相で探す範囲は見つけた WGM の ±0.006（a/λ）なので奇の相方はその外にあり、範囲内の逆相のピークは m = 9 でないので、逆相の欄は「WGM が見つからない」になる。各モードで、導波路の左右の端（PML の手前）のポインティングベクトルを導波路の断面にわたって積分し、狭帯域の励振の中心周波数の成分（観測区間全体の時間 DFT）について左右へ出ていく出力の比を出す（「左右比の観測時間」の説明を参照）。左右対称な構造なら、どちらの励振でも 50 : 50 になる。あわせて、モード場を外周に沿って角度でフーリエ分解し、e<sup>∓imφ</sup> の成分の比から共振器の中の反時計回りと時計回りの割合を出す（② には1点励振の場合の値も出す）。</div>
     <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。「両側の列」は導波路のすぐ両側の2列で、シフトは導波路から遠ざける向きを正とする（単位 a）。正で導波路が広がってバンドが下がり、負で狭まって上がる。穴を大きくしてもバンドは上がる。この2つは ④ のバンド計算にも同じように入る。既定の −0.165a は、偶モードのバンドの端（k = 0.5）を WGM の少し下まで上げて、遅い光の領域で WGM と交差させる設定。この 2D モデルでは、間の列数 1 で Q<sub>L</sub> は 3,000〜4,000 程度になる（分解能と観測時間で変わる）。</div>
     <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
@@ -205,15 +208,17 @@ const SQ3 = Math.sqrt(3);
 const FMIN = 0.18, FMAX = 0.45;
 
 // ---------- parameters ----------
-const ids = ['sslo', 'sshi', 'ssnum', 'subn', 'subrow', 'subx', 'subs', 'rlo', 'rhi', 'rnum', 'qs', 'n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'wgs', 'wgr', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
-const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, sslo: v => (+v).toFixed(2) + 'a', sshi: v => (+v).toFixed(2) + 'a', ssnum: v => v, subn: v => 'L' + v, subrow: v => v + ' 列目', subx: v => (v > 0 ? '+' : '') + (+v).toFixed(1) + 'a', subs: v => (+v).toFixed(2) + 'a', rlo: v => (+v).toFixed(3), rhi: v => (+v).toFixed(3), rnum: v => v, qs: v => (+v).toLocaleString('en-US'), wgs: v => (v > 0 ? '+' : '') + (+v).toFixed(2) + 'a', wgr: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+const ids = ['sslo', 'sshi', 'ssnum', 'subn', 'subrow', 'subj', 'subx', 'subs', 'rlo', 'rhi', 'rnum', 'qs', 'n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'wgs', 'wgr', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, sslo: v => (+v).toFixed(2) + 'a', sshi: v => (+v).toFixed(2) + 'a', ssnum: v => v, subn: v => 'L' + v, subrow: v => v + ' 列目', subj: v => (v > 0 ? '+' : '') + v, subx: v => (v > 0 ? '+' : '') + (+v).toFixed(1) + 'a', subs: v => (+v).toFixed(2) + 'a', rlo: v => (+v).toFixed(3), rhi: v => (+v).toFixed(3), rnum: v => v, qs: v => (+v).toLocaleString('en-US'), wgs: v => (v > 0 ? '+' : '') + (+v).toFixed(2) + 'a', wgr: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
 function params() {
   const p = {};
   for (const k of ids) p[k] = +$(k).value;
   p.target = $('target').value;
   p.srcmode = $('srcmode').value;
   p.wg = $('wg').value === '1';
-  p.sub = $('sub').value === '1';
+  p.sub = $('sub').value !== '0';
+  p.subfree = $('sub').value === '2';
+  p.subside = $('subside').value;
   p.res = +$('res').value;
   p.tmeas = +$('tmeas').value;
   p.tdir = +$('tdir').value;
@@ -236,14 +241,15 @@ function makeHoles(p, X, Y) {
     if (p.wg && Math.abs(j - jw) === 1) { holes.push({ x, y: y + Math.sign(j - jw) * p.wgs, ring, j, r: p.wgr }); continue; }
     holes.push({ x, y, ring, j });
   }
-  // Sub-cavity Ln: drop the n holes of row js nearest to x = subx, then push the two end holes outward by subs.
-  if (p.wg && p.sub) {
-    const js = p.n + Math.min(p.subrow, p.wgsep), row = holes.filter(h => h.j === js);
+  // Sub-cavity Ln: drop the n holes of row js nearest to x = subx, then push the end holes outward by subs.
+  // Between the cavity and the guide the row counts from the cavity; anywhere in the crystal it is j itself.
+  if (p.sub && (p.subfree || p.wg)) {
+    const js = p.subfree ? p.subj : p.n + Math.min(p.subrow, p.wgsep), row = holes.filter(h => h.j === js);
     const gone = new Set([...row].sort((a, b) => Math.abs(a.x - p.subx) - Math.abs(b.x - p.subx)).slice(0, p.subn));
     const xs = [...gone].map(h => h.x), x0 = Math.min(...xs), x1 = Math.max(...xs), rest = row.filter(h => !gone.has(h));
     const left = rest.filter(h => h.x < x0).sort((a, b) => b.x - a.x)[0], right = rest.filter(h => h.x > x1).sort((a, b) => a.x - b.x)[0];
-    if (left) left.x -= p.subs;
-    if (right) right.x += p.subs;
+    if (left && p.subside !== 'right') left.x -= p.subs;
+    if (right && p.subside !== 'left') right.x += p.subs;
     for (let i = holes.length - 1; i >= 0; i--) if (gone.has(holes[i])) holes.splice(i, 1);
   }
   for (let k = 0; k < p.rings; k++) {
@@ -698,7 +704,7 @@ function* runRSweep() {
 function* runSSweep() {
   const p0 = params(), n = p0.ssnum, lo = Math.min(p0.sslo, p0.sshi), hi = Math.max(p0.sslo, p0.sshi);
   ssweep = { pts: [] }; drawSSweep(); $('sswImgs').innerHTML = '';
-  if (!p0.wg || !p0.sub) { status('⑥ は導波路とサブ共振器の両方を置いた時だけ使える。', 1); return; }
+  if (!p0.sub || !(p0.wg || p0.subfree)) { status('⑥ はサブ共振器を置いた時だけ使える（共振器と導波路の間に置く時は導波路も要る）。', 1); return; }
   const ss = Array.from({ length: n }, (_, i) => lo + (hi - lo) * i / Math.max(1, n - 1));
   for (let i = 0; i < n; i++) {
     // The shift moves the WGM only through its coupling to the sub-cavity, so stay near the last found frequency.
@@ -873,7 +879,7 @@ function start(gen, onDone) {
 function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
-  for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas', 'tdir']) $(k).disabled = b;
+  for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'subside', 'res', 'tmeas', 'tdir']) $(k).disabled = b;
   $('bFind').disabled = b; $('bBands').disabled = b; $('bRsw').disabled = b; $('bSsw').disabled = b;
 }
 function tick() {
@@ -1162,7 +1168,7 @@ function meanRingRadius(n) {
     if (Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)) === n) { s += Math.hypot(i + j / 2, j * SQ3 / 2); c++; }
   return s / c;
 }
-for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas', 'tdir']) $(k).addEventListener('input', () => {
+for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'subside', 'res', 'tmeas', 'tdir']) $(k).addEventListener('input', () => {
   if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
   const structural = !['a', 'tmeas', 'tdir', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs', 'sslo', 'sshi', 'ssnum'].includes(k);
   if (k === 'qs') { rsweep.qs = +$('qs').value; drawRSweep(); }
