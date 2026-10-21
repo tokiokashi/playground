@@ -49,6 +49,10 @@ td:first-child,th:first-child{text-align:left}
 .notes{color:var(--mute);font-size:13px}
 .notes li{margin:4px 0}
 .tablewrap{overflow-x:auto}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.thumbs figure{margin:0}
+.thumbs canvas{width:100%;height:auto;border-radius:4px}
+.thumbs figcaption{font-size:11px;color:#8d9ab0;margin-top:2px}
 .modefield canvas{max-width:420px;image-rendering:pixelated}
 .btns button.sel{background:#5a3a14;border-color:var(--warm)}
 @media(max-width:520px){.two{grid-template-columns:minmax(0,1fr)}#kspace{max-width:240px}}
@@ -101,6 +105,21 @@ td:first-child,th:first-child{text-align:left}
     <canvas id="bands" height="260"></canvas>
     <div class="btns"><button id="bBands">W1 のバンドを計算</button></div>
     <div class="cap">導波路の方向（x）に1周期ぶんの単位セルを取り、x に Bloch の周期境界 H(x + a) = H(x) e<sup>ika</sup>、y に PML を置いて、k ごとに広帯域パルスのスペクトルからモードの周波数を拾う。r/a・屈折率・分解能は構造パネルの値を使う。橙が H<sub>z</sub> が導波路の中心線に対して偶のモード、青が奇のモードで、色が濃いほど導波路に局在している（薄い点は結晶全体に広がるバルクのモード）。破線は ② で測ったモードの周波数、灰色の線はクラッドの光円錐 a/λ = k/(2π n<sub>clad</sub>/a)。破線と濃い点が交わる所に導波モードがあれば、共振器は導波路と結合できる。</div>
+  </div>
+  <div class="panel">
+    <h2>⑤ 共振器の半径スイープ（波長多重）</h2>
+    <div class="two">
+      <canvas id="rswL" height="180"></canvas>
+      <canvas id="rswQ" height="180"></canvas>
+    </div>
+    <div class="row"><label for="rlo">R/a の開始</label><input id="rlo" type="range" min="2.5" max="3.1" step="0.005" value="2.70"><output id="rlo_o"></output></div>
+    <div class="row"><label for="rhi">R/a の終了</label><input id="rhi" type="range" min="2.5" max="3.1" step="0.005" value="2.85"><output id="rhi_o"></output></div>
+    <div class="row"><label for="rnum">点数</label><input id="rnum" type="range" min="2" max="13" step="1" value="7"><output id="rnum_o"></output></div>
+    <div class="row"><label for="qs">共振器単体の Q<sub>s</sub>（3D の想定値）</label><input id="qs" type="range" min="1000" max="20000" step="500" value="5000"><output id="qs_o"></output></div>
+    <div class="btns"><button id="bRsw">⑤ R スイープ</button></div>
+    <div class="cap">導波路などほかの構造はそのままにして、外周の補正を「変形率 100%・半径を指定」にした共振器の半径 R だけを振る。各 R で「WGM を探す」と同じ手順で基本 WGM を探し、波長と負荷 Q（Q<sub>L</sub>）を測る。探す範囲は、最初の点だけ「探す範囲」の設定を使い、2点目は直前の点の周波数の ±0.015、3点目からは直前の2点の周波数を R について直線で延ばした値の ±0.008（a/λ）に自動で絞る。下に各 R のモード像を並べる（表示は ② の |H<sub>z</sub>|・符号付きの切り替えに従う）。左: 波長、右: Q<sub>L</sub>（橙、対数軸）と結合効率 η<sub>c</sub>（青、0〜1）。導波路ありの時は、最初に中央の R で導波路なしの Q<sub>0</sub> を1回だけ測り、導波路への結合だけの Q を 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub> で出す。η<sub>c</sub> = 1 − Q/Q<sub>s</sub> は、実際の素子の共振器単体の Q を Q<sub>s</sub> とみなして、Q<sub>wg</sub> と Q<sub>s</sub> から求める（2D の Q<sub>0</sub> は垂直放射を含まないので使わない）。Q<sub>0</sub> が下限しか出ない時は、Q<sub>wg</sub> と η<sub>c</sub> を幅で表に出し、図の η<sub>c</sub> は Q<sub>wg</sub> = Q<sub>L</sub> とした上限を描く。近藤研の CirD の解析（Xiong et al., Photonics 2019）は、3D 計算で Q<sub>s</sub> &gt; 5000 を得ていて、η<sub>c</sub> ≈ 0.6 を適当な値としている。⑤ を回すと、構造パネルの補正の設定と ② の表示は最後の R のものになる。④ のバンドの端より長波長側（低周波側）では、導波路の基本モードが無いので結合が弱くなる。</div>
+    <div class="tablewrap"><table id="rswTable"></table></div>
+    <div id="rswImgs" class="thumbs"></div>
   </div>
   <div class="panel notes">
     <h2>モデルと限界</h2>
@@ -164,8 +183,8 @@ const SQ3 = Math.sqrt(3);
 const FMIN = 0.18, FMAX = 0.45;
 
 // ---------- parameters ----------
-const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'wgs', 'wgr', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
-const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, wgs: v => (v > 0 ? '+' : '') + (+v).toFixed(2) + 'a', wgr: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+const ids = ['rlo', 'rhi', 'rnum', 'qs', 'n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'wgs', 'wgr', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, rlo: v => (+v).toFixed(3), rhi: v => (+v).toFixed(3), rnum: v => v, qs: v => (+v).toLocaleString('en-US'), wgs: v => (v > 0 ? '+' : '') + (+v).toFixed(2) + 'a', wgr: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
 function params() {
   const p = {};
   for (const k of ids) p[k] = +$(k).value;
@@ -502,25 +521,78 @@ function* runFields(S, freqs, label = '') {
   }
   return F.map(([Fr, Fi]) => azimuthal(S, Fr, Fi));
 }
-function* runFind() {
-  const p = params(), mT = 3 * p.n, lo = Math.min(p.wlo, p.whi), hi = Math.max(p.wlo, p.whi);
-  sim = buildSim(p);
-  if (!spectrum) { spectrum = yield* runSpectrum(sim); drawSpectrum(); }
-  const cand = spectrum.peaks.filter(pk => pk.f >= lo && pk.f <= hi);
-  if (!cand.length) { status(`範囲 ${lo.toFixed(3)}〜${hi.toFixed(3)} にピークが無い。範囲を広げる。`, 1); return; }
-  const az = yield* runFields(sim, cand.map(pk => pk.f));
+// Finds the radially fundamental WGM (m = 3n) among the peaks inside the search window and measures its Q.
+// Returns { r, others } or { msg } when no such mode is found.
+function* findWGM(S, sp, label = '') {
+  const p = S.p, mT = 3 * p.n, lo = Math.min(p.wlo, p.whi), hi = Math.max(p.wlo, p.whi);
+  const cand = sp.peaks.filter(pk => pk.f >= lo && pk.f <= hi);
+  if (!cand.length) return { msg: `範囲 ${lo.toFixed(3)}〜${hi.toFixed(3)} にピークが無い。範囲を広げる。` };
+  const az = yield* runFields(S, cand.map(pk => pk.f), label);
   cand.forEach((pk, i) => { pk.m = az[i].m; pk.purity = az[i].purity; });
-  drawSpectrum();
   const hit = cand.filter(pk => pk.m === mT);
-  if (!hit.length) { status(`範囲内の ${cand.length} 個のピークに、腹 ${2 * mT} 個（m = ${mT}）のモードが無かった。範囲か励振点を変える。`, 1); return; }
+  if (!hit.length) return { msg: `範囲内の ${cand.length} 個のピークに、腹 ${2 * mT} 個（m = ${mT}）のモードが無かった。範囲か励振点を変える。` };
   // Several peaks can share m. For a fixed m the radially fundamental WGM has the lowest frequency, so take that one.
   const clean = hit.filter(pk => pk.purity >= 0.5), pool = clean.length ? clean : hit;
-  const fund = pool.reduce((x, y) => x.f <= y.f ? x : y);
-  selected = fund.f; drawSpectrum();
-  const r = yield* runMode(sim, fund.f, `[基本 WGM m = ${mT}] `, bandFor(spectrum, fund.f));
+  // The narrowband ringdown can still lock onto a neighboring mode; then fall back to the next candidate up in frequency.
+  const order = [...pool].sort((x, y) => x.f - y.f);
+  let r = null, fund = null;
+  for (const pk of order) {
+    selected = pk.f; drawSpectrum();
+    const t = yield* runMode(S, pk.f, `${label}[基本 WGM m = ${mT}] `, bandFor(sp, pk.f));
+    if (!r) { r = t; fund = pk; }
+    if (t.az.m === mT) { r = t; fund = pk; break; }
+  }
+  return { r, others: hit.filter(x => x !== fund) };
+}
+function* runFind() {
+  const p = params();
+  sim = buildSim(p);
+  if (!spectrum) { spectrum = yield* runSpectrum(sim); }
+  drawSpectrum();
+  const res = yield* findWGM(sim, spectrum);
+  if (!res.r) { status(res.msg, 1); return; }
+  const r = res.r;
   lastMode = r; showMode(r);
-  const others = hit.filter(x => x !== fund).map(x => `${(p.a / x.f).toFixed(0)} nm`).join('、');
+  const others = res.others.map(x => `${(p.a / x.f).toFixed(0)} nm`).join('、');
   status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
+}
+// Sweeps the cavity radius R (deformation 100%, custom radius) with everything else fixed, the knob a CirD laser array
+// uses to set each channel's wavelength. With a waveguide, Q0 is measured once at the middle R to split off Q_wg.
+function* runRSweep() {
+  const p0 = params(), n = p0.rnum, lo = Math.min(p0.rlo, p0.rhi), hi = Math.max(p0.rlo, p0.rhi);
+  const Rs = Array.from({ length: n }, (_, i) => lo + (hi - lo) * i / Math.max(1, n - 1));
+  rsweep = { pts: [], Q0: null, qs: p0.qs, wg: p0.wg }; drawRSweep(); $('rswImgs').innerHTML = '';
+  $('target').value = 'custom'; $('def').value = 1;
+  if (p0.wg) {
+    const Rm = Rs[Math.floor(n / 2)], p = { ...p0, def: 1, target: 'custom', R: Rm, wg: false };
+    sim = buildSim(p);
+    const label = `[導波路なしの Q0、R = ${Rm.toFixed(3)}a] `;
+    spectrum = yield* runSpectrum(sim, label); drawSpectrum();
+    const res = yield* findWGM(sim, spectrum, label);
+    if (res.r) rsweep.Q0 = res.r;
+  }
+  for (let i = 0; i < n; i++) {
+    // The WGM moves to lower frequency as R grows. After the first found point, search only near the frequency
+    // extrapolated from the last two found points, so a neighboring mode with the same m is not picked up instead.
+    // With one point there is no slope yet, so the window is wider until the second point fixes it.
+    const got = rsweep.pts.filter(q => isFinite(q.f)), w = got.length >= 2 ? 0.008 : 0.015;
+    let fP = null;
+    if (got.length >= 2) { const [u, v] = got.slice(-2); fP = v.f + (v.f - u.f) / (v.R - u.R) * (Rs[i] - v.R); }
+    else if (got.length === 1) fP = got[0].f;
+    const p = { ...p0, def: 1, target: 'custom', R: Rs[i], ...(fP == null ? {} : { wlo: fP - w, whi: fP + w }) };
+    $('R').value = Rs[i]; syncLabels();
+    sim = buildSim(p);
+    const label = `[R = ${Rs[i].toFixed(3)}a ${i + 1}/${n}] `;
+    spectrum = yield* runSpectrum(sim, label); drawSpectrum();
+    const res = yield* findWGM(sim, spectrum, label);
+    if (!res.r) { rsweep.pts.push({ R: Rs[i], f: NaN, msg: res.msg }); drawRSweep(); continue; }
+    const r = res.r;
+    lastMode = r; showMode(r);
+    rsweep.pts.push({ R: Rs[i], f: r.f, Q: r.Q, resolved: r.resolved, Qmin: r.Qmin, m: r.az.m });
+    addThumb(r, `R = ${Rs[i].toFixed(3)}a　${(p.a / r.f).toFixed(1)} nm　Q ${fmtQ(r)}`);
+    drawRSweep();
+  }
+  status('⑤ R スイープ完了。', 1);
 }
 // W1 supercell: one period along x with a Bloch phase, |y| up to K rows of holes on each side, PML in y only.
 // Complex fields (re, im) are needed because the Bloch boundary mixes them.
@@ -619,6 +691,7 @@ function* runW1Bands(p) {
   status(`④ 完了。${bandPts.length} 点。`, 1);
 }
 let bandPts = [];
+let rsweep = { pts: [], Q0: null, qs: 5000, wg: false };
 function drawBands() {
   const { ctx, w, h } = sizeCanvas($('bands')), l = 44, r = 10, t = 10, b = 26, F0 = 0.18, F1 = 0.36;
   ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
@@ -677,7 +750,7 @@ function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
   for (const k of [...ids, 'target', 'srcmode', 'wg', 'res', 'tmeas']) $(k).disabled = b;
-  $('bFind').disabled = b; $('bBands').disabled = b;
+  $('bFind').disabled = b; $('bBands').disabled = b; $('bRsw').disabled = b;
 }
 function tick() {
   if (job) {
@@ -773,9 +846,10 @@ $('spec').addEventListener('click', e => {
 });
 const fmtQ = r => !isFinite(r.Q) || !r.resolved ? `> ${Math.round(r.Qmin).toLocaleString()}` : Math.round(r.Q).toLocaleString();
 let mfKind = 'abs';
-function drawModeField(r) {
-  const S = r.S, { nx, ny, dx, airHz } = S, c = $('modefield');
-  const half = Math.min(Math.floor(Math.min(nx, ny) / 2) - S.pml, Math.round((S.p.n * SQ3 / 2 + 1.6) / dx));
+// The crop reaches past the waveguide row when there is one, so the light leaking into it shows.
+function drawModeField(r, c = $('modefield'), kind = mfKind) {
+  const S = r.S, { nx, ny, dx, airHz } = S, reach = S.p.wg ? (S.p.n + S.p.wgsep + 2) * SQ3 / 2 + 0.3 : S.p.n * SQ3 / 2 + 1.6;
+  const half = Math.min(Math.floor(Math.min(nx, ny) / 2) - S.pml, Math.round(reach / dx));
   const W = 2 * half, i0 = nx / 2 - half, j0 = ny / 2 - half;
   c.width = W; c.height = W; c.style.display = "block";
   // Signed view: the global phase that maximizes the summed squared real part (principal axis of (Fr, Fi)).
@@ -786,14 +860,14 @@ function drawModeField(r) {
   let mx = 0;
   for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
     const k = (j0 + W - 1 - y) * nx + i0 + x, re = r.Fr[k], im = r.Fi[k];
-    const v = mfKind === 'abs' ? Math.hypot(re, im) : re * cp + im * sp;
+    const v = kind === 'abs' ? Math.hypot(re, im) : re * cp + im * sp;
     val[y * W + x] = v; mx = Math.max(mx, Math.abs(v));
   }
   const ctx = c.getContext('2d'), img = ctx.createImageData(W, W), d = img.data;
   for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
     const q = (y * W + x) * 4, v = val[y * W + x] / mx, k = (j0 + W - 1 - y) * nx + i0 + x;
     let R, G, B;
-    if (mfKind === 'abs') { const t = Math.sqrt(v); R = 255 * Math.min(1, t * 1.5); G = 255 * Math.max(0, Math.min(1, t * 1.5 - 0.5)); B = 255 * Math.max(0, t * 1.5 - 1) + 30 * (1 - t); }
+    if (kind === 'abs') { const t = Math.sqrt(v); R = 255 * Math.min(1, t * 1.5); G = 255 * Math.max(0, Math.min(1, t * 1.5 - 0.5)); B = 255 * Math.max(0, t * 1.5 - 1) + 30 * (1 - t); }
     else { const t = Math.abs(v); R = v > 0 ? 255 : 255 * (1 - t); B = v < 0 ? 255 : 255 * (1 - t); G = 255 * (1 - t); }
     // Darken the hole interiors and draw their outlines.
     const a = airHz[k], edge = a > 0.05 && a < 0.95;
@@ -801,10 +875,19 @@ function drawModeField(r) {
     d[q] = R * f; d[q + 1] = G * f; d[q + 2] = B * f; d[q + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
+  if (c !== $('modefield')) return;
   $('mfAbs').className = mfKind === 'abs' ? 'sel' : ''; $('mfSigned').className = mfKind === 'abs' ? '' : 'sel';
 }
-$('mfAbs').onclick = () => { mfKind = 'abs'; if (lastMode) drawModeField(lastMode); };
-$('mfSigned').onclick = () => { mfKind = 'signed'; if (lastMode) drawModeField(lastMode); };
+$('mfAbs').onclick = () => { mfKind = 'abs'; if (lastMode) drawModeField(lastMode); syncThumbs(); };
+$('mfSigned').onclick = () => { mfKind = 'signed'; if (lastMode) drawModeField(lastMode); syncThumbs(); };
+// Each R-sweep thumbnail keeps both views as canvases (the fields themselves are too large to keep per point).
+function syncThumbs() { for (const c of document.querySelectorAll('#rswImgs canvas')) c.style.display = c.dataset.kind === mfKind ? 'block' : 'none'; }
+function addThumb(r, title) {
+  const fig = document.createElement('figure');
+  for (const kind of ['abs', 'signed']) { const c = document.createElement('canvas'); c.dataset.kind = kind; drawModeField(r, c, kind); fig.append(c); }
+  const cap = document.createElement('figcaption'); cap.textContent = title; fig.append(cap);
+  $('rswImgs').append(fig); syncThumbs();
+}
 function showMode(r) {
   drawModeField(r);
   const a = +$('a').value;
@@ -861,6 +944,56 @@ function drawSweep() {
     : `<tr><td>${Math.round(s.def * 100)}%</td><td colspan="6">近い周波数のピークが見つからない</td></tr>`).join('');
 }
 
+// Q_wg from 1/Q_wg = 1/Q_L - 1/Q0. When Q0 is only a lower bound, Q_wg lies between Q_L and the value at that bound
+// (no upper end without Q0), and eta_c = 1 - Q/Q_s with Q = 1/(1/Q_wg + 1/Q_s) has the matching range.
+function couplingOf(s, Q0, qs) {
+  const QL = isFinite(s.Q) && s.resolved ? s.Q : s.Qmin, eta = Qwg => (1 / Qwg) / (1 / Qwg + 1 / qs);
+  const q0 = Q0 ? (Q0.resolved && isFinite(Q0.Q) ? Q0.Q : Q0.Qmin) : Infinity, exact = !!Q0 && Q0.resolved && isFinite(Q0.Q);
+  const hiQ = q0 > QL ? 1 / (1 / QL - 1 / q0) : Infinity;
+  return exact ? { QL, Qwg: hiQ, QwgHi: hiQ, eta: eta(hiQ), etaLo: eta(hiQ) } : { QL, Qwg: QL, QwgHi: hiQ, eta: eta(QL), etaLo: eta(hiQ) };
+}
+function drawRSweep() {
+  const pts = rsweep.pts.filter(s => isFinite(s.f)), a = +$('a').value;
+  const lo = Math.min(+$('rlo').value, +$('rhi').value), hi = Math.max(+$('rlo').value, +$('rhi').value);
+  const plot = (id, series, name) => {
+    const { ctx, w, h } = sizeCanvas($(id)), l = 44, r = 34, t = 14, b = 22;
+    ctx.fillStyle = '#05080e'; ctx.fillRect(0, 0, w, h);
+    ctx.font = '11px system-ui'; ctx.fillStyle = '#8d9ab0'; ctx.strokeStyle = '#26344b'; ctx.lineWidth = 1;
+    const X = R => l + (hi > lo ? (R - lo) / (hi - lo) : 0.5) * (w - l - r);
+    ctx.textAlign = 'center';
+    const nt = w < 260 ? 2 : 4;
+    for (let i = 0; i <= nt; i++) { const R = lo + (hi - lo) * i / nt, x = X(R); ctx.beginPath(); ctx.moveTo(x, t); ctx.lineTo(x, h - b); ctx.stroke(); ctx.fillText(R.toFixed(3), x, h - 6); }
+    ctx.textAlign = 'left'; ctx.fillText(name, l + 4, t + 2);
+    if (!pts.length) return;
+    for (const sr of series) {
+      const vs = pts.map(s => sr.log ? Math.log10(sr.get(s)) : sr.get(s));
+      let vlo = sr.range ? sr.range[0] : Math.min(...vs), vhi = sr.range ? sr.range[1] : Math.max(...vs);
+      if (!sr.range) {
+        if (vhi - vlo < 1e-9) { vlo -= sr.log ? 0.5 : Math.abs(vlo) * 0.01 + 1; vhi += sr.log ? 0.5 : Math.abs(vhi) * 0.01 + 1; }
+        const pad = (vhi - vlo) * 0.1; vlo -= pad; vhi += pad;
+      }
+      const Y = v => t + (1 - (v - vlo) / (vhi - vlo)) * (h - t - b);
+      ctx.fillStyle = sr.color; ctx.textAlign = sr.right ? 'left' : 'right';
+      for (let i = 0; i <= 3; i++) { const v = vlo + (vhi - vlo) * i / 3; ctx.fillText(sr.tick(v), sr.right ? w - r + 4 : l - 4, Y(v) + 4); }
+      ctx.strokeStyle = sr.color; ctx.lineWidth = 1.5; ctx.beginPath();
+      pts.forEach((s, i) => { const x = X(s.R), y = Y(vs[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+      pts.forEach((s, i) => { ctx.beginPath(); ctx.arc(X(s.R), Y(vs[i]), 3, 0, 7); ctx.fill(); });
+    }
+  };
+  plot('rswL', [{ get: s => a / s.f, tick: v => v.toFixed(0), color: '#ff8a5c' }], 'λ [nm]');
+  const cp = s => couplingOf(s, rsweep.Q0, rsweep.qs);
+  plot('rswQ', [{ get: s => cp(s).QL, log: true, tick: v => (10 ** v).toPrecision(2), color: '#ff8a5c' }]
+    .concat(rsweep.wg ? [{ get: s => cp(s).eta, range: [0, 1], right: true, tick: v => v.toFixed(2), color: '#5cc8ff' }] : []), rsweep.wg ? 'Q_L と η_c' : 'Q');
+  const q0 = rsweep.Q0 ? `導波路なしの Q0 = ${fmtQ(rsweep.Q0)}（中央の R で測定）` : '';
+  $('rswTable').innerHTML = (q0 ? `<caption>${q0}</caption>` : '') + '<tr><th>R/a</th><th>a/λ</th><th>λ [nm]</th><th>Q<sub>L</sub></th>' + (rsweep.wg ? '<th>Q<sub>wg</sub></th><th>η<sub>c</sub></th>' : '') + '<th>m</th></tr>' + rsweep.pts.map(s => {
+    if (!isFinite(s.f)) return `<tr><td>${s.R.toFixed(3)}</td><td colspan="${rsweep.wg ? 6 : 4}">${s.msg}</td></tr>`;
+    const c = cp(s);
+    const N = v => isFinite(v) ? Math.round(v).toLocaleString('en-US') : '∞', range = (a, b, f) => f(a) === f(b) ? f(a) : `${f(b)}〜${f(a)}`;
+    const mt = s.m === 3 * +$('n').value ? s.m : `${s.m}（WGM でない）`;
+    return `<tr><td>${s.R.toFixed(3)}</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${fmtQ(s)}</td>` + (rsweep.wg ? `<td>${range(c.QwgHi, c.Qwg, N)}</td><td>${range(c.eta, c.etaLo, v => v.toFixed(2))}</td>` : '') + `<td>${mt}</td></tr>`;
+  }).join('');
+}
+
 // ---------- wiring ----------
 function syncLabels() {
   for (const k of ids) $(k + '_o').textContent = fmt[k]($(k).value);
@@ -885,10 +1018,11 @@ function meanRingRadius(n) {
 }
 for (const k of [...ids, 'target', 'srcmode', 'wg', 'res', 'tmeas']) $(k).addEventListener('input', () => {
   if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
-  const structural = !['a', 'tmeas', 'wlo', 'whi'].includes(k);
+  const structural = !['a', 'tmeas', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs'].includes(k);
+  if (k === 'qs') { rsweep.qs = +$('qs').value; drawRSweep(); }
   if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
   preview();
-  if (k === 'a' && lastMode) { showMode(lastMode); drawSweep(); }
+  if (k === 'a') { if (lastMode) { showMode(lastMode); drawSweep(); } drawRSweep(); }
 });
 $('bSpec').onclick = () => {
   sim = buildSim(params());
@@ -901,9 +1035,10 @@ $('bMode').onclick = () => {
 $('bSweep').onclick = () => { if (selected != null) start(runSweep(selected)); };
 $('bFind').onclick = () => start(runFind());
 $('bBands').onclick = () => start(runW1Bands(params()));
+$('bRsw').onclick = () => start(runRSweep());
 $('bStop').onclick = stop;
-window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); drawBands(); });
-preview(); drawSweep(); drawBands();
+window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); drawBands(); drawRSweep(); });
+preview(); drawSweep(); drawBands(); drawRSweep();
 schedule();
 </script>
 </body>
