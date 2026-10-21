@@ -183,6 +183,8 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="whi">探す範囲 上限</label><input id="whi" type="range" min="0.18" max="0.45" step="0.005" value="0.28"><output id="whi_o"></output></div>
     <div class="cap">「WGM を探す」は、この範囲（a/λ）のピークだけを調べて、腹の数が外周の穴の数（Hn なら 6n 個）と同じモードのうち一番低い周波数のもの（径方向の基本モード）を選び、② まで回す。スペクトル上では範囲を薄い帯で示す。</div>
     <div class="row"><label for="tmeas">減衰の観測時間</label><select id="tmeas"><option value="300">300 a/c</option><option value="600" selected>600 a/c</option><option value="1500">1500 a/c（高Q用）</option></select><span></span></div>
+    <div class="row"><label for="tdir">左右比の観測時間</label><select id="tdir"><option value="1500">1500 a/c</option><option value="3000" selected>3000 a/c</option><option value="6000">6000 a/c</option></select><span></span></div>
+    <div class="cap">サブ共振器を置いた時の ②（「WGM を探す」と ⑥ を含む）は、減衰の観測時間をこの値以上にする。導波路の左右への出力は観測区間全体の時間 DFT で WGM の周波数の成分だけを取り出して比べるが、WGM の 2 nm 前後の近くには導波路に強く出る別のモードがあり、観測時間が短いと周波数で分けられずに左右比が混ざる。3000 a/c で周波数の分解能は約 0.0007（a/λ、1450 nm で約 4 nm）。</div>
     <div class="cap" id="gridinfo"></div>
     <div class="btns">
       <button class="primary" id="bSpec">① スペクトル</button>
@@ -214,6 +216,7 @@ function params() {
   p.sub = $('sub').value === '1';
   p.res = +$('res').value;
   p.tmeas = +$('tmeas').value;
+  p.tdir = +$('tdir').value;
   return p;
 }
 
@@ -508,24 +511,27 @@ function usePoints(S, src = null) {
 function* runMode(S, fGuess, label = '', df = 0.006, src = null) {
   usePoints(S, src);
   resetFields(S);
-  const tau = 1 / (Math.PI * df), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.p.tmeas;
+  const tau = 1 / (Math.PI * df), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.flux && S.p.sub ? Math.max(S.p.tmeas, S.p.tdir) : S.p.tmeas;
   const tA = tWait + Tm / 2, tEnd = tWait + Tm;
   const total = Math.ceil(tEnd / S.dt);
   const sig = [], us = [], ts = [];
-  let f = fGuess, Fr = null, Fi = null, n = 0, PL = 0, PR = 0;
+  let f = fGuess, Fr = null, Fi = null, n = 0;
+  // Time-DFT at fGuess of Ey and Hz (Hz averaged onto the Ey point: Ey[k] sits between Hz[k - 1] and Hz[k]) on the
+  // two flux lines, over the whole window [tWait, tEnd] under a Hann window, so that the output to each side is that
+  // of the mode alone: modes about 0.002 (a/λ) away also ring in the same run and couple to the guide more strongly.
+  const nf = S.flux ? S.flux.rows.length : 0, D = new Float64Array(8 * nf);
   for (; n < total; n++) {
     if (S.t < tOff) inject(S, pulse(S.t, fGuess, tau, t0));
     step(S);
-    if (S.t >= tWait && S.flux) {
-      // Sx = Ey Hz, with Hz averaged onto the Ey point (Ey[k] sits between Hz[k - 1] and Hz[k]).
-      const { iL, iR, rows } = S.flux, { Ey, Hz, nx } = S;
-      for (const j of rows) {
-        const kL = j * nx + iL, kR = j * nx + iR;
-        PL -= Ey[kL] * (Hz[kL - 1] + Hz[kL]) / 2; PR += Ey[kR] * (Hz[kR - 1] + Hz[kR]) / 2;
-      }
-    }
     if (S.t >= tWait) {
       if (n % 8 === 0) { us.push(energy(S)); ts.push(S.t); }
+      if (S.flux && n % 4 === 0) {
+        const { iL, iR, rows } = S.flux, { Ey, Hz, nx } = S, hw = Math.sin(Math.PI * (S.t - tWait) / Tm) ** 2, w = 2 * Math.PI * fGuess * S.t, c = hw * Math.cos(w), s = hw * Math.sin(w);
+        rows.forEach((j, q) => {
+          const kL = j * nx + iL, kR = j * nx + iR, v = [Ey[kL], (Hz[kL - 1] + Hz[kL]) / 2, Ey[kR], (Hz[kR - 1] + Hz[kR]) / 2];
+          for (let u = 0; u < 4; u++) { D[8 * q + 2 * u] += v[u] * c; D[8 * q + 2 * u + 1] += v[u] * s; }
+        });
+      }
       sig.push(probe(S));
       if (S.t >= tA) {
         if (!Fr) { f = refineFreq(sig, S.dt, fGuess, df); Fr = new Float32Array(S.NN); Fi = new Float32Array(S.NN); }
@@ -542,6 +548,12 @@ function* runMode(S, fGuess, label = '', df = 0.006, src = null) {
     }
   }
   f = refineFreq(sig, S.dt, f, df / 2);
+  // Time-averaged Sx at f is Re(Ey conj(Hz)) / 2; the left line counts flow toward -x.
+  let PL = 0, PR = 0;
+  for (let q = 0; q < nf; q++) {
+    const o = 8 * q;
+    PL -= D[o] * D[o + 2] + D[o + 1] * D[o + 3]; PR += D[o + 4] * D[o + 6] + D[o + 5] * D[o + 7];
+  }
   // Least-squares slope of ln U(t).
   const L = us.map(Math.log), m = ts.length;
   const mt = ts.reduce((a, b) => a + b, 0) / m, ml = L.reduce((a, b) => a + b, 0) / m;
@@ -641,7 +653,7 @@ function* runFind() {
   const r = res.r;
   lastMode = r; showMode(r);
   const others = res.others.map(x => `${(p.a / x.f).toFixed(0)} nm`).join('、');
-  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${r.dir ? `、導波路への出力 左 : 右 = ${fmtDir(r.dir)}` : ''}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
+  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${r.dir ? `、導波路への出力 左 : 右 = 1点励振 ${fmtLR(r)}、${fmtDir(r.dir)}` : ''}${others ? `。同じ m の高次（径方向）候補: ${others}` : ''}`, 1);
 }
 // Sweeps the cavity radius R (deformation 100%, custom radius) with everything else fixed, the knob a CirD laser array
 // uses to set each channel's wavelength. With a waveguide, Q0 is measured once at the middle R to split off Q_wg.
@@ -861,7 +873,7 @@ function start(gen, onDone) {
 function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
-  for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas']) $(k).disabled = b;
+  for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas', 'tdir']) $(k).disabled = b;
   $('bFind').disabled = b; $('bBands').disabled = b; $('bRsw').disabled = b; $('bSsw').disabled = b;
 }
 function tick() {
@@ -1015,7 +1027,7 @@ function showMode(r) {
     <dt>方位角次数 m</dt><dd>${r.az.m}（腹 ${2 * r.az.m} 個、純度 ${Math.round(r.az.purity * 100)}%）</dd>
     <dt>強度最大の半径</dt><dd>${r.az.rho.toFixed(2)} a</dd>
     <dt>共振器内の回転</dt><dd>${fmtRot(r.az.ccw)}</dd>${r.dir ? `
-    <dt>導波路への出力 左 : 右</dt><dd>${fmtDir(r.dir)}</dd>` : ''}`;
+    <dt>導波路への出力 左 : 右</dt><dd>1点励振 ${fmtLR(r)}、${fmtDir(r.dir)}</dd>` : ''}`;
   const c = $('kspace'), ctx = c.getContext('2d'), W = c.width, { pw, P, dk, k0 } = r.lc, kmax = 5;
   const im = ctx.createImageData(W, W);
   let mx = 0; for (let q = 0; q < pw.length; q++) if (pw[q] > mx) mx = pw[q];
@@ -1150,9 +1162,9 @@ function meanRingRadius(n) {
     if (Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)) === n) { s += Math.hypot(i + j / 2, j * SQ3 / 2); c++; }
   return s / c;
 }
-for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas']) $(k).addEventListener('input', () => {
+for (const k of [...ids, 'target', 'srcmode', 'wg', 'sub', 'res', 'tmeas', 'tdir']) $(k).addEventListener('input', () => {
   if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
-  const structural = !['a', 'tmeas', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs', 'sslo', 'sshi', 'ssnum'].includes(k);
+  const structural = !['a', 'tmeas', 'tdir', 'wlo', 'whi', 'rlo', 'rhi', 'rnum', 'qs', 'sslo', 'sshi', 'ssnum'].includes(k);
   if (k === 'qs') { rsweep.qs = +$('qs').value; drawRSweep(); }
   if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
   preview();
