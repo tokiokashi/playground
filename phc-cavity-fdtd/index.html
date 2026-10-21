@@ -164,7 +164,7 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="subx">横位置 x/a</label><input id="subx" type="range" min="-6" max="6" step="0.5" value="1.5"><output id="subx_o"></output></div>
     <div class="row"><label for="subs">両端の穴のシフト</label><input id="subs" type="range" min="0" max="0.4" step="0.01" value="0"><output id="subs_o"></output></div>
     <div class="cap">サブ共振器 Ln は、共振器と導波路の間の列から、横位置 x に近い穴を n 個抜いた線欠陥。「置く列」は共振器側から数えた列の番号で、共振器との間の列数より大きい値は一番導波路側の列になる。x = 0 は共振器の中心の真上で、0 からずらすと共振器と導波路の配置が左右非対称になる。穴の横位置は、共振器側から奇数番目の列（H3 なら 1 列目）では整数、偶数番目の列では半整数（a 単位）なので、左右対称に置けるのは、奇数番目の列では n が奇数で x = 0、偶数番目の列では n が偶数で x = 0 の時だけ。両端の穴は外向きにシフトして、Ln の共振周波数を WGM に合わせ込む。導波路があるときだけ使う。サブ共振器を置いて「WGM を探す」か ⑥ を回すと、見つけた WGM について、励振点とその鏡像（x = 0 について折り返した点）を同相と逆相で鳴らす2回の測定を足す。WGM は2つのモードが縮退した組で、1点の励振ではその混ぜ方で左右の出力比が変わるため。各回で、導波路の左右の端（PML の手前）のポインティングベクトルを導波路の断面にわたって積分し、減衰の観測区間に左右へ出ていったエネルギーの比を出す。左右対称な構造なら、どちらの励振でも 50 : 50 になる。あわせて、モード場を外周に沿って角度でフーリエ分解し、e<sup>∓imφ</sup> の成分の比から共振器の中の反時計回りと時計回りの割合を出す（② には1点励振の場合の値も出す）。</div>
-    <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。「両側の列」は導波路のすぐ両側の2列で、シフトは導波路から遠ざける向きを正とする（単位 a）。正で導波路が広がってバンドが下がり、負で狭まって上がる。穴を大きくしてもバンドは上がる。この2つは ④ のバンド計算にも同じように入る。既定の −0.165a は、偶モードのバンドの端（k = 0.5）を WGM の少し下まで上げて、遅い光の領域で WGM と交差させる設定。この 2D モデルでは、間の列数 1 で Q<sub>L</sub> ≈ 3,300 になる。</div>
+    <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。「両側の列」は導波路のすぐ両側の2列で、シフトは導波路から遠ざける向きを正とする（単位 a）。正で導波路が広がってバンドが下がり、負で狭まって上がる。穴を大きくしてもバンドは上がる。この2つは ④ のバンド計算にも同じように入る。既定の −0.165a は、偶モードのバンドの端（k = 0.5）を WGM の少し下まで上げて、遅い光の領域で WGM と交差させる設定。この 2D モデルでは、間の列数 1 で Q<sub>L</sub> は 3,000〜4,000 程度になる（分解能と観測時間で変わる）。</div>
     <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
     <h2 style="margin-top:12px">外周の円形補正</h2>
     <div class="row"><label for="def">変形率</label><input id="def" type="range" min="0" max="1" step="0.05" value="1"><output id="def_o"></output></div>
@@ -480,6 +480,7 @@ let sim = null, job = null, spectrum = null, selected = null, sweep = [], lastMo
 const status = (s, frac) => { $('status').textContent = s; if (frac != null) $('prog').style.width = (100 * frac).toFixed(1) + '%'; };
 
 function* runSpectrum(S, label = '') {
+  usePoints(S);
   resetFields(S);
   const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = S.p.tmeas + 200;
   const total = Math.ceil((tRec + T) / S.dt), sig = [];
@@ -494,11 +495,17 @@ function* runSpectrum(S, label = '') {
   return { fs, amp, peaks: peakFind(fs, amp) };
 }
 
+// Sets the excitation points (also used as probes): src, or the simulation's own when src is null.
+// Every run calls this first, so a run stopped midway does not leave its points behind.
+function usePoints(S, src = null) {
+  S.src0 ??= S.src; S.probes0 ??= S.probes;
+  S.src = src || S.src0; S.probes = src || S.probes0;
+}
+
 // df: excitation bandwidth; keep it below the spacing to neighboring peaks so only one mode rings down.
-// src: optional excitation points (also used as probes) in place of the simulation's own.
+// src: optional excitation points in place of the simulation's own.
 function* runMode(S, fGuess, label = '', df = 0.006, src = null) {
-  const own = [S.src, S.probes];
-  if (src) { S.src = src; S.probes = src; }
+  usePoints(S, src);
   resetFields(S);
   const tau = 1 / (Math.PI * df), t0 = 3 * tau, tOff = 2 * t0, tWait = tOff + 30, Tm = S.p.tmeas;
   const tA = tWait + Tm / 2, tEnd = tWait + Tm;
@@ -546,7 +553,6 @@ function* runMode(S, fGuess, label = '', df = 0.006, src = null) {
   status(`${label}② 光円錐の解析（2D FFT）`, 1);
   yield;
   const lc = lightCone(S, Fr, Fi, f);
-  [S.src, S.probes] = own;
   return { f, Q, resolved: drop > 1.02, Qmin, eta: lc.eta, lc, Fr, Fi, S, az: azimuthal(S, Fr, Fi), PL, PR };
 }
 
@@ -558,6 +564,7 @@ function bandFor(sp, f) {
 // Second broadband run that stores the time-DFT field at each candidate frequency, so the azimuthal order of every
 // candidate comes out of one simulation instead of one narrowband run per peak.
 function* runFields(S, freqs, label = '') {
+  usePoints(S);
   resetFields(S);
   const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = S.p.tmeas + 200;
   const total = Math.ceil((tRec + T) / S.dt);
