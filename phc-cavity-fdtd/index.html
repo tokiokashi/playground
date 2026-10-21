@@ -123,7 +123,9 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="nclad">クラッド屈折率</label><input id="nclad" type="range" min="1" max="2" step="0.05" value="1.6"><output id="nclad_o"></output></div>
     <div class="row"><label for="wg">導波路</label><select id="wg"><option value="0" selected>なし</option><option value="1">共振器の上に W1 導波路</option></select><span></span></div>
     <div class="row"><label for="wgsep">共振器との間の列数</label><input id="wgsep" type="range" min="1" max="5" step="1" value="1"><output id="wgsep_o"></output></div>
-    <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。</div>
+    <div class="row"><label for="wgs">両側の列のシフト</label><input id="wgs" type="range" min="-0.25" max="0.25" step="0.005" value="-0.165"><output id="wgs_o"></output></div>
+    <div class="row"><label for="wgr">両側の列の r/a</label><input id="wgr" type="range" min="0.20" max="0.42" step="0.01" value="0.30"><output id="wgr_o"></output></div>
+    <div class="cap">W1 導波路は、共振器の上側で穴の横一列を抜いた線欠陥。両端は PML まで伸びていて、導波路に移った光はそこで吸収される。導波路ありで測る Q は導波路への結合を含む Q（負荷 Q）になる。導波路なしの Q を Q<sub>0</sub>、ありを Q<sub>L</sub> とすると、導波路への結合だけの Q は 1/Q<sub>wg</sub> = 1/Q<sub>L</sub> − 1/Q<sub>0</sub>。「両側の列」は導波路のすぐ両側の2列で、シフトは導波路から遠ざける向きを正とする（単位 a）。正で導波路が広がってバンドが下がり、負で狭まって上がる。穴を大きくしてもバンドは上がる。この2つは ④ のバンド計算にも同じように入る。既定の −0.165a は、偶モードのバンドの端（k = 0.5）を WGM の少し下まで上げて、遅い光の領域で WGM と交差させる設定。この 2D モデルでは、間の列数 1 で Q<sub>L</sub> ≈ 3,300 になる。</div>
     <div class="row"><label for="barrier">周囲の層数</label><input id="barrier" type="range" min="2" max="7" step="1" value="4"><output id="barrier_o"></output></div>
     <h2 style="margin-top:12px">外周の円形補正</h2>
     <div class="row"><label for="def">変形率</label><input id="def" type="range" min="0" max="1" step="0.05" value="1"><output id="def_o"></output></div>
@@ -162,8 +164,8 @@ const SQ3 = Math.sqrt(3);
 const FMIN = 0.18, FMAX = 0.45;
 
 // ---------- parameters ----------
-const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
-const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'wgsep', 'wgs', 'wgr', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), wgsep: v => v, wgs: v => (v > 0 ? '+' : '') + (+v).toFixed(2) + 'a', wgr: v => (+v).toFixed(2), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
 function params() {
   const p = {};
   for (const k of ids) p[k] = +$(k).value;
@@ -185,7 +187,10 @@ function makeHoles(p, X, Y) {
     const ring = Math.max(Math.abs(i), Math.abs(j), Math.abs(i + j)), x = i + j / 2, y = j * SQ3 / 2;
     if (ring < p.n || Math.abs(x) > X + p.ra || Math.abs(y) > Y + p.ra) continue;
     // W1 waveguide: drop one full row of holes above the cavity, leaving wgsep rows between it and the boundary row.
-    if (p.wg && j === p.n + p.wgsep + 1) continue;
+    // The rows on both sides of it move away from the guide by wgs and take radius wgr.
+    const jw = p.n + p.wgsep + 1;
+    if (p.wg && j === jw) continue;
+    if (p.wg && Math.abs(j - jw) === 1) { holes.push({ x, y: y + Math.sign(j - jw) * p.wgs, ring, r: p.wgr }); continue; }
     holes.push({ x, y, ring });
   }
   for (let k = 0; k < p.rings; k++) {
@@ -203,7 +208,7 @@ function makeHoles(p, X, Y) {
 function countOverlaps(holes, r) {
   let c = 0;
   for (let i = 0; i < holes.length; i++) for (let j = i + 1; j < holes.length; j++)
-    if (Math.hypot(holes[i].x - holes[j].x, holes[i].y - holes[j].y) < 2 * r) c++;
+    if (Math.hypot(holes[i].x - holes[j].x, holes[i].y - holes[j].y) < (holes[i].r ?? r) + (holes[j].r ?? r)) c++;
   return c;
 }
 
@@ -217,8 +222,9 @@ function buildSim(p) {
   const nx = 2 * (Math.ceil(hx * N) + pml), ny = 2 * (Math.ceil(hy * N) + pml), NN = nx * ny;
   const holes = makeHoles(p, nx / 2 * dx, ny / 2 * dx);
   const fillAir = (ox, oy) => {
-    const arr = new Float32Array(NN), r = p.ra, S = 4, m = 0.75 * dx;
+    const arr = new Float32Array(NN), S = 4, m = 0.75 * dx;
     for (const h of holes) {
+      const r = h.r ?? p.ra;
       const i0 = Math.max(0, Math.floor((h.x - r) * N + nx / 2 - ox) - 1), i1 = Math.min(nx - 1, Math.ceil((h.x + r) * N + nx / 2 - ox) + 1);
       const j0 = Math.max(0, Math.floor((h.y - r) * N + ny / 2 - oy) - 1), j1 = Math.min(ny - 1, Math.ceil((h.y + r) * N + ny / 2 - oy) + 1);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -530,9 +536,9 @@ function* runW1Bands(p) {
         const row = Math.round(y / (SQ3 / 2));
         for (const jr of [row - 1, row, row + 1]) {
           if (jr === 0 || Math.abs(jr) > K + 1) continue;
-          const yc = jr * SQ3 / 2, xc = ((jr / 2) % 1 + 1) % 1;
+          const side = Math.abs(jr) === 1, yc = jr * SQ3 / 2 + (side ? Math.sign(jr) * p.wgs : 0), rr = side ? p.wgr : r, xc = ((jr / 2) % 1 + 1) % 1;
           let dxm = x - xc; dxm -= Math.round(dxm);
-          if (dxm * dxm + (y - yc) ** 2 < r * r) { c++; break; }
+          if (dxm * dxm + (y - yc) ** 2 < rr * rr) { c++; break; }
         }
       }
       arr[j * nx + i] = c / (S * S);
@@ -607,9 +613,10 @@ function* runW1Bands(p) {
       const aw = dft(sigW, dt, pk.f), ab = dft(sigB, dt, pk.f);
       pts.push({ k, f: pk.f, par, loc: aw / (aw + ab + 1e-30), amp: pk.amp });
     }
-    bandPts = pts; drawBands();
+    // The grid is not exactly mirror-symmetric, so a strong mode also leaks weakly into the other parity's run; keep the stronger one.
+    bandPts = pts.filter(a => !pts.some(b => b.k === a.k && b.par !== a.par && b.amp > a.amp && Math.abs(b.f - a.f) < 3 / T)); drawBands();
   }
-  status(`④ 完了。${pts.length} 点。`, 1);
+  status(`④ 完了。${bandPts.length} 点。`, 1);
 }
 let bandPts = [];
 function drawBands() {
