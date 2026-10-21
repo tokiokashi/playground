@@ -129,12 +129,16 @@ td:first-child,th:first-child{text-align:left}
     <div class="row"><label for="srcr">励振点の半径/a</label><input id="srcr" type="range" min="0" max="7" step="0.05" value="2.00"><output id="srcr_o"></output></div>
     <div class="row"><label for="srcth">励振点の角度</label><input id="srcth" type="range" min="0" max="60" step="1" value="5"><output id="srcth_o"></output></div>
     <div class="cap">1点の時は励振とプローブを同じ点に置く。WGM は外周に沿った腹を持つので、外周の穴の少し内側（H3 なら半径 2a 前後）が目安。角度 0° は外周の角の穴の方向で、WGM の対称・反対称の両方を拾えるように少しずらしてある。</div>
+    <div class="row"><label for="wlo">探す範囲 下限</label><input id="wlo" type="range" min="0.18" max="0.45" step="0.005" value="0.22"><output id="wlo_o"></output></div>
+    <div class="row"><label for="whi">探す範囲 上限</label><input id="whi" type="range" min="0.18" max="0.45" step="0.005" value="0.28"><output id="whi_o"></output></div>
+    <div class="cap">「WGM を探す」は、この範囲（a/λ）のピークだけを調べて、腹の数が外周の穴の数（Hn なら 6n 個）と同じモードを選び、② まで回す。スペクトル上では範囲を薄い帯で示す。</div>
     <div class="row"><label for="tmeas">減衰の観測時間</label><select id="tmeas"><option value="300">300 a/c</option><option value="600" selected>600 a/c</option><option value="1500">1500 a/c（高Q用）</option></select><span></span></div>
     <div class="cap" id="gridinfo"></div>
     <div class="btns">
       <button class="primary" id="bSpec">① スペクトル</button>
       <button id="bMode" disabled>② モードの Q</button>
       <button id="bSweep" disabled>③ スイープ</button>
+      <button id="bFind">WGM を探す</button>
       <button id="bStop" disabled>停止</button>
     </div>
   </div>
@@ -149,8 +153,8 @@ const SQ3 = Math.sqrt(3);
 const FMIN = 0.18, FMAX = 0.45;
 
 // ---------- parameters ----------
-const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth'];
-const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
+const ids = ['n', 'ra', 'neff', 'nclad', 'a', 'barrier', 'def', 'rings', 'R', 'srcr', 'srcth', 'wlo', 'whi'];
+const fmt = { n: v => 'H' + v, ra: v => (+v).toFixed(2), neff: v => (+v).toFixed(2), a: v => v, nclad: v => (+v).toFixed(2), R: v => (+v).toFixed(2), srcr: v => (+v).toFixed(2), srcth: v => v + '°', wlo: v => (+v).toFixed(3), whi: v => (+v).toFixed(3), barrier: v => v, def: v => Math.round(v * 100) + '%', rings: v => v };
 function params() {
   const p = {};
   for (const k of ids) p[k] = +$(k).value;
@@ -459,6 +463,51 @@ function bandFor(sp, f) {
   for (const pk of sp.peaks) if (Math.abs(pk.f - f) > 1e-9) d = Math.min(d, Math.abs(pk.f - f));
   return Math.min(0.006, Math.max(0.0015, d / 2));
 }
+// Second broadband run that stores the time-DFT field at each candidate frequency, so the azimuthal order of every
+// candidate comes out of one simulation instead of one narrowband run per peak.
+function* runFields(S, freqs, label = '') {
+  resetFields(S);
+  const f0 = (FMIN + FMAX) / 2, tau = 1 / (Math.PI * 0.14), t0 = 4 * tau, tRec = 2 * t0, T = S.p.tmeas + 200;
+  const total = Math.ceil((tRec + T) / S.dt);
+  const F = freqs.map(() => [new Float32Array(S.NN), new Float32Array(S.NN)]);
+  for (let n = 0; n < total; n++) {
+    if (S.t < tRec) inject(S, pulse(S.t, f0, tau, t0));
+    step(S);
+    if (S.t >= tRec && n % 4 === 0) {
+      const Hz = S.Hz;
+      freqs.forEach((f, q) => {
+        const w = 2 * Math.PI * f * S.t, c = Math.cos(w), sn = Math.sin(w), [Fr, Fi] = F[q];
+        for (let k = 0; k < S.NN; k++) { Fr[k] += Hz[k] * c; Fi[k] += Hz[k] * sn; }
+      });
+    }
+    if (n % 25 === 0) { status(`${label}候補 ${freqs.length} 個の腹の数を調べている t = ${S.t.toFixed(0)} / ${(tRec + T).toFixed(0)} a/c`, n / total); yield; }
+  }
+  return F.map(([Fr, Fi]) => azimuthal(S, Fr, Fi));
+}
+function* runFind() {
+  const p = params(), mT = 3 * p.n, lo = Math.min(p.wlo, p.whi), hi = Math.max(p.wlo, p.whi);
+  sim = buildSim(p);
+  if (!spectrum) { spectrum = yield* runSpectrum(sim); drawSpectrum(); }
+  const cand = spectrum.peaks.filter(pk => pk.f >= lo && pk.f <= hi);
+  if (!cand.length) { status(`範囲 ${lo.toFixed(3)}〜${hi.toFixed(3)} にピークが無い。範囲を広げる。`, 1); return; }
+  const az = yield* runFields(sim, cand.map(pk => pk.f));
+  cand.forEach((pk, i) => { pk.m = az[i].m; pk.purity = az[i].purity; });
+  drawSpectrum();
+  const hit = cand.filter(pk => pk.m === mT);
+  if (!hit.length) { status(`範囲内の ${cand.length} 個のピークに、腹 ${2 * mT} 個（m = ${mT}）のモードが無かった。範囲か励振点を変える。`, 1); return; }
+  // Several peaks can share m (other radial orders, or modes leaking through the crystal): keep the highest Q.
+  const tries = hit.sort((x, y) => y.amp - x.amp).slice(0, 3), res = [];
+  for (const [i, pk] of tries.entries()) {
+    selected = pk.f; drawSpectrum();
+    res.push(yield* runMode(sim, pk.f, `[m = ${mT} の候補 ${i + 1}/${tries.length}] `, bandFor(spectrum, pk.f)));
+  }
+  const qOf = r => r.resolved ? r.Q : r.Qmin;
+  const r = res.reduce((x, y) => qOf(x) >= qOf(y) ? x : y);
+  selected = tries[res.indexOf(r)].f; drawSpectrum();
+  lastMode = r; showMode(r);
+  const others = res.filter(x => x !== r).map(x => `${(p.a / x.f).toFixed(0)} nm（Q ${fmtQ(x)}）`).join('、');
+  status(`WGM（m = ${r.az.m}、腹 ${2 * r.az.m} 個）: a/λ = ${r.f.toFixed(5)}、λ = ${(p.a / r.f).toFixed(1)} nm、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}${others ? `。同じ m の他の候補: ${others}` : ''}`, 1);
+}
 function* runSweep(fStart) {
   const p0 = params(), defs = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
   sweep = []; drawSweep();
@@ -496,6 +545,7 @@ function stop() { job = null; setBusy(false); status('停止した。'); }
 function setBusy(b) {
   $('bSpec').disabled = b; $('bMode').disabled = b || selected == null; $('bSweep').disabled = b || selected == null; $('bStop').disabled = !b;
   for (const k of [...ids, 'target', 'srcmode', 'res', 'tmeas']) $(k).disabled = b;
+  $('bFind').disabled = b;
 }
 function tick() {
   if (job) {
@@ -552,6 +602,8 @@ function drawSpectrum() {
   for (let f = 0.2; f <= FMAX + 1e-9; f += 0.05) { const x = X(f); ctx.beginPath(); ctx.moveTo(x, t); ctx.lineTo(x, h - b); ctx.stroke(); ctx.fillText(f.toFixed(2), x, h - 6); }
   const a = +$('a').value;
   for (const lam of [800, 1000, 1310, 1550]) { const f = a / lam; if (f < FMIN || f > FMAX) continue; const x = X(f); ctx.fillStyle = lam === 1310 ? '#ff8a5c' : '#8d9ab0'; ctx.fillText(lam + '', x, 14); }
+  const wl = Math.min(+$('wlo').value, +$('whi').value), wh = Math.max(+$('wlo').value, +$('whi').value);
+  ctx.fillStyle = 'rgba(255,138,92,0.10)'; ctx.fillRect(X(wl), t, X(wh) - X(wl), h - t - b);
   if (!spectrum) { ctx.fillStyle = '#8d9ab0'; ctx.fillText('未測定', w / 2, h / 2); return; }
   const L = spectrum.amp.map(v => Math.log10(v + 1e-30)), mx = Math.max(...L), mn = mx - 5;
   const Y = v => t + (1 - (Math.max(v, mn) - mn) / (mx - mn)) * (h - t - b);
@@ -565,7 +617,7 @@ function drawSpectrum() {
   const box = $('peaks'); box.innerHTML = '';
   for (const pk of spectrum.peaks) {
     const bt = document.createElement('button');
-    bt.textContent = `${pk.f.toFixed(4)}（${Math.round(a / pk.f)} nm）`;
+    bt.textContent = `${pk.f.toFixed(4)}（${Math.round(a / pk.f)} nm）${pk.m != null ? ` m=${pk.m}` : ''}`;
     if (selected != null && Math.abs(pk.f - selected) < 1e-9) bt.className = 'sel';
     bt.onclick = () => { if (job) return; selected = pk.f; drawSpectrum(); setBusy(false); };
     box.appendChild(bt);
@@ -664,9 +716,9 @@ function drawSweep() {
   plot('sweepQ', s => isFinite(s.Q) && s.resolved ? s.Q : s.Qmin, true, '面内 Q');
   plot('sweepE', s => s.eta, false, 'η');
   const a = +$('a').value;
-  $('sweepTable').innerHTML = '<tr><th>変形率</th><th>a/λ</th><th>λ [nm]</th><th>面内 Q</th><th>η</th><th>m</th></tr>' + sweep.map(s => isFinite(s.f)
-    ? `<tr><td>${Math.round(s.def * 100)}%</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${fmtQ(s)}</td><td>${s.eta.toExponential(2)}</td><td>${s.m}</td></tr>`
-    : `<tr><td>${Math.round(s.def * 100)}%</td><td colspan="5">近い周波数のピークが見つからない</td></tr>`).join('');
+  $('sweepTable').innerHTML = '<tr><th>変形率</th><th>a/λ</th><th>λ [nm]</th><th>1310 nm に合わせた a</th><th>面内 Q</th><th>η</th><th>m</th></tr>' + sweep.map(s => isFinite(s.f)
+    ? `<tr><td>${Math.round(s.def * 100)}%</td><td>${s.f.toFixed(5)}</td><td>${(a / s.f).toFixed(1)}</td><td>${(s.f * 1310).toFixed(1)} nm</td><td>${fmtQ(s)}</td><td>${s.eta.toExponential(2)}</td><td>${s.m}</td></tr>`
+    : `<tr><td>${Math.round(s.def * 100)}%</td><td colspan="6">近い周波数のピークが見つからない</td></tr>`).join('');
 }
 
 // ---------- wiring ----------
@@ -693,7 +745,7 @@ function meanRingRadius(n) {
 }
 for (const k of [...ids, 'target', 'srcmode', 'res', 'tmeas']) $(k).addEventListener('input', () => {
   if (k === 'n') { $('R').value = meanRingRadius(+$('n').value).toFixed(2); $('srcr').value = Math.max(0, +$('n').value * SQ3 / 2 - 0.6).toFixed(2); }
-  const structural = k !== 'a' && k !== 'tmeas';
+  const structural = !['a', 'tmeas', 'wlo', 'whi'].includes(k);
   if (structural) { spectrum = null; selected = null; $('peaks').innerHTML = ''; setBusy(false); }
   preview();
   if (k === 'a' && lastMode) { showMode(lastMode); drawSweep(); }
@@ -707,6 +759,7 @@ $('bMode').onclick = () => {
   start(runMode(sim, selected, '', bandFor(spectrum, selected)), r => { lastMode = r; showMode(r); status(`② 完了。a/λ = ${r.f.toFixed(5)}、面内 Q ${fmtQ(r)}、η = ${r.eta.toExponential(2)}`, 1); });
 };
 $('bSweep').onclick = () => { if (selected != null) start(runSweep(selected)); };
+$('bFind').onclick = () => start(runFind());
 $('bStop').onclick = stop;
 window.addEventListener('resize', () => { drawSpectrum(); drawSweep(); });
 preview(); drawSweep();
