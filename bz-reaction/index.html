@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BZ反応の振動</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single lab-notebook column; figures break out as bordered plates, cycle cards wrap to one column on phones */
+:root {
+  --bg: #f3f4f7;
+  --surface: #ffffff;
+  --fg: #1b2230;
+  --muted: #5b6474;
+  --line: #d6dae3;
+  --ferroin: #c8452f;   /* reduced catalyst: red */
+  --ferriin: #2b5fc4;   /* oxidized catalyst: blue */
+  --auto: #b7790a;      /* autocatalyst HBrO2 */
+  --brake: #4f5b70;     /* bromide */
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10141c; --surface: #171c26; --fg: #e6e9ef; --muted: #9aa3b2; --line: #2a3140;
+    --ferroin: #e2634b; --ferriin: #6b95ea; --auto: #e0a93a; --brake: #a9b3c4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10141c; --surface: #171c26; --fg: #e6e9ef; --muted: #9aa3b2; --line: #2a3140;
+  --ferroin: #e2634b; --ferriin: #6b95ea; --auto: #e0a93a; --brake: #a9b3c4;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.8;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+h1, h2 { text-wrap: balance; line-height: 1.35; margin: 0; }
+h1 { font-size: clamp(28px, 6vw, 40px); font-weight: 900; letter-spacing: .02em; }
+h2 { font-size: 21px; font-weight: 700; }
+p { margin: 0; max-width: 40em; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+header { display: flex; flex-direction: column; gap: 12px; }
+.lead { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+.conds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cond { border-top: 2px solid var(--fg); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cond b { font-size: 15px; }
+.cond span { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+.cycle { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; position: relative; }
+.card .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.num { font-family: var(--font-mono); font-weight: 500; font-size: 22px; }
+.speed { font-size: 12px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.card h3 { margin: 0; font-size: 17px; line-height: 1.4; }
+.card p { font-size: 14px; line-height: 1.7; }
+.card .bird { border-top: 1px dashed var(--line); padding-top: 8px; color: var(--muted); }
+.card .bird b { color: var(--fg); font-weight: 500; }
+.swatch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.swatch i { width: 40px; height: 10px; border-radius: 2px; display: inline-block; }
+.p1 .num { color: var(--brake); }
+.p2 .num { color: var(--ferriin); }
+.p3 .num { color: var(--ferroin); }
+.loopnote { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.loopnote svg { flex: none; }
+
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+figcaption { font-size: 14px; color: var(--muted); line-height: 1.7; }
+.chartwrap { overflow-x: auto; }
+#chart { display: block; width: 100%; min-width: 520px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 3px; display: inline-block; border-radius: 2px; }
+
+.simgrid { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 16px; align-items: start; }
+#dish { width: 100%; aspect-ratio: 1; max-width: 100%; border-radius: 50%; display: block; cursor: crosshair; touch-action: manipulation; background: var(--ferroin); }
+.controls { display: flex; flex-direction: column; gap: 8px; }
+button { font-family: var(--font-body); font-size: 14px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; text-align: left; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--ferriin); outline-offset: 2px; }
+button[aria-pressed="true"] { border-color: var(--ferriin); color: var(--ferriin); }
+.hint { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+.aside { border-left: 3px solid var(--line); padding: 4px 0 4px 16px; display: flex; flex-direction: column; gap: 8px; }
+.aside p { font-size: 15px; }
+code, .mono { font-family: var(--font-mono); font-size: .92em; }
+footer { font-size: 13px; color: var(--muted); }
+
+.eqgroup { display: flex; flex-direction: column; gap: 8px; }
+.eqgroup h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: baseline; }
+.eqs { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+.eq { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 4px 20px; align-items: baseline; font-size: 14px; }
+.eq .f { font-family: var(--font-mono); white-space: nowrap; font-size: 14px; }
+.eq .n { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.eq.net { border-top: 1px dashed var(--line); padding-top: 6px; }
+.eq.net .f { font-weight: 500; }
+.key { border: 1px solid var(--ferriin); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.key p { font-size: 15px; }
+.key .f { font-family: var(--font-mono); font-size: 14px; overflow-x: auto; white-space: nowrap; }
+.panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.panel { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.panel svg { width: 100%; height: auto; display: block; background: var(--bg); border-radius: 6px; }
+.panel p { font-size: 13px; color: var(--muted); line-height: 1.7; }
+ol.steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; max-width: 40em; }
+@media (max-width: 640px) {
+  .panels { grid-template-columns: minmax(0, 1fr); }
+  .eq { grid-template-columns: minmax(0, 1fr); }
+  .conds, .cycle { grid-template-columns: minmax(0, 1fr); }
+  .simgrid { grid-template-columns: minmax(0, 1fr); }
+  .controls { flex-direction: row; flex-wrap: wrap; }
+}
+*{box-sizing:border-box}
+body{margin:0}
+a.back{font-size:13px;color:var(--muted);text-decoration:none}
+a.back:hover,a.back:focus-visible{color:var(--ferriin)}
+</style>
+</head><body>
+
+
+<main>
+  <header>
+    <a class="back" href="../">← 作品一覧</a>
+    <div class="eyebrow">Belousov–Zhabotinsky reaction</div>
+    <h1>BZ反応はなぜ振動するのか</h1>
+    <p class="lead">かき混ぜたビーカーの液が赤と青を行き来し、かき混ぜないシャーレには波が広がる。仕組みは水飲み鳥と同じで、「ゆっくり溜まる → しきい値で一気に変わる → リセット」の繰り返しです。</p>
+  </header>
+
+  <section>
+    <h2>振動に必要な3つの条件</h2>
+    <div class="conds">
+      <div class="cond"><b>平衡から遠い</b><span>燃料（臭素酸と有機酸）がたっぷりあり、坂を下りきるまで時間がかかる</span></div>
+      <div class="cond"><b>自己触媒</b><span>亜臭素酸が自分自身を増やす。増え始めると爆発的に増える</span></div>
+      <div class="cond"><b>遅れて作られるブレーキ役</b><span>増加を止める臭化物イオンが、少し遅れて作られる</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>1周の流れ</h2>
+    <div class="cycle">
+      <article class="card p1">
+        <div class="top"><span class="num">①</span><span class="speed">ゆっくり</span></div>
+        <h3>ブレーキが少しずつ減る</h3>
+        <p>臭化物イオンが臭素酸に消費されていく。臭化物イオンがある間は、自己触媒の反応は抑えられている。</p>
+        <div class="swatch"><i style="background: var(--ferroin)"></i>液は赤</div>
+        <p class="bird"><b>水飲み鳥：</b>頭が冷えて、胴体の液が少しずつ首を上がる</p>
+      </article>
+      <article class="card p2">
+        <div class="top"><span class="num">②</span><span class="speed">一瞬</span></div>
+        <h3>しきい値を切って爆発</h3>
+        <p>臭化物イオンが一定量を切った瞬間、亜臭素酸が爆発的に自己増殖し、触媒の金属イオンが酸化される。</p>
+        <div class="swatch"><i style="background: var(--ferriin)"></i>液が青に変わる</div>
+        <p class="bird"><b>水飲み鳥：</b>重心が前に越えた瞬間、カクンと倒れる</p>
+      </article>
+      <article class="card p3">
+        <div class="top"><span class="num">③</span><span class="speed">速い</span></div>
+        <h3>リセット</h3>
+        <p>酸化された触媒が有機酸と反応して元に戻る。このとき臭化物イオンが放出され、ブレーキが掛かり直す。</p>
+        <div class="swatch"><i style="background: linear-gradient(90deg, var(--ferriin), var(--ferroin))"></i>液が赤に戻っていく</div>
+        <p class="bird"><b>水飲み鳥：</b>倒れると中の気体が通じ、液が胴体に戻って起き上がる</p>
+      </article>
+    </div>
+    <div class="loopnote">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 3v5h-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <span>③のあと①に戻る。燃料が尽きるまで繰り返す（水飲み鳥なら、頭の水が乾くまで）。</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>反応式（FKN機構）</h2>
+    <p>硫酸で酸性にした水に、臭素酸ナトリウム（燃料）、マロン酸（有機酸の燃料）、触媒のセリウムイオンを溶かす。色を見やすくする時は、触媒の代わりにフェロイン（鉄の錯体）を使う。主役は亜臭素酸 HBrO<sub>2</sub> で、①②③はそれぞれ下の反応のまとまりに当たる。</p>
+
+    <div class="eqgroup">
+      <h3><span class="num" style="color: var(--brake)">①</span>過程A：臭化物イオンが消費される</h3>
+      <div class="eqs">
+        <div class="eq"><span class="f">BrO<sub>3</sub><sup>−</sup> + Br<sup>−</sup> + 2H<sup>+</sup> → HBrO<sub>2</sub> + HOBr</span><span class="n">燃料が臭化物イオンを消費する</span></div>
+        <div class="eq"><span class="f">HBrO<sub>2</sub> + Br<sup>−</sup> + H<sup>+</sup> → 2HOBr</span><span class="n">できた亜臭素酸も、臭化物イオンに消費されて増えられない</span></div>
+        <div class="eq"><span class="f">HOBr + Br<sup>−</sup> + H<sup>+</sup> → Br<sub>2</sub> + H<sub>2</sub>O</span><span class="n"></span></div>
+        <div class="eq"><span class="f">Br<sub>2</sub> + CH<sub>2</sub>(COOH)<sub>2</sub> → BrCH(COOH)<sub>2</sub> + Br<sup>−</sup> + H<sup>+</sup></span><span class="n">臭素がマロン酸に付き、ブロモマロン酸ができる</span></div>
+      </div>
+    </div>
+
+    <div class="eqgroup">
+      <h3><span class="num" style="color: var(--ferriin)">②</span>過程B：亜臭素酸の自己触媒</h3>
+      <div class="eqs">
+        <div class="eq"><span class="f">BrO<sub>3</sub><sup>−</sup> + HBrO<sub>2</sub> + H<sup>+</sup> → 2BrO<sub>2</sub>• + H<sub>2</sub>O</span><span class="n">亜臭素酸1個からラジカルが2個</span></div>
+        <div class="eq"><span class="f">BrO<sub>2</sub>• + Ce<sup>3+</sup> + H<sup>+</sup> → HBrO<sub>2</sub> + Ce<sup>4+</sup></span><span class="n">ラジカル1個が亜臭素酸1個に戻り、触媒が酸化される（2回起きる）</span></div>
+        <div class="eq net"><span class="f">BrO<sub>3</sub><sup>−</sup> + HBrO<sub>2</sub> + 2Ce<sup>3+</sup> + 3H<sup>+</sup> → 2HBrO<sub>2</sub> + 2Ce<sup>4+</sup> + H<sub>2</sub>O</span><span class="n">合計すると、亜臭素酸が1個から2個になる。これが自己触媒</span></div>
+        <div class="eq"><span class="f">2HBrO<sub>2</sub> → BrO<sub>3</sub><sup>−</sup> + HOBr + H<sup>+</sup></span><span class="n">増えすぎると亜臭素酸どうしで分解する。爆発の上限を決める</span></div>
+        <div class="eq"><span class="f">Fe(phen)<sub>3</sub><sup>2+</sup>（赤） → Fe(phen)<sub>3</sub><sup>3+</sup>（青）</span><span class="n">フェロインを使った時の色の変化</span></div>
+      </div>
+    </div>
+
+    <div class="eqgroup">
+      <h3><span class="num" style="color: var(--ferroin)">③</span>過程C：触媒が戻り、臭化物イオンが放出される</h3>
+      <div class="eqs">
+        <div class="eq"><span class="f">4Ce<sup>4+</sup> + BrCH(COOH)<sub>2</sub> + 2H<sub>2</sub>O → 4Ce<sup>3+</sup> + Br<sup>−</sup> + HCOOH + 2CO<sub>2</sub> + 5H<sup>+</sup></span><span class="n">①で作ったブロモマロン酸から臭化物イオンが戻る。泡（CO<sub>2</sub>）が出るのはこの反応</span></div>
+      </div>
+    </div>
+
+    <div class="key">
+      <h3 style="margin:0;font-size:16px">しきい値の正体：亜臭素酸の取り合い</h3>
+      <p>亜臭素酸 HBrO<sub>2</sub> は、①の2つ目の反応（臭化物イオンに消費される）と、②の1つ目の反応（燃料と反応して増える）の両方に使われる。どちらが速いかは次の比べっこで決まる。</p>
+      <div class="f">k<sub>2</sub>[Br<sup>−</sup>]  と  k<sub>5</sub>[BrO<sub>3</sub><sup>−</sup>]</div>
+      <p>臭化物イオンが多い間は左が勝って、亜臭素酸は増えられない。臭化物イオンが [Br<sup>−</sup>]<sub>crit</sub> = (k<sub>5</sub>/k<sub>2</sub>)[BrO<sub>3</sub><sup>−</sup>] を下回った瞬間に右が勝って、②の爆発が始まる。FKN の見積もりでは、この境目は臭素酸の濃度の数十万分の1程度しかない。</p>
+    </div>
+
+    <div class="eqgroup">
+      <h3>5つにまとめた形（オレゴネーター）</h3>
+      <div class="eqs">
+        <div class="eq"><span class="f">A + Y → X + P</span><span class="n">①</span></div>
+        <div class="eq"><span class="f">X + Y → 2P</span><span class="n">①（亜臭素酸が消費される）</span></div>
+        <div class="eq"><span class="f">A + X → 2X + 2Z</span><span class="n">②（自己触媒）</span></div>
+        <div class="eq"><span class="f">2X → A + P</span><span class="n">②（上限）</span></div>
+        <div class="eq"><span class="f">B + Z → (f/2) Y</span><span class="n">③（ブレーキの再生）</span></div>
+      </div>
+      <p class="hint">X = HBrO<sub>2</sub>、Y = Br<sup>−</sup>、Z = Ce<sup>4+</sup>、A = BrO<sub>3</sub><sup>−</sup>、B = 有機酸、P = HOBr などの生成物。次のグラフはこの5つの反応を計算したもの。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>かき混ぜたビーカーの中で起きていること</h2>
+    <figure>
+      <div class="chartwrap"><svg id="chart" viewBox="0 0 720 330" role="img" aria-label="亜臭素酸と臭化物イオンの量、液の色の時間変化"></svg></div>
+      <div class="legend">
+        <span><i style="background: var(--auto)"></i>亜臭素酸（自己触媒）</span>
+        <span><i style="background: var(--brake)"></i>臭化物イオン（ブレーキ役）</span>
+        <span><i style="background: linear-gradient(90deg, var(--ferroin), var(--ferriin))"></i>上の帯：液の色（触媒の酸化型の割合）</span>
+      </div>
+      <figcaption>オレゴネーター（BZ反応の数式モデル）を計算した結果。縦軸は対数で、各物質の最大値を上端にしている。①の間はブレーキ役が少しずつ減り、しきい値を切ると②で亜臭素酸が千倍近く跳ね上がる。③で臭化物イオンが戻ると亜臭素酸は一気に落ちる。振幅は小さくならず、毎周同じ形を繰り返す。</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>かき混ぜないと波になる</h2>
+    <figure>
+      <div class="simgrid">
+        <canvas id="dish" width="160" height="160" aria-label="シャーレの中の波のシミュレーション。タップで刺激を加える"></canvas>
+        <div class="controls">
+          <button id="b-pace" type="button" aria-pressed="true">ペースメーカー（同心円）</button>
+          <button id="b-spiral" type="button">らせん波を作る</button>
+          <button id="b-clear" type="button">静かな液に戻す</button>
+          <button id="b-run" type="button">一時停止</button>
+          <button id="b-slow" type="button" aria-pressed="false">ゆっくり再生</button>
+          <p class="hint">シャーレをタップすると、その場所で反応が始まる。2か所をタップすると、ぶつかった波が消えるのが見える。「らせん波を作る」は、半分で切れた波と、その後ろの不応期の帯を置いた状態から始まる。「ゆっくり再生」にすると、端が巻き込む様子を追える。</p>
+        </div>
+      </div>
+      <figcaption>中心の点が一定の周期で発火するたびに、新しい輪が外へ進む。しまの間隔は「波の速さ × 発火の周期」で決まる。一度発火した場所はしばらく発火できない（不応期）ので、波どうしは重なって通り抜けず、ぶつかると消える。計算には BZ反応と同じ型の興奮性媒質のモデル（Barkley モデル）を使っている。</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>らせんができる理由</h2>
+    <div class="panels">
+      <div class="panel"><svg viewBox="0 0 200 200" aria-hidden="true">
+        <rect x="0" y="92" width="100" height="42" fill="var(--ferriin)" fill-opacity="0.22"/>
+        <path d="M0,90 L100,90" stroke="var(--ferriin)" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M50,80 L50,52" stroke="var(--fg)" stroke-width="2" fill="none"/><path d="M44,60 L50,50 L56,60" stroke="var(--fg)" stroke-width="2" fill="none"/>
+        <circle cx="100" cy="90" r="6" fill="none" stroke="var(--ferroin)" stroke-width="2"/>
+        <text x="8" y="150" font-size="12" fill="var(--muted)">後ろは不応期</text>
+        <text x="110" y="80" font-size="12" fill="var(--ferroin)">端</text>
+      </svg><p>a. 途中で切れた波。上へ進み、すぐ後ろ（薄い帯）は不応期で発火できない。</p></div>
+      <div class="panel"><svg viewBox="0 0 200 200" aria-hidden="true">
+        <path d="M0,104 L96,104 Q112,104 112,126 L112,150 L0,150 Z" fill="var(--ferriin)" fill-opacity="0.22"/>
+        <path d="M0,60 L95,60 Q140,60 140,100 Q140,128 120,138" stroke="var(--ferriin)" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M150,96 L150,118" stroke="var(--fg)" stroke-width="2" fill="none"/><path d="M144,110 L150,120 L156,110" stroke="var(--fg)" stroke-width="2" fill="none"/>
+        <text x="8" y="172" font-size="12" fill="var(--muted)">不応期の端を回り込む</text>
+      </svg><p>b. 端の先は休んでいる液なので、波は横にも広がる。真後ろの不応期には入れないので、端は不応期の帯のふちに沿って巻き込む。</p></div>
+      <div class="panel"><svg viewBox="0 0 200 200" aria-hidden="true">
+        <path id="spiralpath" d="" stroke="var(--ferriin)" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="5" fill="var(--ferroin)"/>
+      </svg><p>c. 端が1周して戻る頃には、最初に通った場所の不応期が明けている。端はぐるぐる回り続け、外側の波は外へ進み続けるので、らせんになる。</p></div>
+    </div>
+    <ol class="steps">
+      <li>同心円の輪には端がない。だから中心から外へ広がるだけで、回転は起きない。</li>
+      <li>波が途中で切れると端ができる。端は「前には進めるが、真後ろには戻れない」ので、不応期の帯のふちを回るように曲がっていく。</li>
+      <li>きつく曲がった波は遅い。曲がりの内側から外側へ物質が拡散で逃げて、隣を発火させる力が弱まるからだ。端は一番きつく曲がっているので一番遅く、外側ほど速く進む。この速さの差で、波は中心に巻き付くように伸びていく。</li>
+      <li>実際の液では、泡やほこりに当たったり、液を少し揺らしたりすると波が切れて、らせんが生まれる。心臓の中で同じことが起きた状態が、心室細動などの不整脈だと考えられている。</li>
+    </ol>
+  </section>
+
+  <section class="aside">
+    <h2>振り子との違い</h2>
+    <p>振り子が行き過ぎるのは、動く物体に勢い（慣性）が残るから。化学反応の速さは「今の濃度」だけで決まり、慣性がないので、平衡のすぐ近くでは行ったり来たりせずに止まる。BZ反応は慣性の代わりに燃料の流れで揺れている。だから振り子のように揺れが減衰していくのではなく、燃料がある限り同じ振幅で続く（リミットサイクル）。</p>
+  </section>
+
+  <footer>参考：Field, Körös, Noyes (1972) の FKN 機構、Field & Noyes (1974) のオレゴネーター、Barkley (1991) の興奮性媒質モデル。反応式は Field, Körös, Noyes, J. Am. Chem. Soc. 94, 8649 (1972) による。 フォントは Google Fonts の Zen Kaku Gothic New と IBM Plex Mono（どちらも SIL Open Font License 1.1）。</footer>
+</main>
+
+<script>
+(() => {
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const NS = "http://www.w3.org/2000/svg";
+
+  /* ---------- Oregonator time series ---------- */
+  const eps = 0.04, q = 0.002, f = 1.0;
+  const F = (x, z) => [(x * (1 - x) - f * z * (x - q) / (x + q)) / eps, x - z];
+  function simulate() {
+    let x = 0.01, z = 0.1;
+    const dt = 1e-4, t0 = 4, t1 = 24, every = 40, s = [];
+    for (let i = 0, t = 0; t < t1; i++, t += dt) {
+      const k1 = F(x, z), k2 = F(x + dt / 2 * k1[0], z + dt / 2 * k1[1]);
+      const k3 = F(x + dt / 2 * k2[0], z + dt / 2 * k2[1]), k4 = F(x + dt * k3[0], z + dt * k3[1]);
+      x += dt / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]);
+      z += dt / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+      if (t >= t0 && i % every === 0) s.push({ t: t - t0, x, z, y: f * z / (q + x) });
+    }
+    return s;
+  }
+  const data = simulate();
+
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function mix(a, b, s) {
+    const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16));
+    return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * s)).join(",")})`;
+  }
+
+  function drawChart() {
+    const svg = document.getElementById("chart");
+    svg.textContent = "";
+    const W = 720, L = 44, R = 12, stripY = 30, stripH = 22, top = 70, bot = 290;
+    const T = data[data.length - 1].t;
+    const sx = (t) => L + (t / T) * (W - L - R);
+    const fg = css("--fg"), muted = css("--muted"), line = css("--line");
+    const red = css("--ferroin").replace("#", ""), blue = css("--ferriin").replace("#", "");
+
+    // phase bands from the autocatalyst level
+    const th = 0.02, bands = [];
+    let start = null, peak = null, peakX = 0;
+    for (let i = 1; i < data.length; i++) {
+      const a = data[i - 1], b = data[i];
+      if (a.x < th && b.x >= th) { start = b.t; peakX = 0; }
+      if (start !== null && b.x > peakX) { peakX = b.x; peak = b.t; }
+      if (start !== null && a.x >= th && b.x < th) { bands.push([start, peak, b.t]); start = null; }
+    }
+    let prevEnd = 0;
+    for (const [s0, pk, e] of bands) {
+      el("rect", { x: sx(s0), y: top - 16, width: sx(pk) - sx(s0), height: bot - top + 16, fill: css("--ferriin"), "fill-opacity": 0.12 }, svg);
+      el("rect", { x: sx(pk), y: top - 16, width: sx(e) - sx(pk), height: bot - top + 16, fill: css("--ferroin"), "fill-opacity": 0.12 }, svg);
+      const mid1 = (sx(prevEnd) + sx(s0)) / 2;
+      [[mid1, "①", css("--brake")], [(sx(s0) + sx(pk)) / 2, "②", css("--ferriin")], [(sx(pk) + sx(e)) / 2, "③", css("--ferroin")]]
+        .forEach(([x, lab, c]) => { const tx = el("text", { x, y: lab === "③" ? bot + 14 : top - 4, "text-anchor": "middle", "font-size": 12, fill: c, "font-family": css("--font-mono") }, svg); tx.textContent = lab; });
+      prevEnd = e;
+    }
+
+    // color strip: oxidized fraction of catalyst
+    const zmax = Math.max(...data.map(d => d.z));
+    for (let i = 0; i < data.length - 1; i += 2) {
+      const d = data[i], s = Math.min(1, d.z / zmax);
+      el("rect", { x: sx(d.t), y: stripY, width: sx(data[Math.min(i + 2, data.length - 1)].t) - sx(d.t) + 0.6, height: stripH, fill: mix(red, blue, Math.pow(s, 0.8)) }, svg);
+    }
+    const st = el("text", { x: L, y: stripY - 8, "font-size": 12, fill: muted }, svg); st.textContent = "液の色";
+
+    // log axis, each series normalized to its own max
+    const decades = 3, sy = (v, max) => {
+      const r = Math.log10(v / max);
+      return top + (Math.min(0, Math.max(-decades, r)) / -decades) * (bot - top);
+    };
+    for (let k = 0; k <= decades; k++) {
+      const y = top + (k / decades) * (bot - top);
+      el("line", { x1: L, x2: W - R, y1: y, y2: y, stroke: line, "stroke-width": 1 }, svg);
+      const lb = el("text", { x: L - 6, y: y + 4, "text-anchor": "end", "font-size": 11, fill: muted, "font-family": css("--font-mono") }, svg);
+      lb.textContent = k === 0 ? "最大" : `1/${Math.pow(10, k)}`;
+    }
+    const xmax = Math.max(...data.map(d => d.x)), ymax = Math.max(...data.map(d => d.y));
+    const path = (key, max) => data.map((d, i) => `${i ? "L" : "M"}${sx(d.t).toFixed(1)},${sy(d[key], max).toFixed(1)}`).join("");
+    el("path", { d: path("y", ymax), fill: "none", stroke: css("--brake"), "stroke-width": 2 }, svg);
+    el("path", { d: path("x", xmax), fill: "none", stroke: css("--auto"), "stroke-width": 2.2 }, svg);
+
+    // time axis
+    el("line", { x1: L, x2: W - R, y1: bot, y2: bot, stroke: fg, "stroke-width": 1 }, svg);
+    const tl = el("text", { x: W - R, y: bot + 26, "text-anchor": "end", "font-size": 12, fill: muted }, svg);
+    tl.textContent = "時間 →";
+  }
+  drawChart();
+  const mq = matchMedia("(prefers-color-scheme: dark)");
+  mq.addEventListener?.("change", drawChart);
+  new MutationObserver(drawChart).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  /* ---------- Barkley excitable medium ---------- */
+  const N = 160, a = 0.75, b = 0.02, ep = 0.02, h = 1.0, dt = 0.02, invh2 = 1 / (h * h);
+  let u = new Float32Array(N * N), v = new Float32Array(N * N), un = new Float32Array(N * N);
+  const canvas = document.getElementById("dish"), ctx = canvas.getContext("2d");
+  const img = ctx.createImageData(N, N);
+  let pacing = true, running = !matchMedia("(prefers-reduced-motion: reduce)").matches, simT = 0, lastPace = -1e9;
+  const pacePeriod = 6;
+  const c = N / 2;
+
+  function stimulate(cx, cy, r) {
+    for (let y = Math.max(0, cy - r); y < Math.min(N, cy + r + 1); y++)
+      for (let x = Math.max(0, cx - r); x < Math.min(N, cx + r + 1); x++)
+        if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r && v[y * N + x] < 0.25) u[y * N + x] = 1;
+  }
+  function step() {
+    for (let y = 0; y < N; y++) {
+      const ym = (y ? y - 1 : 1) * N, yp = (y < N - 1 ? y + 1 : N - 2) * N, yr = y * N;
+      for (let x = 0; x < N; x++) {
+        const i = yr + x, xm = x ? x - 1 : 1, xp = x < N - 1 ? x + 1 : N - 2;
+        const ui = u[i], vi = v[i];
+        const lap = (u[yr + xm] + u[yr + xp] + u[ym + x] + u[yp + x] - 4 * ui) * invh2;
+        const uth = (vi + b) / a;
+        let nu = ui + dt * (ui * (1 - ui) * (ui - uth) / ep + lap);
+        un[i] = nu < 0 ? 0 : nu > 1 ? 1 : nu;
+        v[i] = vi + dt * (ui - vi);
+      }
+    }
+    const t = u; u = un; un = t;
+    simT += dt;
+    if (pacing && simT - lastPace >= pacePeriod) { stimulate(c, c, 3); lastPace = simT; }
+  }
+  // the dish is a liquid, so its colors stay fixed in both themes
+  const RED = [205, 74, 52], BLUE = [38, 86, 196];
+  function render() {
+    const d = img.data;
+    for (let i = 0; i < N * N; i++) {
+      const s = Math.min(1, Math.max(u[i], v[i] * 0.9));
+      const o = i * 4;
+      d[o] = RED[0] + (BLUE[0] - RED[0]) * s;
+      d[o + 1] = RED[1] + (BLUE[1] - RED[1]) * s;
+      d[o + 2] = RED[2] + (BLUE[2] - RED[2]) * s;
+      d[o + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function clearDish() { u.fill(0); v.fill(0); un.fill(0); simT = 0; lastPace = -1e9; }
+  function spiral() {
+    pacing = false; setPace();
+    clearDish();
+    for (let y = c - 2; y <= c + 2; y++) for (let x = 0; x < c; x++) u[y * N + x] = 1;
+    for (let y = c + 3; y <= c + 18; y++) for (let x = 0; x < c; x++) v[y * N + x] = 0.5;
+  }
+  function setPace() { document.getElementById("b-pace").setAttribute("aria-pressed", String(pacing)); }
+
+  // warm up so the first still frame already shows rings
+  for (let k = 0; k < 1400; k++) step();
+  render();
+
+  let visible = true, stepsPerFrame = 8;
+  {
+    const pts = [];
+    for (let th = 0; ; th += 0.05) { const r = 6 + 5.2 * th; if (r > 92) break; pts.push(`${(100 + r * Math.cos(-th)).toFixed(1)},${(100 + r * Math.sin(-th)).toFixed(1)}`); }
+    document.getElementById("spiralpath").setAttribute("d", "M" + pts.join("L"));
+  }
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(canvas);
+  function loop() {
+    if (running && visible) { for (let k = 0; k < stepsPerFrame; k++) step(); render(); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  const slowBtn = document.getElementById("b-slow");
+  slowBtn.addEventListener("click", () => {
+    const slow = stepsPerFrame === 8; stepsPerFrame = slow ? 2 : 8; slowBtn.setAttribute("aria-pressed", String(slow));
+  });
+  const runBtn = document.getElementById("b-run");
+  const setRun = () => { runBtn.textContent = running ? "一時停止" : "再生"; };
+  setRun();
+  runBtn.addEventListener("click", () => { running = !running; setRun(); });
+  document.getElementById("b-pace").addEventListener("click", () => {
+    pacing = !pacing; if (pacing) lastPace = -1e9; setPace();
+  });
+  document.getElementById("b-spiral").addEventListener("click", () => { spiral(); if (!running) render(); });
+  document.getElementById("b-clear").addEventListener("click", () => { pacing = false; setPace(); clearDish(); render(); });
+  canvas.addEventListener("pointerdown", (e) => {
+    const r = canvas.getBoundingClientRect();
+    const x = Math.round((e.clientX - r.left) / r.width * N), y = Math.round((e.clientY - r.top) / r.height * N);
+    stimulate(x, y, 3); if (!running) render();
+  });
+})();
+</script>
+
+</body></html>
