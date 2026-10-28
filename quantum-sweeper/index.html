@@ -60,6 +60,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 details{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px}
 summary{cursor:pointer;font-weight:700}
 details p,details li{font-size:14px;color:#cdd5e6}
+details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 .mono{font-family:ui-monospace,Menlo,monospace}
 </style></head><body><main>
 <a class="back" href="../">← 作品一覧</a>
@@ -113,12 +114,30 @@ details p,details li{font-size:14px;color:#cdd5e6}
 <p id="msg" aria-live="polite"></p>
 <div id="result" aria-live="polite"></div>
 <details>
-<summary>ルール</summary>
+<summary>遊び方</summary>
+<h3>盤に地雷の配置は無い</h3>
+<p>この盤には、最初から決まった地雷の配置が無い。手がかりと地雷の総数に矛盾しない配置（世界）が全て重なっていて、その数が Ω。あるマスに地雷がある世界の割合が、そのマスの地雷の確率 p になる。世界を1つ（Ω = 1）に絞ればクリア。</p>
+<h3>マスに賭ける</h3>
 <ul>
-<li>配置は決まっていない。Ω = 手がかりと矛盾しない配置の数、p = 地雷がある配置の割合。Ω = 1 でクリア</li>
-<li>開ける: <span class="mono">−log₂(1−p)</span>。◆: <span class="mono">−log₂p</span>（手がかりは出ない）</li>
-<li><span class="mono">L + I + log₂Ω = log₂Ω₀</span></li>
-<li>安全第一: 推理ミス + 賭けの損でランク。最小コスト: L / log₂Ω₀ でランク</li>
+<li><b>◇ 開ける</b>: 「このマスは安全」に賭ける。地雷があった世界は消え、あなたは残った世界へ進む。開いたマスには、残った世界の中から引いた手がかりが出る</li>
+<li><b>◆ 地雷に賭ける</b>: 「このマスは地雷」に賭ける。地雷が無かった世界が消える。手がかりは出ないが、そのマスの地雷は確定する</li>
+<li><b>⚑ 旗</b>: ただのメモ。世界は変わらない。長押しか右クリックでも置ける</li>
+</ul>
+<p>全ての世界で外れる賭け（p = 100% のマスを開ける、p = 0% のマスに ◆）をすると、どの世界にもあなたは残らない。</p>
+<h3>手がかりの種類</h3>
+<p>マスの右上の印で、開けた時に出る手がかりの種類が分かる。印が無いマスは周りの地雷の数をそのまま出す。≈ は 0-1 や 1-2 のような幅、≋ は 1-3 のような広い幅、| は 1|3 のような2択、◐ は偶か奇だけを出す。どの区切りで出るかは開けるまで分からない。0 が出たマスの周りは続けて開く。</p>
+<h3>払った運 L と、推理で絞った I</h3>
+<p>賭けに勝つたびに、生き残る確率のぶんだけ運を使う。L はその合計をコイントスの回数で数えたもの。50% の賭けに勝てば +1、地雷の確率 25% のマスを開けて残れば +0.42。2<sup>−L</sup> が、ここまで生き残れた確率になる。手がかりで世界が絞られたぶんは I に入る。クリアした時、L と I の合計は最初の世界の数の対数 log₂Ω₀ になる。</p>
+<h3>モード</h3>
+<ul>
+<li><b>安全第一</b>: 全ての世界で安全なマスが残っていたのに賭けた分（推理ミス）と、一番安い賭けより高い賭けを選んだ分（賭けの損）でランクが決まる。賭けるしかない時の、一番安い賭けのコストは数えない</li>
+<li><b>最小コスト</b>: 払った L の合計でランクが決まる。安全なマスをわざと残して賭けてもよい</li>
+</ul>
+<h3>盤の印</h3>
+<ul>
+<li>金色の実線の枠: 最後にタップしたマス</li>
+<li>金色の点線の枠: 旗で決まって自動で開いたマス（⚑ 自動）</li>
+<li>白い破線の枠と薄い ◇・◆: 一番安い賭けより高い賭けをした時の、一番安かった賭け</li>
 </ul>
 </details>
 </main>
