@@ -38,6 +38,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
 .c.hint{outline:2px dashed var(--mute);outline-offset:-2px}
+.c.auto,#msg .auto{outline:2px dotted var(--gold);outline-offset:-2px}
+#msg .auto{padding:0 4px;border-radius:3px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
@@ -75,7 +77,7 @@ details p,details li{font-size:14px;color:#cdd5e6}
 </div>
 <div class="bar">
   <span role="group" aria-label="タップの操作">
-    <button data-tap="open" aria-pressed="true">開ける</button>
+    <button data-tap="open" aria-pressed="true" aria-label="安全に賭ける">◇</button>
     <button data-tap="mine" aria-pressed="false" aria-label="地雷に賭ける">◆</button>
     <button data-tap="flag" aria-pressed="false" aria-label="旗">⚑</button>
   </span>
@@ -178,6 +180,7 @@ function render() {
     if (g.opened[i]) b.style.background = '';
     if (i === last) cls += ' last';
     if (i === hint && !g.opened[i]) cls += ' hint';
+    if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
     b.className = cls;
     b.innerHTML = html;
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
@@ -218,11 +221,11 @@ function chord(i) {
   render();
 }
 
-// 旗で決まるマスを自動で開けた分
+// 旗で決まるマスを自動で開けた分。開けたマスは盤の上で点線の枠で示し、コストがあれば同じ枠で添える
 function autoNote() {
   const a = g.auto;
-  if (!a || !a.count || g.state === 'dead') return '';
-  return ` · ⚑ ${a.count}` + (a.cost > 0 ? ` <b>+${a.cost.toFixed(2)}</b>` : '');
+  if (!a || !a.cost || g.state === 'dead') return '';
+  return ` · <span class="auto">+${a.cost.toFixed(2)} bit</span>`;
 }
 
 // 旗を置いた後や自動開放を有効にした時に、旗で決まるマスを開ける
@@ -301,6 +304,7 @@ function showResult(ok) {
 function toggleFlag(i) {
   if (!g.free(i) || g.state !== 'play') return;
   g.flags.has(i) ? g.flags.delete(i) : g.flags.add(i);
+  g.auto = null;
   settleNow();
   render();
 }
