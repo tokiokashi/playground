@@ -184,7 +184,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </ul>
 <p>≈・≋・| は、どこで区切るかがマスごとに違い、踏み込むまで分かりません。例えば ≈ では、周りの地雷が1個でも、「0-1」と出ることも「1-2」と出ることもあります。周りの地雷が0個と確定したマスが開くと、その周りのマスも続けて開きます。「0-1」や「偶」のように、0個の可能性があるだけでは開きません。</p>
 <h3>L（Life）は命で払った運、I（Information）は数字から得た情報</h3>
-<p>外れうる賭けを生き延びるたびに、あなたのいない世界が増えます。L はその分を足し合わせた値で、コインを何回続けて表にしたのと同じ運かを表します。単位は bit です。50% の賭けを生き延びれば 1 bit、p = 10% のマスに踏み込んで無事なら 0.15 bit 増えます。1回の賭けで増える L を、その賭けのコストと呼びます。2<sup>−L</sup> は、最初にいたあなたのうち、今ここにいるあなたの割合です。</p>
+<p>外れうる賭けを生き延びるたびに、あなたのいない世界が増えます。L はその分を足し合わせた値で、生き延びた確率が、コイントスを何回続けて当てるのと同じかを表します。単位は bit です。50% の賭けを生き延びれば 1 bit、p = 10% のマスに踏み込んで無事なら 0.15 bit 増えます。1回の賭けで増える L を、その賭けのコストと呼びます。2<sup>−L</sup> は、最初にいたあなたのうち、今ここにいるあなたの割合です。</p>
 <p>I は、数字を見て世界が減った分を、同じ bit で数えた値です。降り立った直後の世界の数を Ω₀ とすると、Ω が 1 になった時、L と I の合計は log₂Ω₀（Ω₀ が 2 の何乗か）にちょうど一致します。世界を減らす方法は二つしかありません。命で払うか、根拠を持って絞るかです。</p>
 <h3>モード</h3>
 <ul>
@@ -525,6 +525,8 @@ function showResult(ok) {
   const pctS = x => x >= 0.001 ? (x * 100).toFixed(1) + '%' : (x * 100).toExponential(1) + '%';
   const bets = g.moves.filter(m => m.cost > 0 && isFinite(m.cost));
   const coins = g.L.toFixed(1);
+  // 0.0 回と出る小さい L では、コイントスの言い換えを出さない
+  const lucky = g.L >= 0.05;
   // 一番危なかった賭け: 外れる確率（開けるなら p、地雷に賭けるなら 1 − p）が一番高かったもの
   const worst = bets.reduce((a, m) => (!a || m.cost > a.cost ? m : a), null);
   const risk = worst ? 1 - 2 ** -worst.cost : 0;
@@ -533,11 +535,12 @@ function showResult(ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
     story = [
-      `コイントス <b>${coins}</b> 回分の運（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けました。`,
+      lucky ? `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けました。`
+        : bets.length ? `外れうる賭けを <b>${bets.length}</b> 回切り抜けました。` : '',
       fatal.kind === 'mine' ? '最後に、どの世界でも空だったマスに、地雷があると決めました。' : '最後に、どの世界でも地雷があるマスへ踏み込みました。',
       'この先に、あなたのいる世界はありません。',
     ];
-    summary = `観測者消滅・コイントス ${coins} 回分（${pctS(2 ** -g.L)}）を切り抜けた後`;
+    summary = '観測者消滅' + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(2 ** -g.L)}）を切り抜けた後` : '');
   } else {
     const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
     r = mode === 'safe' ? rank(loss) : rankCost(ratio);
@@ -548,9 +551,9 @@ function showResult(ok) {
     rows.push(['L', `${f(g.L)} / ${g.H0.toFixed(1)}（${(ratio * 100).toFixed(1)}%）`], ['◆', f(b.mineCost)]);
     head = `<h2><span class="rank">${r}</span>Ω = 1</h2>`;
     story = [
-      `コイントス <b>${coins}</b> 回分の運で生き延びました。`
+      (!lucky ? '' : `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率で、あなたは生き残りました。`)
         // 安全第一では、どう打っても払うしかなかった分を分けて書き、運の大きさが腕の差に見えないようにする
-        + (mode === 'safe' && b.forced >= 0.05 ? `うち <b>${b.forced.toFixed(1)}</b> 回分は、必要な犠牲でした。` : ''),
+        + (mode === 'safe' && b.forced >= 0.05 ? `うち <b>${b.forced.toFixed(1)}</b> 回は、必要な犠牲でした。` : ''),
       `最初にいたあなたのうち、ここにいるのは <b>${pctS(surv)}</b> です。`,
       !worst ? '外れうる賭けを一度もせずに、ここまで来ました。'
         : `外れうる賭けは <b>${bets.length}</b> 回でした。最も危うかったのは、` + (worst.kind === 'mine'
@@ -560,7 +563,7 @@ function showResult(ok) {
       '観測を終了します。',
     ];
     table = flowChart() + `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
-    summary = `${r}・コイントス ${coins} 回分（${pctS(surv)}）` + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
+    summary = r + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(surv)}）` : '') + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
   let setting = `${g.W}×${g.H}・${g.M}個・${fog ? fog.textContent : '詳細設定'}・${mode === 'safe' ? '安全第一' : '最小コスト'}`;
@@ -580,7 +583,7 @@ function showResult(ok) {
     next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button> `;
   }
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
-  el.innerHTML = `${head}<p class="story">${story.join('<br>')}</p>${table}${next}<button id="share">共有</button>`;
+  el.innerHTML = `${head}<p class="story">${story.filter(Boolean).join('<br>')}</p>${table}${next}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
   if (camp) $('next').addEventListener('click', () => {
     if (!ok) newGame();
@@ -765,7 +768,7 @@ function showRecords() {
     + `<tbody>${rows.join('')}</tbody></table>`
     + `<p>クリアした面 <b>${n}</b> / ${total}。`
     // 別々のプレーで取った一番良い記録を、続けて切り抜けたとした時の割合。L が分かる面だけで数える
-    + (m ? `L が分かる ${m} 面の記録を続けて切り抜けたとすると、残るあなたは最初の <b>${pct(2 ** -sumL)}</b>（コイントス <b>${sumL.toFixed(1)}</b> 回分）です。` : '')
+    + (m ? `L が分かる ${m} 面の記録を続けて切り抜けたとすると、残るあなたは最初の <b>${pct(2 ** -sumL)}</b> です。` + (sumL >= 0.05 ? `コイントスを <b>${sumL.toFixed(1)}</b> 回続けて当てるのと同じ確率です。` : '') : '')
     + '</p>';
 }
 function enterPlay() {
