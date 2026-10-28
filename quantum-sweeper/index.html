@@ -34,10 +34,16 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.f::after{content:"⚑";color:var(--gold)}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk)}
+.c.w{background:#3a3216}
+.c.w::after{content:"●";color:var(--gold)}
+#board.won{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(242,198,107,.45);border-radius:4px}
+#board.lost{box-shadow:0 0 0 2px var(--risk);border-radius:4px}
 .c.k{background:#4a3416}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
 .c.hint{outline:2px dashed var(--mute);outline-offset:-2px}
+.c.auto,#msg .auto{outline:2px dotted var(--gold);outline-offset:-2px}
+#msg .auto{padding:0 4px;border-radius:3px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
@@ -75,7 +81,7 @@ details p,details li{font-size:14px;color:#cdd5e6}
 </div>
 <div class="bar">
   <span role="group" aria-label="タップの操作">
-    <button data-tap="open" aria-pressed="true">開ける</button>
+    <button data-tap="open" aria-pressed="true" aria-label="安全に賭ける">◇</button>
     <button data-tap="mine" aria-pressed="false" aria-label="地雷に賭ける">◆</button>
     <button data-tap="flag" aria-pressed="false" aria-label="旗">⚑</button>
   </span>
@@ -152,6 +158,8 @@ function newGame() {
 function render() {
   const { W, H } = g;
   const over = g.state !== 'play';
+  board.classList.toggle('won', g.state === 'clear');
+  board.classList.toggle('lost', g.state === 'dead');
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -164,7 +172,8 @@ function render() {
     } else {
       const p = g.prob(i);
       if (g.mines.has(i)) cls += ' k';
-      else if (over && p > 1 - 1e-9) cls += ' m';
+      // 終わった時の地雷: クリアなら確定した地雷として落ち着いた色、ゲームオーバーなら赤
+      else if (over && p > 1 - 1e-9) cls += g.state === 'clear' ? ' w' : ' m';
       else if (g.flags.has(i)) cls += ' f';
       // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（◆・旗）と、
       // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
@@ -178,6 +187,7 @@ function render() {
     if (g.opened[i]) b.style.background = '';
     if (i === last) cls += ' last';
     if (i === hint && !g.opened[i]) cls += ' hint';
+    if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
     b.className = cls;
     b.innerHTML = html;
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
@@ -218,11 +228,11 @@ function chord(i) {
   render();
 }
 
-// 旗で決まるマスを自動で開けた分
+// 旗で決まるマスを自動で開けた分。開けたマスは盤の上で点線の枠で示し、コストがあれば同じ枠で添える
 function autoNote() {
   const a = g.auto;
-  if (!a || !a.count || g.state === 'dead') return '';
-  return ` · ⚑ ${a.count}` + (a.cost > 0 ? ` <b>+${a.cost.toFixed(2)}</b>` : '');
+  if (!a || !a.cost || g.state === 'dead') return '';
+  return ` · <span class="auto">+${a.cost.toFixed(2)} bit</span>`;
 }
 
 // 旗を置いた後や自動開放を有効にした時に、旗で決まるマスを開ける
@@ -301,6 +311,7 @@ function showResult(ok) {
 function toggleFlag(i) {
   if (!g.free(i) || g.state !== 'play') return;
   g.flags.has(i) ? g.flags.delete(i) : g.flags.add(i);
+  g.auto = null;
   settleNow();
   render();
 }
