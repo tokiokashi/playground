@@ -196,13 +196,16 @@ function chord(i) {
   for (const t of targets) {
     if (g.state !== 'play' || !g.free(t)) continue;
     const r = g.open(t);
+    // 直前のマスで世界が1つに決まっていると、開ける前にクリアになって null が返る
+    if (!r) break;
     last = t;
     if (g.state === 'dead') break;
     cost += r.cost;
     if (r.p > 0) risky++;
     opened.push(t);
   }
-  if (g.state === 'play') g.settle(opened);
+  g.auto = null;
+  if (g.state !== 'dead') g.settle(opened);
   if (g.state === 'dead') {
     $('msg').innerHTML = '旗が間違っていた。開けたマスは<b>全ての世界で地雷</b>だった。どの世界線にも、あなたは残らない。';
     showResult(false);
