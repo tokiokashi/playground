@@ -70,6 +70,13 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .scen button b{display:block;font:800 15px/1.1 ui-monospace,Menlo,monospace}
 #entry{margin:8px 0 16px}
 #free{margin-top:6px}
+#records{margin:12px 0 0;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:13px}
+#records summary{cursor:pointer;font-weight:700}
+#records table{width:100%;border-collapse:collapse;margin:6px 0 0;font:12px/1.6 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+#records th{color:var(--mute);font-weight:400;text-align:left}
+#records td.rk{color:var(--gold);font-weight:700}
+#records p{margin:8px 0 0}
+#records p b{color:var(--gold)}
 .stagelabel{font-weight:700;color:var(--gold)}
 #result{display:none;margin:12px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:10px}
 #result h2{margin:0 0 6px;font-size:18px}
@@ -90,6 +97,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div id="entry">
   <div id="camp" role="group" aria-label="キャンペーン"></div>
   <button id="free">自由観測</button>
+  <details id="records" hidden></details>
 </div>
 <div id="play" hidden>
 <div class="bar">
@@ -563,8 +571,9 @@ function showResult(ok) {
     setting = `${sc.name} ${camp.k + 1}/${sc.stages.length}・${g.W}×${g.H}・${g.M}個`;
     // 自動プレーを使った面は、次へ進めるがクリアとして記録しない
     if (ok && !g.botUsed) {
-      // 面ごとに一番良かったランクを残す
-      if (rankOrder(r) > rankOrder(prog[camp.s][camp.k])) prog[camp.s][camp.k] = r;
+      // 面ごとに一番良かった記録（ランクと、その時の L）を残す。ランクが同じなら L が小さい方
+      const old = prog[camp.s][camp.k], d = rankOrder(r) - rankOrder(old);
+      if (d > 0 || (d === 0 && (recL(old) === null || g.L < recL(old)))) prog[camp.s][camp.k] = { r, L: g.L };
       saveProg();
       if (last) story.push(prog.every(row => row.every(Boolean)) ? 'すべての観測を終えました。' : 'このシナリオの観測を、すべて終えました。');
     }
@@ -700,7 +709,7 @@ const SCEN = [
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
 let freeSet = null;
-// 進み具合（クリアした面に、その面で一番良かったランク）はこのブラウザにだけ残す。保存できない環境では、開いている間だけ覚える。
+// 進み具合（クリアした面に、その面で一番良かったランクとその時の L を `{ r, L }` で）はこのブラウザにだけ残す。古い記録の `1`（ランクを残す前のクリア）とランクの文字列もそのまま読む。保存できない環境では、開いている間だけ覚える。
 // ランクを残す前の形式の 1 は、ランク無しのクリアとして扱う
 let prog = loadProg();
 function loadProg() {
@@ -714,8 +723,11 @@ function saveProg() {
   try { localStorage.setItem('qs-campaign', JSON.stringify(prog)); } catch { /* 保存できない環境 */ }
 }
 const RANKS = ['C', 'B', 'A', 'S', 'S+'];
+// 面の記録は、未クリアの 0、ランク無しのクリアの 1、ランクの文字列、{ r: ランク, L } のどれか
+const recRank = v => (v && typeof v === 'object' ? v.r : v);
+const recL = v => (v && typeof v === 'object' && Number.isFinite(v.L) ? v.L : null);
 // 未クリアは -1、ランク無しのクリア（1）は 0 番目より下の -0.5
-const rankOrder = v => !v ? -1 : RANKS.includes(v) ? RANKS.indexOf(v) : -0.5;
+const rankOrder = v => !v ? -1 : RANKS.includes(recRank(v)) ? RANKS.indexOf(recRank(v)) : -0.5;
 const scenOpen = i => i === 0 || prog[i - 1].every(Boolean);
 
 function showEntry() {
@@ -727,8 +739,34 @@ function showEntry() {
   $('camp').innerHTML = SCEN.map((sc, i) => `<div class="scen"><span>${scenOpen(i) ? sc.name : '？'}</span>` + sc.stages.map(([W, H, M], k) => {
     const open = scenOpen(i) && (k === 0 || prog[i][k - 1]);
     if (!open) return `<button disabled aria-label="シナリオ${i + 1} ${k + 1}面 未開放">？</button>`;
-    return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}${RANKS.includes(prog[i][k]) ? ' ランク' + prog[i][k] : ''}">${W}×${H}${RANKS.includes(prog[i][k]) ? `<b>${prog[i][k]}</b>` : ''}</button>`;
+    const rk = RANKS.includes(recRank(prog[i][k])) ? recRank(prog[i][k]) : '';
+    return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}${rk ? ' ランク' + rk : ''}">${W}×${H}${rk ? `<b>${rk}</b>` : ''}</button>`;
   }).join('') + '</div>').join('');
+  showRecords();
+}
+// 入口の記録: クリアした面ごとの一番良い記録と、それらを通して生き残った割合
+function showRecords() {
+  const pct = x => x >= 0.001 ? (x * 100).toFixed(1) + '%' : (x * 100).toExponential(1) + '%';
+  const rows = [];
+  let n = 0, m = 0, sumL = 0, total = 0;
+  SCEN.forEach((sc, i) => sc.stages.forEach(([W, H], k) => {
+    total++;
+    const v = prog[i][k];
+    if (!v) return;
+    n++;
+    const rk = RANKS.includes(recRank(v)) ? recRank(v) : '—', L = recL(v);
+    if (L !== null) { m++; sumL += L; }
+    rows.push(`<tr><td>${sc.name} ${k + 1}</td><td>${W}×${H}</td><td class="rk">${rk}</td><td>${L === null ? '—' : pct(2 ** -L)}</td><td>${L === null ? '—' : L.toFixed(1)}</td></tr>`);
+  }));
+  $('records').hidden = !n;
+  if (!n) return;
+  $('records').innerHTML = '<summary>記録</summary>'
+    + '<table><thead><tr><th>面</th><th></th><th>ランク</th><th>2<sup>−L</sup></th><th>L</th></tr></thead>'
+    + `<tbody>${rows.join('')}</tbody></table>`
+    + `<p>クリアした面 <b>${n}</b> / ${total}。`
+    // 別々のプレーで取った一番良い記録を、続けて切り抜けたとした時の割合。L が分かる面だけで数える
+    + (m ? `L が分かる ${m} 面の記録を続けて切り抜けたとすると、残るあなたは最初の <b>${pct(2 ** -sumL)}</b>（コイントス <b>${sumL.toFixed(1)}</b> 回分）です。` : '')
+    + '</p>';
 }
 function enterPlay() {
   $('entry').hidden = true;
