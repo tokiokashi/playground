@@ -535,7 +535,8 @@ function showResult(ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
     story = [
-      lucky ? `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けました。` : '',
+      lucky ? `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けました。`
+        : bets.length ? `外れうる賭けを <b>${bets.length}</b> 回切り抜けました。` : '',
       fatal.kind === 'mine' ? '最後に、どの世界でも空だったマスに、地雷があると決めました。' : '最後に、どの世界でも地雷があるマスへ踏み込みました。',
       'この先に、あなたのいる世界はありません。',
     ];
