@@ -20,6 +20,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #custom input{flex:1;min-width:0;accent-color:var(--gold)}
 #custom input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:2px 4px;width:100%}
 #custom label:has(.mix){grid-column:span 3}
+.left{margin-left:auto;font:600 15px/1 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.left b{color:var(--risk);margin-right:4px}
+.left.neg{color:var(--risk)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:6px;margin:0 0 10px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .stat .k{display:block;font-size:11px;color:var(--mute)}
@@ -93,6 +96,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <button id="showp" aria-pressed="false">p</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
+  <span id="left" class="left" aria-label="残りの地雷"></span>
 </div>
 <div id="custom" hidden>
   <label>W<input type="number" id="cw" min="4" max="20"></label>
@@ -135,6 +139,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </ul>
 <h3>盤の印</h3>
 <ul>
+<li>右上の ● と数: 地雷の総数から ◆ と旗の数を引いた、残りの地雷の数</li>
 <li>金色の実線の枠: 最後にタップしたマス</li>
 <li>金色の点線の枠: 旗で決まって自動で開いたマス（⚑ 自動）</li>
 <li>白い破線の枠と薄い ◇・◆: 一番安い賭けより高い賭けをした時の、一番安かった賭け</li>
@@ -219,6 +224,10 @@ function render() {
     b.innerHTML = html;
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
   }
+  // 残りの地雷: 地雷の総数から ◆ と旗の数を引いたもの（旗を置きすぎると負になる）
+  const left = g.M - g.mines.size - g.flags.size;
+  $('left').innerHTML = `<b>●</b>${left}`;
+  $('left').classList.toggle('neg', left < 0);
   $('omega').textContent = fmtOmega(g.an.omega);
   $('Lv').textContent = g.L.toFixed(2);
   $('Iv').textContent = g.I.toFixed(2);
