@@ -33,6 +33,7 @@ export class Game {
     this.L = 0;   // 生き残ることで削った世界（命で払ったビット）
     this.I = 0;   // 手がかりを見ることで削った世界（観測で得たビット）
     this.moves = [];
+    this.landed = false;
     this.state = 'play';
     this.refresh();
   }
@@ -83,6 +84,7 @@ export class Game {
     // 直前に別のマスを開けていれば確率が古いので数え直す
     if (this.dirty) this.refresh();
     if (this.state !== 'play') return null;
+    if (!this.landed) { const r = this.land(c); if (r) return r; }
     const p = this.an.prob[c];
     const sit = this.situation();
     if (p > 1 - 1e-9) {
@@ -95,6 +97,28 @@ export class Game {
     this.moves.push({ kind: 'open', c, p, cost, ...sit });
     this.observe(c);
     return { p, cost, opened: [c] };
+  }
+
+  // 最初に開けるマスは、プレイヤーが降り立つ場所。そこと周りの8マスが空の世界だけを残し、コストは取らない。
+  // 削った分は運でも数字でもないので、Ω₀ の側から引く（L + I = log₂Ω₀ を保つ）。
+  // 地雷が多くて周りまで空にできない盤では、降り立つマスだけを空にする
+  land(c) {
+    this.landed = true;
+    const { W, H, M } = this;
+    const before = this.an.omega, sit = this.situation();
+    const area = [c, ...neighbors(c, W, H)].filter(d => this.free(d));
+    for (const cells of [area, [c]]) {
+      for (const d of cells) this.opened[d] = 1;
+      const after = analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
+      if (after > 0) {
+        this.H0 -= Math.log2(before / after);
+        this.moves.push({ kind: 'open', c, p: 0, cost: 0, ...sit });
+        for (const d of cells) this.observe(d);
+        return { p: 0, cost: 0, opened: cells.slice() };
+      }
+      for (const d of cells) this.opened[d] = 0;
+    }
+    return null;
   }
 
   // マス c の地雷に賭ける。戻り値: { p, cost, opened }
