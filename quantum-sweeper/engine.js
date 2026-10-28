@@ -224,16 +224,19 @@ export function neighbors(c, W, H) {
 }
 
 // 検出器の種類ごとに、周囲の地雷数 0..8 を「表示される手がかり」へ分ける。
-// 同じ表示になる地雷数の集合は配置によらず決まっているので、世界の重みは均等のまま保たれる。
+// parts が複数ある種類は、区切りの位置が違う分け方のどれかを、マスごとにくじで最初に決める。
+// どの分け方でも地雷数 0..8 はちょうど1つの組に入るので、本当の地雷数によらず
+// 同じ表示が出る確率がそろい、世界の重みは均等のまま保たれる。
 export const DETECTORS = {
-  exact: { label: '精密', classes: [0, 1, 2, 3, 4, 5, 6, 7, 8].map(n => [n]) },
-  range: { label: '幅', classes: [[0, 1], [2, 3], [4, 5], [6, 7], [8]] },
-  pair: { label: '二重', classes: [[0, 2], [1, 3], [4, 6], [5, 7], [8]] },
-  parity: { label: '偶奇', classes: [[0, 2, 4, 6, 8], [1, 3, 5, 7]] },
+  exact: { label: '精密', parts: [[0, 1, 2, 3, 4, 5, 6, 7, 8].map(n => [n])] },
+  range: { label: '幅', parts: [[[0, 1], [2, 3], [4, 5], [6, 7], [8]], [[0], [1, 2], [3, 4], [5, 6], [7, 8]]] },
+  pair: { label: '二重', parts: [[[0, 2], [1, 3], [4, 6], [5, 7], [8]], [[0], [1, 3], [2, 4], [5, 7], [6, 8]]] },
+  parity: { label: '偶奇', parts: [[[0, 2, 4, 6, 8], [1, 3, 5, 7]]] },
+  wide: { label: '広い幅', parts: [[[0, 1, 2], [3, 4, 5], [6, 7, 8]], [[0], [1, 2, 3], [4, 5, 6], [7, 8]], [[0, 1], [2, 3, 4], [5, 6, 7], [8]]] },
 };
 export function classLabel(type, cls) {
   if (type === 'parity') return cls[0] === 0 ? '偶' : '奇';
   if (cls.length === 1) return cls[0] === 0 ? '' : String(cls[0]);
-  return type === 'range' ? `${cls[0]}-${cls[1]}` : `${cls[0]}|${cls[1]}`;
+  return type === 'pair' ? `${cls[0]}|${cls[1]}` : `${cls[0]}-${cls[cls.length - 1]}`;
 }
 export const maskOf = cls => cls.reduce((m, n) => m | (1 << n), 0);
