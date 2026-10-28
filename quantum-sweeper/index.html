@@ -42,6 +42,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
 .c.hint{outline:2px dashed var(--mute);outline-offset:-2px}
+.c .gh{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink);opacity:.45;font-weight:400}
+#result .story{margin:6px 0 0;font-size:14px;line-height:1.8}
+#result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
+#share{margin-top:10px}
 .c.auto,#msg .auto{outline:2px dotted var(--gold);outline-offset:-2px}
 #msg .auto{padding:0 4px;border-radius:3px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
@@ -125,7 +129,7 @@ const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋' };
 let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = false, tap = 'open', showP = false;
-let g, cells, last = -1, hint = -1;
+let g, cells, last = -1, hint = -1, hintKind = 'open';
 
 function fmtOmega(o) {
   if (o < 1e6) return Math.round(o).toLocaleString();
@@ -186,7 +190,11 @@ function render() {
     }
     if (g.opened[i]) b.style.background = '';
     if (i === last) cls += ' last';
-    if (i === hint && !g.opened[i]) cls += ' hint';
+    // 一番安かった賭けのマスには、その賭けの記号（◇ 開ける / ◆ 地雷に賭ける）を薄く重ねる
+    if (i === hint && !g.opened[i] && !g.mines.has(i)) {
+      cls += ' hint';
+      html += `<span class="gh">${hintKind === 'mine' ? '◆' : '◇'}</span>`;
+    }
     if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
     b.className = cls;
     b.innerHTML = html;
@@ -254,8 +262,9 @@ function betLine(r, m) {
   if (m.safeExists && mode === 'safe') t += ' · ✕';
   else if (!m.safeExists && m.cost > m.best + 1e-9) {
     // 一番安かった賭けを、そのマスの確率で示し、盤の上でも枠で示す
-    t += ` · 最安 ${m.bestKind === 'mine' ? '◆ ' : ''}${(m.bestP * 100).toFixed(1)}%`;
+    t += ` · 最安 ${m.bestKind === 'mine' ? '◆' : '◇'} ${(m.bestP * 100).toFixed(1)}%`;
     hint = m.bestCell;
+    hintKind = m.bestKind;
   }
   return t;
 }
@@ -290,22 +299,61 @@ function betMine(i) {
   render();
 }
 
+// 結果画面。ランクと内訳に加えて、どれだけの運で生き延びたかを短い文で出し、そのまま共有できるようにする
 function showResult(ok) {
   const el = $('result');
   $('msg').innerHTML = '';
+  const f = x => x.toFixed(2);
+  const pctS = x => x >= 0.001 ? (x * 100).toFixed(1) + '%' : (x * 100).toExponential(1) + '%';
+  const bets = g.moves.filter(m => m.cost > 0 && isFinite(m.cost));
+  const coins = g.L.toFixed(1);
+  // 一番危なかった賭け: 外れる確率（開けるなら p、地雷に賭けるなら 1 − p）が一番高かったもの
+  const worst = bets.reduce((a, m) => (!a || m.cost > a.cost ? m : a), null);
+  const risk = worst ? 1 - 2 ** -worst.cost : 0;
+  let head, story, table = '', summary;
   if (!ok) {
-    el.innerHTML = '<h2>観測者消滅</h2>';
+    const fatal = g.moves[g.moves.length - 1];
+    head = '<h2>観測者消滅</h2>';
+    story = [
+      `コイン <b>${coins}</b> 回分の運（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けた。`,
+      fatal.kind === 'mine' ? '最後は、全ての世界で安全なマスに ◆ を賭けた。' : '最後は、全ての世界で地雷のマスを ◇ で開けた。',
+    ];
+    summary = `観測者消滅・コイン ${coins} 回分（${pctS(2 ** -g.L)}）を切り抜けた後`;
   } else {
     const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
-    const f = x => x.toFixed(2);
+    const r = mode === 'safe' ? rank(loss) : rankCost(ratio);
+    const surv = 2 ** -g.L;
     const rows = mode === 'safe'
       ? [['推理ミス', `${f(b.error)}（${b.errors}）`], ['賭けの損', f(b.gap)], ['不可避', f(b.forced)]]
       : [];
     rows.push(['L', `${f(g.L)} / ${g.H0.toFixed(1)}（${(ratio * 100).toFixed(1)}%）`], ['◆', f(b.mineCost)]);
-    el.innerHTML = `<h2><span class="rank">${mode === 'safe' ? rank(loss) : rankCost(ratio)}</span>Ω = 1</h2>
-      <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    head = `<h2><span class="rank">${r}</span>Ω = 1</h2>`;
+    story = [
+      `コイン <b>${coins}</b> 回分の運（<b>${pctS(surv)}</b>）で生き延びた。`,
+      !worst ? '一度も外れうる賭けをせずに観測を終えた。'
+        : `外れうる賭けは <b>${bets.length}</b> 回。一番危なかったのは、` + (worst.kind === 'mine'
+          ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスに ◆ を賭けた手。`
+          : `地雷の確率 <b>${(risk * 100).toFixed(1)}%</b> のマスを ◇ で開けた手。`),
+      `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち、手がかりで <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を絞った。`,
+    ];
+    table = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    summary = `${r}・コイン ${coins} 回分（${pctS(surv)}）` + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
   }
+  const fog = document.querySelector('[data-fog][aria-pressed="true"]');
+  const setting = `${g.W}×${g.H}・${g.M}個・${fog ? fog.textContent : '詳細設定'}・${mode === 'safe' ? '安全第一' : '最小コスト'}`;
+  shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
+  el.innerHTML = `${head}<p class="story">${story.join('<br>')}</p>${table}<button id="share">共有</button>`;
+  $('share').addEventListener('click', shareResult);
   el.style.display = 'block';
+}
+
+let shareText = '';
+async function shareResult(e) {
+  const url = location.href.split('#')[0];
+  try {
+    if (navigator.share) await navigator.share({ text: shareText, url });
+    else { await navigator.clipboard.writeText(`${shareText}\n${url}`); e.target.textContent = '✓ コピーした'; }
+  } catch { /* 共有を取り消した時など */ }
 }
 
 function toggleFlag(i) {
