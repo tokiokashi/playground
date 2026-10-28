@@ -32,8 +32,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c:hover{background:var(--cellhi)}
 .c.o{background:var(--safe);cursor:default}
 .c.o.fz{font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.32)}
-.c .d{position:absolute;right:2px;top:1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.26);color:var(--mute);font-weight:400}
-.c .pr{position:absolute;inset:auto 0 1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.24);font-weight:400;color:#fff;opacity:.85}
+.c .d{position:absolute;z-index:2;right:2px;top:1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.26);color:var(--mute);font-weight:400}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk);position:relative;z-index:2}
 .c.w{background:#3a3216}
@@ -47,7 +46,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
 .c.hint{outline:2px dashed var(--mute);outline-offset:-2px}
-.c .gh{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink);opacity:.45;font-weight:400}
+.c .gh{position:absolute;z-index:2;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink);opacity:.45;font-weight:400}
 #result .story{margin:6px 0 0;font-size:14px;line-height:1.8}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
 #share{margin-top:10px}
@@ -95,7 +94,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-tap="open" aria-pressed="true" aria-label="安全に賭ける">◇</button>
     <button data-tap="mine" aria-pressed="false" aria-label="地雷に賭ける">◆</button>
   </span>
-  <button id="showp" aria-pressed="false">p</button>
+  <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
   <span id="left" class="left" aria-label="残りの地雷"></span>
@@ -126,7 +125,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
 <p>最初の一歩は、◇ で降り立つ場所を選ぶことです（降り立つまで ◆ は置けません）。そこと周りの 8 マスに地雷がある世界は初めから数えないので、最初の一歩にコストはかかりません。</p>
-<p>「p」を押すと、各マスに p が表示されます。p は、残っている世界のうち、そのマスに地雷がある世界の割合です。p = 30% なら、3割の世界でそこに地雷があります。</p>
+<p>マスごとの p は、残っている世界のうち、そのマスに地雷がある世界の割合です。p = 30% なら、3割の世界でそこに地雷があります。「|ψ|²」を押すと、p の分布が盤の上に赤い雲で重なります。雲が濃いほど p が大きく、p = 100% のマスは確定した地雷と同じ色になります。</p>
 <h3>どの世界へ進むかを決める</h3>
 <p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身と違う世界でも盤は続きますが、そこにあなたはいません。盤の上にある ◇・◆ のボタンでどちらに決めるかを選んでから、マスを押します。目印だけを付ける手段はありません。</p>
 <ul>
@@ -202,7 +201,7 @@ function newGame() {
   render();
 }
 
-// 観測者消滅の盤に、確定していない地雷の分布を雲として重ねる。地雷はまだどこにも置かれていないので、
+// 観測者消滅の盤と、|ψ|² を押している間の盤に、確定していない地雷の分布を雲として重ねる。地雷はまだどこにも置かれていないので、
 // マスごとに区切らない。1マスを1画素とした小さな canvas に各マスの濃さを置き、盤の大きさへ拡大する。
 // 拡大の補間で隣のマスとの間が滑らかにつながり、境目が消える
 const cloud = $('cloud');
@@ -252,7 +251,8 @@ function render() {
   board.classList.toggle('won', g.state === 'clear');
   document.querySelector('[data-tap="mine"]').disabled = !g.landed;
   board.classList.toggle('lost', g.state === 'dead');
-  if (g.state === 'dead') startCloud(); else stopCloud();
+  // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す
+  if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(); else stopCloud();
   recordHist();
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
@@ -269,15 +269,10 @@ function render() {
       // 終わった時の地雷: クリアなら確定した地雷として落ち着いた色、ゲームオーバーなら赤
       else if (over && p > 1 - 1e-9) cls += g.state === 'clear' ? ' w' : ' m';
       // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（◆）と、
-      // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
+      // 雲を表示している時の p = 1 のマス。雲を隠している時に p から消すと、答えが漏れる
       const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
-      if (showP && !over && !g.mines.has(i)) {
-        html += `<span class="pr">${pct(p)}</span>`;
-        b.style.background = `color-mix(in srgb, var(--risk) ${Math.round(p * 70)}%, var(--cell))`;
-      } else b.style.background = '';
     }
-    if (g.opened[i]) b.style.background = '';
     if (i === last) cls += ' last';
     // 一番安かった賭けのマスには、その賭けの記号（◇ 開ける / ◆ 地雷に賭ける）を薄く重ねる
     if (i === hint && !g.opened[i] && !g.mines.has(i)) {
