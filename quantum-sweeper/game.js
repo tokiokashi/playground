@@ -28,15 +28,26 @@ export class Game {
   }
 
   refresh() {
+    this.dirty = false;
     this.an = analyze(this.W, this.H, this.M, this.opened, this.clues);
     if (this.an.omega < 1.5) this.state = 'clear';
   }
   get bitsLeft() { return Math.log2(this.an.omega); }
   prob(c) { return this.an.prob[c]; }
 
-  // マス c を踏む。戻り値: { p, cost, opened: [開いたマス] }
+  // マス c を踏み、0 の連鎖などを済ませる。戻り値: { p, cost, opened: [開いたマス] }
   step(c) {
+    const r = this.open(c);
+    if (r && this.state === 'play') this.settle(r.opened);
+    return r;
+  }
+
+  // マス c を踏む（0 の連鎖などはしない）
+  open(c) {
     if (this.state !== 'play' || this.opened[c]) return null;
+    // 直前に別のマスを開けていれば確率が古いので数え直す
+    if (this.dirty) this.refresh();
+    if (this.state !== 'play') return null;
     const p = this.an.prob[c];
     let pmin = 1;
     for (let i = 0; i < this.N; i++) if (!this.opened[i]) pmin = Math.min(pmin, this.an.prob[i]);
@@ -48,15 +59,14 @@ export class Game {
     const cost = -Math.log2(1 - p);
     this.L += cost;
     this.moves.push({ c, p, pmin, cost, costMin: -Math.log2(1 - pmin) });
-    const opened = [c];
     this.observe(c);
-    this.settle(opened);
-    return { p, cost, opened };
+    return { p, cost, opened: [c] };
   }
 
   // c を開け、生き残った世界の中から c の手がかりを1つ引く
   observe(c) {
     this.opened[c] = 1;
+    this.dirty = true;
     this.flags.delete(c);
     const { W, H, M } = this;
     const survive = analyze(W, H, M, this.opened, this.clues, false).omega;
@@ -90,26 +100,32 @@ export class Game {
     this.refresh();
   }
 
-  // 0 の連鎖、0% の自動開放（有効な時）、クリア時の残りの開放をまとめて行う
+  // 0 の連鎖、旗で決まるマスの自動開放（有効な時）、クリア時の残りの開放をまとめて行う。
+  // 自動で開けたマスの数とコストを this.auto に残す
   settle(opened = []) {
+    this.auto = { count: 0, cost: 0 };
     this.cascade(opened);
-    if (this.autoZero) this.openZeros(opened);
+    if (this.autoChord) {
+      for (;;) {
+        const targets = new Set();
+        for (const c of this.clues.keys()) for (const t of this.chordTargets(c)) targets.add(t);
+        if (!targets.size) break;
+        for (const t of targets) {
+          if (this.state !== 'play') break;
+          const r = this.open(t);
+          if (!r) continue;
+          this.auto.count++;
+          this.auto.cost += r.cost;
+          opened.push(t);
+        }
+        if (this.state !== 'play') break;
+        this.cascade(opened);
+      }
+    }
     // Ω = 1 なら残りの安全なマスの数字も1つに決まっているので、全部開けて見せる
     if (this.state === 'clear') {
       for (let i = 0; i < this.N; i++) if (!this.opened[i] && this.an.prob[i] === 0) { this.observe(i); opened.push(i); }
       this.refresh();
-    }
-    return opened;
-  }
-
-  // 全ての世界で安全なマス（p = 0）を、無くなるまで開ける。コストは 0
-  openZeros(opened = []) {
-    for (;;) {
-      const zeros = [];
-      for (let i = 0; i < this.N; i++) if (!this.opened[i] && this.an.prob[i] === 0) zeros.push(i);
-      if (!zeros.length || this.state !== 'play') break;
-      for (const z of zeros) { this.observe(z); opened.push(z); }
-      this.cascade(opened);
     }
     return opened;
   }
