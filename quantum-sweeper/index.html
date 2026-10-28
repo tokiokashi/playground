@@ -20,6 +20,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #custom input{flex:1;min-width:0;accent-color:var(--gold)}
 #custom input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:2px 4px;width:100%}
 #custom label:has(.mix){grid-column:span 3}
+.left{margin-left:auto;font:600 15px/1 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.left b{color:var(--risk);margin-right:4px}
+.left.neg{color:var(--risk)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:6px;margin:0 0 10px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .stat .k{display:block;font-size:11px;color:var(--mute)}
@@ -47,6 +50,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
 #share{margin-top:10px}
 .c.auto,#msg .auto{outline:2px dotted var(--gold);outline-offset:-2px}
+.c.auto.risk,#msg .auto{outline-color:var(--risk)}
 #msg .auto{padding:0 4px;border-radius:3px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
@@ -93,6 +97,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <button id="showp" aria-pressed="false">p</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
+  <span id="left" class="left" aria-label="残りの地雷"></span>
 </div>
 <div id="custom" hidden>
   <label>W<input type="number" id="cw" min="4" max="20"></label>
@@ -115,29 +120,41 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div id="result" aria-live="polite"></div>
 <details>
 <summary>遊び方</summary>
-<h3>盤に地雷の配置は無い</h3>
-<p>この盤には、最初から決まった地雷の配置が無い。手がかりと地雷の総数に矛盾しない配置（世界）が全て重なっていて、その数が Ω。あるマスに地雷がある世界の割合が、そのマスの地雷の確率 p になる。世界を1つ（Ω = 1）に絞ればクリア。</p>
-<h3>マスに賭ける</h3>
+<h3>地雷は、まだ置かれていません</h3>
+<p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
+<p>「p」を押すと、各マスに p が表示されます。p は、残っている世界のうち、そのマスに地雷がある世界の割合です。p = 30% なら、3割の世界でそこに地雷があります。</p>
+<h3>どの世界へ進むかを決める</h3>
+<p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身と違う世界でも盤は続きますが、そこにあなたはいません。盤の上にある ◇・◆・⚑ のボタンで何をするかを選んでから、マスを押します。</p>
 <ul>
-<li><b>◇ 開ける</b>: 「このマスは安全」に賭ける。地雷があった世界は消え、あなたは残った世界へ進む。開いたマスには、残った世界の中から引いた手がかりが出る</li>
-<li><b>◆ 地雷に賭ける</b>: 「このマスは地雷」に賭ける。地雷が無かった世界が消える。手がかりは出ないが、そのマスの地雷は確定する</li>
-<li><b>⚑ 旗</b>: ただのメモ。世界は変わらない。長押しか右クリックでも置ける</li>
+<li><b>◇ 開ける</b>: 「このマスは空だ」と決めて踏み込みます。地雷がある世界のあなたは、そこで終わります。生き残った世界では、足元の検出器が数字を返します。数字は踏み込むまでどこにも無く、生き残った世界の中からくじで引かれます。</li>
+<li><b>◆ 地雷に賭ける</b>: 「このマスに地雷がある」と決めて進みます。地雷が無い世界に、そう決めたあなたの居場所はありません。踏み込まないので、数字は返りません。</li>
+<li><b>⚑ 旗</b>: ただの目印です。何も決めないので、世界は減りません。長押しか右クリックでも立てられます。</li>
 </ul>
-<p>全ての世界で外れる賭け（p = 100% のマスを開ける、p = 0% のマスに ◆）をすると、どの世界にもあなたは残らない。</p>
-<h3>手がかりの種類</h3>
-<p>マスの右上の印で、開けた時に出る手がかりの種類が分かる。印が無いマスは周りの地雷の数をそのまま出す。≈ は 0-1 や 1-2 のような幅、≋ は 1-3 のような広い幅、| は 1|3 のような2択、◐ は偶か奇だけを出す。どの区切りで出るかは開けるまで分からない。0 が出たマスの周りは続けて開く。</p>
-<h3>払った運 L と、推理で絞った I</h3>
-<p>賭けに勝つたびに、生き残る確率のぶんだけ運を使う。L はその合計をコイントスの回数で数えたもの。50% の賭けに勝てば +1、地雷の確率 25% のマスを開けて残れば +0.42。2<sup>−L</sup> が、ここまで生き残れた確率になる。手がかりで世界が絞られたぶんは I に入る。クリアした時、L と I の合計は最初の世界の数の対数 log₂Ω₀ になる。</p>
+<p>p = 100% のマスに踏み込むか、p = 0% のマスに地雷があると決めると、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもないマスでの決定を「外れうる賭け」と呼びます。</p>
+<p>開いた数字のマスを押すと、数字と周りの旗・◆ から空と読めるマスへ、まとめて踏み込みます。安全第一のモードで「⚑ 自動」をオンにすると、旗を立てるたびに、そこから読めるマスへ自動で踏み込みます。旗の下の地雷がまだ確定していなければ、まとめて踏み込むことも賭けになります。</p>
+<h3>曖昧な検出器</h3>
+<p>開けていないマスの右上の印は、そのマスの検出器の種類です。印の無いマスは、周りの8マスの地雷をそのまま数えます。</p>
+<ul>
+<li><span class="mono">≈</span>: 「1-2」のように幅で答えます。</li>
+<li><span class="mono">≋</span>: 「1-3」のように、もっと広い幅で答えます。</li>
+<li><span class="mono">|</span>: 「1|3」のように二択で答えます。</li>
+<li><span class="mono">◐</span>: 偶数か奇数かだけを答えます。</li>
+</ul>
+<p>≈・≋・| は、どこで区切るかがマスごとに違い、踏み込むまで分かりません。例えば ≈ では、周りの地雷が1個でも、「0-1」と出ることも「1-2」と出ることもあります。周りの地雷が0個と確定したマスが開くと、その周りのマスも続けて開きます。「0-1」や「偶」のように、0個の可能性があるだけでは開きません。</p>
+<h3>L（Life）は命で払った運、I（Information）は数字から得た情報</h3>
+<p>外れうる賭けを生き延びるたびに、あなたのいない世界が増えます。L はその分を足し合わせた値で、コインを何回続けて表にしたのと同じ運かを表します。単位は bit です。50% の賭けを生き延びれば 1 bit、p = 10% のマスに踏み込んで無事なら 0.15 bit 増えます。1回の賭けで増える L を、その賭けのコストと呼びます。2<sup>−L</sup> は、最初にいたあなたのうち、今ここにいるあなたの割合です。</p>
+<p>I は、数字を見て世界が減った分を、同じ bit で数えた値です。最初の世界の数を Ω₀ とすると、Ω が 1 になった時、L と I の合計は log₂Ω₀（Ω₀ が 2 の何乗か）にちょうど一致します。世界を減らす方法は二つしかありません。命で払うか、数字で絞るかです。</p>
 <h3>モード</h3>
 <ul>
-<li><b>安全第一</b>: 全ての世界で安全なマスが残っていたのに賭けた分（推理ミス）と、一番安い賭けより高い賭けを選んだ分（賭けの損）でランクが決まる。賭けるしかない時の、一番安い賭けのコストは数えない</li>
-<li><b>最小コスト</b>: 払った L の合計でランクが決まる。安全なマスをわざと残して賭けてもよい</li>
+<li><b>安全第一</b>: 運に頼らない推理を評価します。p = 0% のマスが残っているのに外れうる賭けをすると「推理ミス」となり、盤の下に ✕ が付きます。賭けるしかない場面で、盤全体の ◇・◆ のうち一番安い賭けより高い賭けを選ぶと、その差が「賭けの損」になります。ランクはこの二つの合計で決まります。賭けるしかない場面で一番安い賭けを選んでも払う分は「不可避」として別に数え、ランクには入れません。</li>
+<li><b>最小コスト</b>: 払った運の少なさを評価します。L が log₂Ω₀ の何%かでランクが決まり、結果画面の「L x / y」の y が log₂Ω₀ です。このモードでは、安全なマスを残したまま先に賭けても減点されません。</li>
 </ul>
 <h3>盤の印</h3>
 <ul>
-<li>金色の実線の枠: 最後にタップしたマス</li>
-<li>金色の点線の枠: 旗で決まって自動で開いたマス（⚑ 自動）</li>
-<li>白い破線の枠と薄い ◇・◆: 一番安い賭けより高い賭けをした時の、一番安かった賭け</li>
+<li>◇・◆・⚑ の行の右端にある ● の数は、地雷の総数から ◆ と旗の数を引いた残りです。旗を立てすぎて負になると赤くなります。</li>
+<li>金色の実線の枠は、最後に押したマスです。</li>
+<li>点線の枠は、まとめて開いたマスです。金色ならコスト 0、赤ならコストを払っています。</li>
+<li>灰色の破線の枠と薄い ◇・◆ は、安全なマスが無い場面で、直前の賭けより安く済んだ賭けの場所です。</li>
 </ul>
 </details>
 </main>
@@ -214,11 +231,16 @@ function render() {
       cls += ' hint';
       html += `<span class="gh">${hintKind === 'mine' ? '◆' : '◇'}</span>`;
     }
-    if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
+    // まとめて開けたマスと自動で開けたマス。旗が確定していなくてコストを払ったマスは赤い点線にする
+    if (g.auto && g.auto.cells.includes(i)) cls += g.auto.risky.includes(i) ? ' auto risk' : ' auto';
     b.className = cls;
     b.innerHTML = html;
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
   }
+  // 残りの地雷: 地雷の総数から ◆ と旗の数を引いたもの（旗を置きすぎると負になる）
+  const left = g.M - g.mines.size - g.flags.size;
+  $('left').innerHTML = `<b>●</b>${left}`;
+  $('left').classList.toggle('neg', left < 0);
   $('omega').textContent = fmtOmega(g.an.omega);
   $('Lv').textContent = g.L.toFixed(2);
   $('Iv').textContent = g.I.toFixed(2);
@@ -232,7 +254,7 @@ function chord(i) {
   hint = -1;
   if (!targets.length) return;
   let cost = 0, risky = 0;
-  const opened = [];
+  const opened = [], riskyCells = [];
   for (const t of targets) {
     if (g.state !== 'play' || !g.free(t)) continue;
     const r = g.open(t);
@@ -241,11 +263,17 @@ function chord(i) {
     last = t;
     if (g.state === 'dead') break;
     cost += r.cost;
-    if (r.p > 0) risky++;
+    if (r.p > 0) { risky++; riskyCells.push(t); }
     opened.push(t);
   }
+  const chorded = opened.slice();
   g.auto = null;
-  if (g.state !== 'dead') g.settle(opened);
+  if (g.state !== 'dead') {
+    g.settle(opened);
+    // まとめて開けたマスも、自動で開けたマスと同じ点線の枠で示す
+    g.auto.cells.push(...chorded);
+    g.auto.risky.push(...riskyCells);
+  }
   if (g.state === 'dead') showResult(false);
   else {
     $('msg').innerHTML = risky ? `<b>+${cost.toFixed(2)} bit</b>` : '+0';
@@ -334,8 +362,9 @@ function showResult(ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
     story = [
-      `コイントス <b>${coins}</b> 回分の運（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けた。`,
-      fatal.kind === 'mine' ? '最後は、全ての世界で安全なマスに ◆ を賭けた。' : '最後は、全ての世界で地雷のマスを ◇ で開けた。',
+      `コイントス <b>${coins}</b> 回分の運（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けました。`,
+      fatal.kind === 'mine' ? '最後に、どの世界でも空だったマスに、地雷があると決めました。' : '最後に、どの世界でも地雷があるマスへ踏み込みました。',
+      'この先に、あなたのいる世界はありません。',
     ];
     summary = `観測者消滅・コイントス ${coins} 回分（${pctS(2 ** -g.L)}）を切り抜けた後`;
   } else {
@@ -348,12 +377,16 @@ function showResult(ok) {
     rows.push(['L', `${f(g.L)} / ${g.H0.toFixed(1)}（${(ratio * 100).toFixed(1)}%）`], ['◆', f(b.mineCost)]);
     head = `<h2><span class="rank">${r}</span>Ω = 1</h2>`;
     story = [
-      `コイントス <b>${coins}</b> 回分の運（<b>${pctS(surv)}</b>）で生き延びた。`,
-      !worst ? '一度も外れうる賭けをせずに観測を終えた。'
-        : `外れうる賭けは <b>${bets.length}</b> 回。一番危なかったのは、` + (worst.kind === 'mine'
-          ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスに ◆ を賭けた手。`
-          : `地雷の確率 <b>${(risk * 100).toFixed(1)}%</b> のマスを ◇ で開けた手。`),
-      `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち、手がかりで <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を絞った。`,
+      `コイントス <b>${coins}</b> 回分の運で生き延びました。`
+        // 安全第一では、どう打っても払うしかなかった分を分けて書き、運の大きさが腕の差に見えないようにする
+        + (mode === 'safe' && b.forced >= 0.05 ? `うち <b>${b.forced.toFixed(1)}</b> 回分は、その場で一番安い賭けを選んでも払うしかなかった運です。` : ''),
+      `最初にいたあなたのうち、ここにいるのは <b>${pctS(surv)}</b> です。`,
+      !worst ? '外れうる賭けを一度もせずに、ここまで来ました。'
+        : `外れうる賭けは <b>${bets.length}</b> 回でした。最も危うかったのは、` + (worst.kind === 'mine'
+          ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスに、地雷があると決めた手です。`
+          : `地雷がある確率 <b>${(risk * 100).toFixed(1)}%</b> のマスへ踏み込んだ手です。`),
+      `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち、数字で <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を絞りました。`,
+      '観測を終了します。',
     ];
     table = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
     summary = `${r}・コイントス ${coins} 回分（${pctS(surv)}）` + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
