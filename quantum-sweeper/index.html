@@ -521,7 +521,8 @@ function showResult(ok) {
   if (camp) {
     const sc = SCEN[camp.s], last = camp.k === sc.stages.length - 1;
     setting = `${sc.name} ${camp.k + 1}/${sc.stages.length}・${g.W}×${g.H}・${g.M}個`;
-    if (ok) {
+    // 自動プレーを使った面は、次へ進めるがクリアとして記録しない
+    if (ok && !g.botUsed) {
       prog[camp.s][camp.k] = 1;
       saveProg();
       if (last) story.push(prog.every(r => r.every(Boolean)) ? 'すべての観測を終えました。' : 'このシナリオの観測を、すべて終えました。');
@@ -629,6 +630,7 @@ let botTimer = 0;
 function botStep() {
   const mv = g.botMove();
   if (!mv) return stopBot();
+  g.botUsed = true;
   if (mv.kind === 'mine') betMine(mv.c); else betOpen(mv.c);
   if (g.state !== 'play') stopBot();
 }
@@ -654,6 +656,8 @@ const SCEN = [
   { name: '闇', fog: 3, stages: [[5, 5, 2], [7, 7, 4], [9, 9, 7], [12, 12, 10], [16, 16, 16]] },
 ];
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
+// キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
+let freeSet = null;
 // 進み具合（クリアした面に 1）はこのブラウザにだけ残す。保存できない環境では、開いている間だけ覚える
 let prog = loadProg();
 function loadProg() {
@@ -688,6 +692,7 @@ function enterPlay() {
   $('stagelabel').textContent = camp ? `${SCEN[camp.s].name} ${camp.k + 1}/${SCEN[camp.s].stages.length}` : '';
 }
 function startStage(s, k) {
+  if (!freeSet) freeSet = { size, mix, mode };
   camp = { s, k };
   size = SCEN[s].stages[k].slice();
   mix = MIXES[SCEN[s].fog].slice();
@@ -701,7 +706,17 @@ $('camp').addEventListener('click', e => {
   const b = e.target.closest('button[data-s]');
   if (b && !b.disabled) startStage(+b.dataset.s, +b.dataset.k);
 });
-$('free').addEventListener('click', () => { camp = null; enterPlay(); newGame(); });
+$('free').addEventListener('click', () => {
+  camp = null;
+  if (freeSet) {
+    ({ size, mix, mode } = freeSet);
+    freeSet = null;
+    document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === mode));
+    $('autochord').hidden = mode !== 'safe';
+  }
+  enterPlay();
+  newGame();
+});
 $('toentry').addEventListener('click', showEntry);
 
 newGame();
