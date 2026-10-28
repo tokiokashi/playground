@@ -50,12 +50,7 @@ export class Game {
     this.moves.push({ c, p, pmin, cost, costMin: -Math.log2(1 - pmin) });
     const opened = [c];
     this.observe(c);
-    this.cascade(opened);
-    // Ω = 1 なら残りの安全なマスの数字も1つに決まっているので、全部開けて見せる
-    if (this.state === 'clear') {
-      for (let i = 0; i < this.N; i++) if (!this.opened[i] && this.an.prob[i] === 0) { this.observe(i); opened.push(i); }
-      this.refresh();
-    }
+    this.settle(opened);
     return { p, cost, opened };
   }
 
@@ -95,6 +90,47 @@ export class Game {
     this.refresh();
   }
 
+  // 0 の連鎖、0% の自動開放（有効な時）、クリア時の残りの開放をまとめて行う
+  settle(opened = []) {
+    this.cascade(opened);
+    if (this.autoZero) this.openZeros(opened);
+    // Ω = 1 なら残りの安全なマスの数字も1つに決まっているので、全部開けて見せる
+    if (this.state === 'clear') {
+      for (let i = 0; i < this.N; i++) if (!this.opened[i] && this.an.prob[i] === 0) { this.observe(i); opened.push(i); }
+      this.refresh();
+    }
+    return opened;
+  }
+
+  // 全ての世界で安全なマス（p = 0）を、無くなるまで開ける。コストは 0
+  openZeros(opened = []) {
+    for (;;) {
+      const zeros = [];
+      for (let i = 0; i < this.N; i++) if (!this.opened[i] && this.an.prob[i] === 0) zeros.push(i);
+      if (!zeros.length || this.state !== 'play') break;
+      for (const z of zeros) { this.observe(z); opened.push(z); }
+      this.cascade(opened);
+    }
+    return opened;
+  }
+
+  // 開いた手がかりのマス c を押した時に開けるマス。普通のマインスイーパーの同時開けと同じく、
+  // 実際の確率ではなく、その手がかりとプレイヤーの旗だけで「残りは安全」と決まる時に限る
+  chordTargets(c) {
+    if (!this.opened[c] || !this.clues.has(c)) return [];
+    const mask = this.clues.get(c);
+    let f = 0;
+    const rest = [];
+    for (const d of neighbors(c, this.W, this.H)) {
+      if (this.opened[d]) continue;
+      if (this.flags.has(d)) f++; else rest.push(d);
+    }
+    if (!rest.length) return [];
+    // 旗の数 f から f + 残り の範囲で、手がかりが許す値が f だけなら残りは安全
+    const window = (mask >> f) & ((1 << (rest.length + 1)) - 1);
+    return window === 1 ? rest : [];
+  }
+
   // L を手ごとに3つに分ける。どれも踏んだ時点の盤面だけで決まり、後で引かれた数字の運に左右されない
   //   error: 全ての世界で安全なマスが残っていたのに p > 0 を踏んだコスト（推理ミス）
   //   gap:   賭けるしかない時に、一番安全なマスより危ないマスを選んだ差（賭けの損）
@@ -113,4 +149,9 @@ export class Game {
 // 推理の評価は、運に左右されない「推理ミス + 賭けの損」（ビット）で付ける
 export function rank(loss) {
   return loss <= 0.05 ? 'S+' : loss <= 0.5 ? 'S' : loss <= 1.5 ? 'A' : loss <= 3 ? 'B' : 'C';
+}
+
+// 最小コストモードは、払った L の合計を log₂Ω₀ に対する割合で評価する
+export function rankCost(ratio) {
+  return ratio <= 0.01 ? 'S+' : ratio <= 0.03 ? 'S' : ratio <= 0.06 ? 'A' : ratio <= 0.12 ? 'B' : 'C';
 }
