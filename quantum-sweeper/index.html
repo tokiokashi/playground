@@ -14,6 +14,12 @@ h1{margin:0 0 12px;font:700 clamp(22px,5vw,30px)/1.25 "Hiragino Mincho ProN","Yu
 button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
 button:hover,button:focus-visible{border-color:var(--gold);outline:none}
 button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+#custom{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 12px;margin:0 0 10px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font:13px ui-monospace,Menlo,monospace;color:var(--mute)}
+#custom[hidden]{display:none}
+#custom label{display:flex;align-items:center;gap:6px;min-width:0}
+#custom input{flex:1;min-width:0;accent-color:var(--gold)}
+#custom input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:2px 4px;width:100%}
+#custom label:has(.mix){grid-column:span 3}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:6px;margin:0 0 10px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .stat .k{display:block;font-size:11px;color:var(--mute)}
@@ -56,6 +62,7 @@ details p,details li{font-size:14px;color:#cdd5e6}
     <button data-fog="0" aria-pressed="false">精密</button>
     <button data-fog="1" aria-pressed="true">曖昧</button>
     <button data-fog="2" aria-pressed="false">濃霧</button>
+    <button data-fog="3" aria-pressed="false">闇</button>
   </span>
 </div>
 <div class="bar">
@@ -73,6 +80,16 @@ details p,details li{font-size:14px;color:#cdd5e6}
   </span>
   <button id="showp" aria-pressed="false">p</button>
   <button id="reset" aria-label="新しい盤">↻</button>
+  <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
+</div>
+<div id="custom" hidden>
+  <label>W<input type="number" id="cw" min="4" max="30"></label>
+  <label>H<input type="number" id="ch" min="4" max="30"></label>
+  <label>●<input type="number" id="cm" min="1"></label>
+  <label>精<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>≈<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>|<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>◐<input type="range" class="mix" min="0" max="100" step="5"></label>
 </div>
 <div class="stats">
   <div class="stat"><span class="k">Ω</span><span class="v" id="omega"></span></div>
@@ -99,7 +116,7 @@ import { Game, MIXES, rank, rankCost } from './game.js';
 const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐' };
-let size = [9, 9, 10], fog = 1, mode = 'safe', autoChord = false, tap = 'open', showP = false;
+let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = false, tap = 'open', showP = false;
 let g, cells, last = -1;
 
 function fmtOmega(o) {
@@ -111,7 +128,8 @@ const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' 
 
 function newGame() {
   const [W, H, M] = size;
-  g = new Game(W, H, M, MIXES[fog]);
+  g = new Game(W, H, M, mix);
+  syncCustom();
   g.autoChord = mode === 'safe' && autoChord;
   last = -1;
   board.style.setProperty('--w', W);
@@ -300,14 +318,37 @@ board.addEventListener('contextmenu', e => {
   toggleFlag(+b.dataset.i);
 });
 
+// プリセットを押すと詳細設定の値もそろえる。詳細設定をいじるとプリセットの選択が外れる
+const press = (sel, hit) => document.querySelectorAll(sel).forEach(x => x.setAttribute('aria-pressed', hit(x)));
+const mixInputs = [...document.querySelectorAll('#custom .mix')];
+function syncCustom() {
+  [$('cw').value, $('ch').value, $('cm').value] = size;
+  $('cm').max = size[0] * size[1] - 1;
+  mixInputs.forEach((x, j) => x.value = mix[j]);
+  press('[data-size]', x => x.dataset.size === size.join(','));
+  press('[data-fog]', x => MIXES[x.dataset.fog].join() === mix.join());
+}
 document.querySelectorAll('[data-size]').forEach(btn => btn.addEventListener('click', () => {
-  document.querySelectorAll('[data-size]').forEach(x => x.setAttribute('aria-pressed', x === btn));
   size = btn.dataset.size.split(',').map(Number);
   newGame();
 }));
 document.querySelectorAll('[data-fog]').forEach(btn => btn.addEventListener('click', () => {
-  document.querySelectorAll('[data-fog]').forEach(x => x.setAttribute('aria-pressed', x === btn));
-  fog = +btn.dataset.fog;
+  mix = MIXES[btn.dataset.fog].slice();
+  newGame();
+}));
+$('gear').addEventListener('click', e => {
+  const open = $('custom').hidden;
+  $('custom').hidden = !open;
+  e.currentTarget.setAttribute('aria-pressed', open);
+});
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(+v) || lo));
+['cw', 'ch', 'cm'].forEach(id => $(id).addEventListener('change', () => {
+  const W = clamp($('cw').value, 4, 30), H = clamp($('ch').value, 4, 30);
+  size = [W, H, clamp($('cm').value, 1, W * H - 1)];
+  newGame();
+}));
+mixInputs.forEach(x => x.addEventListener('change', () => {
+  mix = mixInputs.map(y => +y.value);
   newGame();
 }));
 document.querySelectorAll('[data-tap]').forEach(btn => btn.addEventListener('click', () => {

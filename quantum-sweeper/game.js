@@ -1,22 +1,26 @@
 // 盤の進行。DOM には触らない（node から試せるようにする）。
 import { analyze, binom, neighbors, DETECTORS, maskOf, classLabel } from './engine.js';
 
-// 霧の濃さごとの検出器の割合
-export const MIXES = {
-  0: [['exact', 1]],
-  1: [['exact', 0.5], ['range', 0.2], ['pair', 0.15], ['parity', 0.15]],
-  2: [['exact', 0.2], ['range', 0.3], ['pair', 0.25], ['parity', 0.25]],
-};
+// 検出器の割合のプリセット（精密・幅・二重・偶奇の順、%）
+export const TYPES = ['exact', 'range', 'pair', 'parity'];
+export const MIXES = [
+  [100, 0, 0, 0],
+  [50, 20, 15, 15],
+  [20, 30, 25, 25],
+  [0, 35, 35, 30],
+];
 
 export class Game {
   constructor(W, H, M, mix = MIXES[1], rng = Math.random) {
     Object.assign(this, { W, H, M, rng });
     const N = W * H;
     this.N = N;
-    // 検出器の種類はマスごとに最初から決まっていて、開ける前から見える
+    // 検出器の種類はマスごとに最初から決まっていて、開ける前から見える。割合が全て 0 なら精密だけ
+    const total = mix.reduce((a, b) => a + b, 0);
+    if (!total) mix = MIXES[0];
     this.det = Array.from({ length: N }, () => {
-      let u = rng();
-      for (const [t, w] of mix) { if ((u -= w) < 0) return t; }
+      let u = rng() * total;
+      for (let j = 0; j < TYPES.length; j++) if ((u -= mix[j]) < 0) return TYPES[j];
       return 'exact';
     });
     this.opened = new Uint8Array(N);
