@@ -159,9 +159,9 @@ export class Game {
   }
 
   // 0 の連鎖、旗で決まるマスの自動開放（有効な時）、クリア時の残りの開放をまとめて行う。
-  // 自動で開けたマスの数・コスト・マスを this.auto に残す
+  // 自動で開けたマスの数・コスト・マス（risky はコストを払ったマス）を this.auto に残す
   settle(opened = []) {
-    this.auto = { count: 0, cost: 0, cells: [] };
+    this.auto = { count: 0, cost: 0, cells: [], risky: [] };
     this.cascade(opened);
     if (this.autoChord) {
       for (;;) {
@@ -174,6 +174,7 @@ export class Game {
           if (!r) continue;
           this.auto.count++;
           this.auto.cells.push(t);
+          if (r.cost > 0) this.auto.risky.push(t);
           this.auto.cost += r.cost;
           opened.push(t);
         }

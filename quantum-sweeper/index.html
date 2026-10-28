@@ -50,6 +50,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
 #share{margin-top:10px}
 .c.auto,#msg .auto{outline:2px dotted var(--gold);outline-offset:-2px}
+.c.auto.risk,#msg .auto{outline-color:var(--risk)}
 #msg .auto{padding:0 4px;border-radius:3px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
@@ -219,7 +220,8 @@ function render() {
       cls += ' hint';
       html += `<span class="gh">${hintKind === 'mine' ? '◆' : '◇'}</span>`;
     }
-    if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
+    // 自動で開けたマス。旗が確定していなくてコストを払ったマスは赤い点線にする
+    if (g.auto && g.auto.cells.includes(i)) cls += g.auto.risky.includes(i) ? ' auto risk' : ' auto';
     b.className = cls;
     b.innerHTML = html;
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
