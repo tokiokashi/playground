@@ -5,6 +5,7 @@
 <style>
 :root{--bg:#0b0f1a;--panel:#121a2b;--line:#26324d;--ink:#e7ecf6;--mute:#8e9ab5;--gold:#f2c66b;--safe:#1a2338;--cell:#2b3858;--cellhi:#364670;--risk:#ff6b6b;color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px 16px 40px}
 main{max-width:680px;margin:0 auto}
 a.back{display:inline-block;margin:0 0 6px;font-size:13px;color:var(--mute);text-decoration:none}
@@ -54,6 +55,13 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
+.scen{display:grid;grid-template-columns:3.2em repeat(5,1fr);gap:6px;align-items:center;margin:0 0 8px}
+.scen span{font-weight:700}
+.scen button{padding:6px 0;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.scen button.done{border-color:var(--gold);color:var(--gold)}
+#entry{margin:8px 0 16px}
+#free{margin-top:6px}
+.stagelabel{font-weight:700;color:var(--gold)}
 #result{display:none;margin:12px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:10px}
 #result h2{margin:0 0 6px;font-size:18px}
 #result .flow{display:block;width:100%;height:auto;margin:10px 0 0}
@@ -70,7 +78,16 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </style></head><body><main>
 <a class="back" href="../">← 作品一覧</a>
 <h1>量子自殺マインスイーパー</h1>
+<div id="entry">
+  <div id="camp" role="group" aria-label="キャンペーン"></div>
+  <button id="free">自由観測</button>
+</div>
+<div id="play" hidden>
 <div class="bar">
+  <button id="toentry" aria-label="入口へ">←</button>
+  <span id="stagelabel" class="stagelabel"></span>
+</div>
+<div class="bar" id="setbar">
   <span role="group" aria-label="盤の大きさ">
     <button data-size="9,9,10" aria-pressed="true">9×9</button>
     <button data-size="16,16,40" aria-pressed="false">16×16</button>
@@ -83,7 +100,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   </span>
 </div>
 <div class="bar">
-  <span role="group" aria-label="評価のモード">
+  <span role="group" aria-label="評価のモード" id="modegrp">
     <button data-mode="safe" aria-pressed="true">安全第一</button>
     <button data-mode="cost" aria-pressed="false">最小コスト</button>
   </span>
@@ -120,8 +137,11 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas></div>
 <p id="msg" aria-live="polite"></p>
 <div id="result" aria-live="polite"></div>
+</div>
 <details>
 <summary>遊び方</summary>
+<h3>キャンペーン</h3>
+<p>キャンペーンには、手がかりの曖昧さごとに4つのシナリオがあり、それぞれ盤の広さが違う5面でできています。面をクリアすると次の面が、シナリオの5面をすべてクリアすると次のシナリオが開きます。評価は安全第一で行います。「自由観測」では、盤の大きさや曖昧さ、評価のモードを自分で選べます。</p>
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
 <p>最初の一歩は、◇ で降り立つ場所を選ぶことです（降り立つまで ◆ は置けません）。そこと周りの 8 マスに地雷がある世界は初めから数えないので、最初の一歩にコストはかかりません。</p>
@@ -495,10 +515,27 @@ function showResult(ok) {
     summary = `${r}・コイントス ${coins} 回分（${pctS(surv)}）` + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
-  const setting = `${g.W}×${g.H}・${g.M}個・${fog ? fog.textContent : '詳細設定'}・${mode === 'safe' ? '安全第一' : '最小コスト'}`;
+  let setting = `${g.W}×${g.H}・${g.M}個・${fog ? fog.textContent : '詳細設定'}・${mode === 'safe' ? '安全第一' : '最小コスト'}`;
+  // キャンペーンでは、クリアを記録し、次の面・やり直しのボタンを出す
+  let next = '';
+  if (camp) {
+    const sc = SCEN[camp.s], last = camp.k === sc.stages.length - 1;
+    setting = `${sc.name} ${camp.k + 1}/${sc.stages.length}・${g.W}×${g.H}・${g.M}個`;
+    if (ok) {
+      prog[camp.s][camp.k] = 1;
+      saveProg();
+      if (last) story.push(prog.every(r => r.every(Boolean)) ? 'すべての観測を終えました。' : 'このシナリオの観測を、すべて終えました。');
+    }
+    next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button> `;
+  }
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
-  el.innerHTML = `${head}<p class="story">${story.join('<br>')}</p>${table}<button id="share">共有</button>`;
+  el.innerHTML = `${head}<p class="story">${story.join('<br>')}</p>${table}${next}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
+  if (camp) $('next').addEventListener('click', () => {
+    if (!ok) newGame();
+    else if (camp.k === SCEN[camp.s].stages.length - 1) showEntry();
+    else startStage(camp.s, camp.k + 1);
+  });
   el.style.display = 'block';
 }
 
@@ -607,6 +644,67 @@ $('botrun').addEventListener('click', () => {
   botTimer = setInterval(botStep, 300);
 });
 
+// キャンペーン。手がかりの曖昧さごとにシナリオを分け、盤を広げつつ地雷の密度を上げる。
+// 地雷の数は、自動プレー（安全なマスを開け、無ければ一番安い賭け）で生き残る割合が、
+// 1面でおよそ7〜9割、最終面でおよそ5〜6割になるように選んだ。前のシナリオを全てクリアすると次が開く
+const SCEN = [
+  { name: '精密', fog: 0, stages: [[5, 5, 4], [7, 7, 9], [9, 9, 15], [12, 12, 28], [16, 16, 50]] },
+  { name: '曖昧', fog: 1, stages: [[5, 5, 3], [7, 7, 8], [9, 9, 13], [12, 12, 22], [16, 16, 34]] },
+  { name: '濃霧', fog: 2, stages: [[5, 5, 3], [7, 7, 6], [9, 9, 10], [12, 12, 16], [16, 16, 26]] },
+  { name: '闇', fog: 3, stages: [[5, 5, 2], [7, 7, 4], [9, 9, 7], [12, 12, 10], [16, 16, 16]] },
+];
+let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
+// 進み具合（クリアした面に 1）はこのブラウザにだけ残す。保存できない環境では、開いている間だけ覚える
+let prog = loadProg();
+function loadProg() {
+  try {
+    const p = JSON.parse(localStorage.getItem('qs-campaign'));
+    if (Array.isArray(p) && p.length === SCEN.length && p.every((r, i) => Array.isArray(r) && r.length === SCEN[i].stages.length)) return p;
+  } catch { /* 保存できない環境 */ }
+  return SCEN.map(sc => sc.stages.map(() => 0));
+}
+function saveProg() {
+  try { localStorage.setItem('qs-campaign', JSON.stringify(prog)); } catch { /* 保存できない環境 */ }
+}
+const scenOpen = i => i === 0 || prog[i - 1].every(Boolean);
+
+function showEntry() {
+  camp = null;
+  stopBot();
+  $('play').hidden = true;
+  $('entry').hidden = false;
+  $('camp').innerHTML = SCEN.map((sc, i) => `<div class="scen"><span>${sc.name}</span>` + sc.stages.map(([W, H, M], k) => {
+    const open = scenOpen(i) && (k === 0 || prog[i][k - 1]);
+    return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''}${open ? '' : ' disabled'} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}">${W}×${H}</button>`;
+  }).join('') + '</div>').join('');
+}
+function enterPlay() {
+  $('entry').hidden = true;
+  $('play').hidden = false;
+  // キャンペーンでは盤と評価のモードを固定するので、それを選ぶボタンと、詳細設定の盤の値を隠す。
+  // 詳細設定の自動プレーは残す
+  for (const id of ['setbar', 'modegrp']) $(id).hidden = !!camp;
+  document.querySelectorAll('#custom label').forEach(l => l.hidden = !!camp);
+  $('stagelabel').textContent = camp ? `${SCEN[camp.s].name} ${camp.k + 1}/${SCEN[camp.s].stages.length}` : '';
+}
+function startStage(s, k) {
+  camp = { s, k };
+  size = SCEN[s].stages[k].slice();
+  mix = MIXES[SCEN[s].fog].slice();
+  mode = 'safe';
+  document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === 'safe'));
+  $('autochord').hidden = false;
+  enterPlay();
+  newGame();
+}
+$('camp').addEventListener('click', e => {
+  const b = e.target.closest('button[data-s]');
+  if (b && !b.disabled) startStage(+b.dataset.s, +b.dataset.k);
+});
+$('free').addEventListener('click', () => { camp = null; enterPlay(); newGame(); });
+$('toentry').addEventListener('click', showEntry);
+
 newGame();
+showEntry();
 </script>
 </body></html>
