@@ -34,6 +34,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.f::after{content:"⚑";color:var(--gold)}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk)}
+.c.w{background:#3a3216}
+.c.w::after{content:"●";color:var(--gold)}
+#board.won{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(242,198,107,.45);border-radius:4px}
+#board.lost{box-shadow:0 0 0 2px var(--risk);border-radius:4px}
 .c.k{background:#4a3416}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
@@ -154,6 +158,8 @@ function newGame() {
 function render() {
   const { W, H } = g;
   const over = g.state !== 'play';
+  board.classList.toggle('won', g.state === 'clear');
+  board.classList.toggle('lost', g.state === 'dead');
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -166,7 +172,8 @@ function render() {
     } else {
       const p = g.prob(i);
       if (g.mines.has(i)) cls += ' k';
-      else if (over && p > 1 - 1e-9) cls += ' m';
+      // 終わった時の地雷: クリアなら確定した地雷として落ち着いた色、ゲームオーバーなら赤
+      else if (over && p > 1 - 1e-9) cls += g.state === 'clear' ? ' w' : ' m';
       else if (g.flags.has(i)) cls += ' f';
       // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（◆・旗）と、
       // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
