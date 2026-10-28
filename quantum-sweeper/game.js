@@ -203,6 +203,28 @@ export class Game {
     return window === 1 ? rest : [];
   }
 
+  // 自動で打つ次の手。p = 100% のマスがあれば ◆、無ければ全ての世界で安全なマスを開ける
+  // （手がかり1つと周りの ◆ だけで読めるマスを先に）、それも無ければ一番安い賭けを打つ。
+  // 戻り値は { c: マス, kind: 'open' か 'mine' }。打てる手が無ければ null
+  botMove() {
+    if (this.state !== 'play') return null;
+    if (this.dirty) this.refresh();
+    let safe = -1;
+    for (let i = 0; i < this.N; i++) {
+      if (!this.free(i)) continue;
+      const p = this.an.prob[i];
+      if (p > 1 - 1e-12) return { c: i, kind: 'mine' };
+      if (p < 1e-12 && safe < 0) safe = i;
+    }
+    for (const c of this.clues.keys()) {
+      const t = this.chordTargets(c).find(d => this.free(d));
+      if (t !== undefined) return { c: t, kind: 'open' };
+    }
+    if (safe >= 0) return { c: safe, kind: 'open' };
+    const s = this.situation();
+    return s.bestCell < 0 ? null : { c: s.bestCell, kind: s.bestKind };
+  }
+
   // L を手ごとに3つに分ける。どれも賭けた時点の盤面だけで決まり、後で引かれた数字の運に左右されない。
   // 開けると地雷に賭けるの両方を候補として比べる。コスト 0 の手（p = 0 を開ける、p = 1 に賭ける）は数えない
   //   error:  全ての世界で安全なマスが残っていたのに、外れうる賭けをしたコスト（推理ミス）

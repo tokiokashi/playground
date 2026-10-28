@@ -108,6 +108,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <label>|<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>◐<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>≋<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <button id="botrun" aria-pressed="false" aria-label="自動で打ち続ける">▶</button>
+  <button id="botstep" aria-label="自動で1手打つ">⏭</button>
 </div>
 <div class="stats">
   <div class="stat"><span class="k">Ω</span><span class="v" id="omega"></span></div>
@@ -176,6 +178,7 @@ function fmtOmega(o) {
 const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' : (p * 100).toFixed(0);
 
 function newGame() {
+  stopBot();
   const [W, H, M] = size;
   g = new Game(W, H, M, mix);
   syncCustom();
@@ -342,7 +345,10 @@ function act(i) {
   if (g.state !== 'play') return;
   if (g.opened[i]) { chord(i); return; }
   if (g.mines.has(i)) return;
-  if (tap === 'mine') { betMine(i); return; }
+  if (tap === 'mine') betMine(i); else betOpen(i);
+}
+
+function betOpen(i) {
   const r = g.step(i);
   last = i;
   const m = g.moves[g.moves.length - 1];
@@ -579,6 +585,26 @@ $('autochord').addEventListener('click', e => {
   g.autoChord = mode === 'safe' && autoChord;
   settleNow();
   render();
+});
+
+// 動作確認用の自動プレー。game.js の botMove が選んだ手を、人が押した時と同じ経路で打つ
+let botTimer = 0;
+function botStep() {
+  const mv = g.botMove();
+  if (!mv) return stopBot();
+  if (mv.kind === 'mine') betMine(mv.c); else betOpen(mv.c);
+  if (g.state !== 'play') stopBot();
+}
+function stopBot() {
+  clearInterval(botTimer);
+  botTimer = 0;
+  $('botrun').setAttribute('aria-pressed', false);
+}
+$('botstep').addEventListener('click', () => { stopBot(); botStep(); });
+$('botrun').addEventListener('click', () => {
+  if (botTimer) return stopBot();
+  $('botrun').setAttribute('aria-pressed', true);
+  botTimer = setInterval(botStep, 300);
 });
 
 newGame();
