@@ -193,9 +193,9 @@ function newGame() {
 }
 
 // 観測者消滅の盤に、確定していない地雷の分布を雲として重ねる。地雷はまだどこにも置かれていないので、
-// マスごとに区切らず、各マスの p を中心にしたぼかしを足し合わせて1枚の濃さの場として描く
+// マスごとに区切らない。1マスを1画素とした小さな canvas に各マスの濃さを置き、盤の大きさへ拡大する。
+// 拡大の補間で隣のマスとの間が滑らかにつながり、境目が消える
 const cloud = $('cloud');
-const CLOUD_RES = 8; // 1マスあたりの画素数。粗く描いて、拡大とぼかしで滑らかに見せる
 let cloudFrame = 0, cloudSrc = null;
 function startCloud() {
   const { W, H } = g;
@@ -203,11 +203,11 @@ function startCloud() {
   for (let i = 0; i < W * H; i++) {
     if (g.opened[i] || g.mines.has(i)) continue;
     const p = g.prob(i);
-    if (p > 1e-9 && p < 1 - 1e-9) cloudSrc.push({ x: i % W + 0.5, y: Math.floor(i / W) + 0.5, p, ph: i * 2.39 });
+    if (p > 1e-9 && p < 1 - 1e-9) cloudSrc.push({ i, p, ph: i * 2.39 });
   }
   Object.assign(cloud.style, { left: board.offsetLeft + 'px', top: board.offsetTop + 'px', width: board.offsetWidth + 'px', height: board.offsetHeight + 'px' });
-  cloud.width = W * CLOUD_RES;
-  cloud.height = H * CLOUD_RES;
+  cloud.width = W;
+  cloud.height = H;
   cloud.hidden = false;
   if (cloudFrame) return;
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -224,30 +224,13 @@ function stopCloud() {
   cloud.hidden = true;
 }
 function drawCloud(t) {
-  const { W, H } = g, R = CLOUD_RES, w = W * R, h = H * R;
-  const field = new Float32Array(w * h);
+  const { W, H } = g;
+  const ctx = cloud.getContext('2d'), img = ctx.createImageData(W, H), d = img.data;
   for (const s of cloudSrc) {
-    // 広がりは p が小さいほど大きく、時間でゆっくり揺らす
-    const sigma = (0.45 + 0.4 * (1 - s.p)) * (1 + 0.15 * Math.sin(t * 1.3 + s.ph)) * R;
-    const cx = (s.x + 0.12 * Math.sin(t * 0.9 + s.ph * 1.7)) * R, cy = (s.y + 0.12 * Math.cos(t * 0.8 + s.ph)) * R;
-    // 1つのマスの雲の総量が p になるように、ピークを広がりの2乗で割る
-    const amp = s.p * 0.55 * R * R / (sigma * sigma), k = -1 / (2 * sigma * sigma), rr = Math.ceil(3 * sigma);
-    for (let y = Math.max(0, Math.floor(cy - rr)); y < Math.min(h, cy + rr); y++) {
-      const dy = y + 0.5 - cy;
-      for (let x = Math.max(0, Math.floor(cx - rr)); x < Math.min(w, cx + rr); x++) {
-        const dx = x + 0.5 - cx;
-        field[y * w + x] += amp * Math.exp((dx * dx + dy * dy) * k);
-      }
-    }
-  }
-  const ctx = cloud.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
-  for (let j = 0; j < field.length; j++) {
-    const v = Math.min(1, Math.sqrt(field[j]));
+    // 濃さは √p。p が数% のマスも見えるようにする。マスごとに位相をずらして、ゆっくり明滅させる
+    const v = Math.sqrt(s.p) * (1 + 0.15 * Math.sin(t * 1.3 + s.ph));
     // 確定した地雷の ● より目立たないよう、暗い赤で、濃いところでも半透明に留める
-    d[j * 4] = 200;
-    d[j * 4 + 1] = 60;
-    d[j * 4 + 2] = 72;
-    d[j * 4 + 3] = 150 * v;
+    d.set([200, 60, 72, Math.min(255, 150 * v)], s.i * 4);
   }
   ctx.putImageData(img, 0, 0);
 }
