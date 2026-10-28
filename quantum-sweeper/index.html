@@ -215,7 +215,7 @@ function render() {
       // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
       const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
-      // 観測者消滅の盤では、確定していない地雷を、p に比例した濃さのぼやけた雲で示す。
+      // 観測者消滅の盤では、確定していない地雷を、√p の濃さのぼやけた雲で示す（p が小さいマスも見えるように）。
       // 地雷はまだどこにも置かれていないので、● では描かない
       if (g.state === 'dead' && !g.mines.has(i) && p > 1e-9 && p < 1 - 1e-9) {
         html += `<span class="cl" style="--p:${p.toFixed(3)};--a:${Math.sqrt(p).toFixed(3)};animation-delay:${(-(i * 0.37) % 2.6).toFixed(2)}s"></span>`;
