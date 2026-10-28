@@ -39,6 +39,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.w::after{content:"●";color:var(--gold)}
 #board.won{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(242,198,107,.45);border-radius:4px}
 #board.lost{box-shadow:0 0 0 2px var(--risk);border-radius:4px}
+.c .cl{position:absolute;inset:calc(28% - (1 - var(--p)) * 46%);border-radius:50%;background:radial-gradient(circle,var(--risk),rgba(255,107,107,0) 70%);opacity:var(--a);filter:blur(calc((1 - var(--p)) * 5px + 1px));pointer-events:none;z-index:1;animation:cloud 2.6s ease-in-out infinite alternate}
+@keyframes cloud{from{transform:scale(.8) translate(-4%,3%)}to{transform:scale(1.12) translate(4%,-3%)}}
+@media (prefers-reduced-motion:reduce){.c .cl{animation:none}}
 .c.k{background:#4a3416}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
@@ -212,6 +215,11 @@ function render() {
       // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
       const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
+      // 観測者消滅の盤では、確定していない地雷を、p に比例した濃さのぼやけた雲で示す。
+      // 地雷はまだどこにも置かれていないので、● では描かない
+      if (g.state === 'dead' && !g.mines.has(i) && p > 1e-9 && p < 1 - 1e-9) {
+        html += `<span class="cl" style="--p:${p.toFixed(3)};--a:${Math.sqrt(p).toFixed(3)};animation-delay:${(-(i * 0.37) % 2.6).toFixed(2)}s"></span>`;
+      }
       if (showP && !over && !g.mines.has(i)) {
         html += `<span class="pr">${pct(p)}</span>`;
         b.style.background = `color-mix(in srgb, var(--risk) ${Math.round(p * 70)}%, var(--cell))`;
