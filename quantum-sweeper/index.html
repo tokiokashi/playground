@@ -105,7 +105,7 @@ details p,details li{font-size:14px;color:#cdd5e6}
 <li>安全第一のモードでは、「旗で決まるマスを自動で開ける」を有効にすると、手がかりのマスを押してまとめて開ける操作を自動で行う。手がかりと周りの旗だけで残りが安全と決まったマスは、旗を置いた時やマスを開けた時にすぐ開く。旗が世界と合っていなければ、開けたマスの確率どおりにコストを払う。</li>
 <li>旗はメモで、世界の数には影響しない。長押し、右クリック、「旗（メモ）」で置ける。</li>
 </ul>
-<p>「曖昧な手がかり」が有効だと（最初から有効）、マスごとに検出器の種類が決まり、右上の印で見分けられる。</p>
+<p>「曖昧な手がかり」が有効だと（最初から有効）、マスごとに検出器の種類が決まり、右上の印で見分けられる。地雷に賭けたマスと旗を置いたマスでは印を消す。「確率を見る」が有効な時は、全ての世界で地雷のマスでも消す。</p>
 <ul>
 <li>印なし: 精密。周囲の地雷の数をそのまま出す。</li>
 <li><span class="mono">≈</span> 幅: <span class="mono">0-1 / 2-3 / 4-5 / 6-7 / 8</span> のどれかを出す。</li>
@@ -168,7 +168,10 @@ function render() {
       if (g.mines.has(i)) cls += ' k';
       else if (over && p > 1 - 1e-9) cls += ' m';
       else if (g.flags.has(i)) cls += ' f';
-      if (MARK[g.det[i]]) html += `<span class="d">${MARK[g.det[i]]}</span>`;
+      // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（◆・旗）と、
+      // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
+      const hideMark = g.mines.has(i) || g.flags.has(i) || ((showP || over) && p > 1 - 1e-9);
+      if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
       if (showP && !over && !g.mines.has(i)) {
         html += `<span class="pr">${pct(p)}</span>`;
         b.style.background = `color-mix(in srgb, var(--risk) ${Math.round(p * 70)}%, var(--cell))`;
