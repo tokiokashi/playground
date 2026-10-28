@@ -367,7 +367,6 @@ function betMine(i) {
   render();
 }
 
-// 結果画面。ランクと内訳に加えて、どれだけの運で生き延びたかを短い文で出し、そのまま共有できるようにする
 // 結果画面の流れ図。残っている世界の bit 数（log₂Ω）を帯の太さにして、左の log₂Ω₀ から右の Ω = 1 まで描く。
 // 一手ごとに、数字で絞った分（I）を上へ青で、運で払った分（L）を下へ赤で分岐させる。
 // 赤は、その場の一番安い賭けでも払う分（不可避）を暗く、それを超えた分（賭けの損・推理ミス）を明るくする
@@ -383,7 +382,9 @@ function flowChart() {
     let need = 0, extra = 0, miss = false;
     for (const m of g.moves.slice(a.m, b.m)) {
       if (!isFinite(m.cost) || m.cost === 0) continue;
-      if (m.safeExists) { extra += m.cost; miss = true; }
+      // 内訳（推理ミス・賭けの損・不可避）は安全第一の評価なので、最小コストでは全て明るい赤にする
+      if (mode !== 'safe') extra += m.cost;
+      else if (m.safeExists) { extra += m.cost; miss = true; }
       else { need += m.best; extra += m.cost - m.best; }
     }
     const dL = b.L - a.L;
@@ -439,9 +440,10 @@ function flowChart() {
     `<text x="${VW - 4}" y="${y0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">${pct(sv)}</text>` +
     `<text x="10" y="${top0 + BAND + 16}" font-size="12" fill="var(--mute)">2^${g.H0.toFixed(1)}</text>` +
     `<text x="${VW - 4}" y="${top0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">Ω = 1</text></svg>` +
-    '<p class="flowcap">上は世界の減り方で、青は数字、赤は運で削った分です。下は生き残ったあなたの割合で、運を使った手で細ります。暗い赤は、その場で一番安い賭けでも払うしかなかった分です。</p>';
+    '<p class="flowcap">上は世界の減り方で、青は数字、赤は運で削った分です。下は生き残ったあなたの割合で、運を使った手で細ります。' + (mode === 'safe' ? '暗い赤は、その場で一番安い賭けでも払うしかなかった分です。' : '') + '</p>';
 }
 
+// 結果画面。ランクと内訳に加えて、どれだけの運で生き延びたかを短い文で出し、そのまま共有できるようにする
 function showResult(ok) {
   const el = $('result');
   $('msg').innerHTML = '';
