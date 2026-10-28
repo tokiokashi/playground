@@ -37,6 +37,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.k{background:#4a3416}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
+.c.hint{outline:2px dashed var(--mute);outline-offset:-2px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
@@ -83,13 +84,14 @@ details p,details li{font-size:14px;color:#cdd5e6}
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
 </div>
 <div id="custom" hidden>
-  <label>W<input type="number" id="cw" min="4" max="30"></label>
-  <label>H<input type="number" id="ch" min="4" max="30"></label>
+  <label>W<input type="number" id="cw" min="4" max="20"></label>
+  <label>H<input type="number" id="ch" min="4" max="20"></label>
   <label>●<input type="number" id="cm" min="1"></label>
   <label>精<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>≈<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>|<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>◐<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>≋<input type="range" class="mix" min="0" max="100" step="5"></label>
 </div>
 <div class="stats">
   <div class="stat"><span class="k">Ω</span><span class="v" id="omega"></span></div>
@@ -115,9 +117,9 @@ import { Game, MIXES, rank, rankCost } from './game.js';
 
 const $ = id => document.getElementById(id);
 const board = $('board');
-const MARK = { exact: '', range: '≈', pair: '|', parity: '◐' };
+const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋' };
 let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = false, tap = 'open', showP = false;
-let g, cells, last = -1;
+let g, cells, last = -1, hint = -1;
 
 function fmtOmega(o) {
   if (o < 1e6) return Math.round(o).toLocaleString();
@@ -131,7 +133,7 @@ function newGame() {
   g = new Game(W, H, M, mix);
   syncCustom();
   g.autoChord = mode === 'safe' && autoChord;
-  last = -1;
+  last = hint = -1;
   board.style.setProperty('--w', W);
   board.innerHTML = '';
   cells = [];
@@ -175,6 +177,7 @@ function render() {
     }
     if (g.opened[i]) b.style.background = '';
     if (i === last) cls += ' last';
+    if (i === hint && !g.opened[i]) cls += ' hint';
     b.className = cls;
     b.innerHTML = html;
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
@@ -189,6 +192,7 @@ function render() {
 // 開いた手がかりのマスを押すと、その手がかりと旗で安全と決まる周りのマスをまとめて開ける
 function chord(i) {
   const targets = g.chordTargets(i);
+  hint = -1;
   if (!targets.length) return;
   let cost = 0, risky = 0;
   const opened = [];
@@ -234,10 +238,15 @@ function settleNow() {
 
 // 賭けの直後に出す数字: p とコスト。一番安い賭けより高かった時はその値も並べる
 function betLine(r, m) {
+  hint = -1;
   if (r.cost === 0) return '+0';
   let t = `p ${(r.p * 100).toFixed(1)}% · <b>+${r.cost.toFixed(2)} bit</b>`;
   if (m.safeExists && mode === 'safe') t += ' · ✕';
-  else if (!m.safeExists && m.cost > m.best + 1e-9) t += ` · 最安 ${m.best.toFixed(2)}`;
+  else if (!m.safeExists && m.cost > m.best + 1e-9) {
+    // 一番安かった賭けを、そのマスの確率で示し、盤の上でも枠で示す
+    t += ` · 最安 ${m.bestKind === 'mine' ? '◆ ' : ''}${(m.bestP * 100).toFixed(1)}%`;
+    hint = m.bestCell;
+  }
   return t;
 }
 
@@ -343,7 +352,7 @@ $('gear').addEventListener('click', e => {
 });
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(+v) || lo));
 ['cw', 'ch', 'cm'].forEach(id => $(id).addEventListener('change', () => {
-  const W = clamp($('cw').value, 4, 30), H = clamp($('ch').value, 4, 30);
+  const W = clamp($('cw').value, 4, 20), H = clamp($('ch').value, 4, 20);
   size = [W, H, clamp($('cm').value, 1, W * H - 1)];
   newGame();
 }));

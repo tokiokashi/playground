@@ -1,13 +1,13 @@
 // 盤の進行。DOM には触らない（node から試せるようにする）。
 import { analyze, binom, neighbors, DETECTORS, maskOf, classLabel } from './engine.js';
 
-// 検出器の割合のプリセット（精密・幅・二重・偶奇の順、%）
-export const TYPES = ['exact', 'range', 'pair', 'parity'];
+// 検出器の割合のプリセット（精密・幅・二重・偶奇・広い幅の順、%）
+export const TYPES = ['exact', 'range', 'pair', 'parity', 'wide'];
 export const MIXES = [
-  [100, 0, 0, 0],
-  [50, 20, 15, 15],
-  [20, 30, 25, 25],
-  [0, 35, 35, 30],
+  [100, 0, 0, 0, 0],
+  [60, 10, 10, 10, 10],
+  [35, 15, 15, 15, 20],
+  [0, 25, 20, 25, 30],
 ];
 
 export class Game {
@@ -23,6 +23,8 @@ export class Game {
       for (let j = 0; j < TYPES.length; j++) if ((u -= mix[j]) < 0) return TYPES[j];
       return 'exact';
     });
+    // 区切りの位置が何通りかある種類は、どれで分けるかもマスごとにくじで決めておく（開けるまで見えない）
+    this.classes = this.det.map(t => { const ps = DETECTORS[t].parts; return ps[Math.floor(rng() * ps.length)]; });
     this.opened = new Uint8Array(N);
     this.clues = new Map();
     this.label = new Array(N).fill('');
@@ -52,16 +54,21 @@ export class Game {
   // まだ賭けられるマス（開けていない、地雷に賭けていない）
   free(c) { return !this.opened[c] && !this.mines.has(c); }
 
-  // 賭ける前の盤面の記録: 全ての世界で安全なマスがあるか、外れうる賭けのうち一番安いコスト
+  // 賭ける前の盤面の記録: 全ての世界で安全なマスがあるか、外れうる賭けのうち一番安いもの
+  // （コスト best、マス bestCell、種類 bestKind: 'open' か 'mine'、そのマスの確率 bestP）
   situation() {
-    let safeExists = false, best = Infinity;
+    let safeExists = false, best = Infinity, bestCell = -1, bestKind = 'open', bestP = 0;
     for (let i = 0; i < this.N; i++) {
       if (!this.free(i)) continue;
       const p = this.an.prob[i];
       if (p === 0) safeExists = true;
-      else if (p < 1) best = Math.min(best, -Math.log2(1 - p), -Math.log2(p));
+      else if (p < 1) {
+        const co = -Math.log2(1 - p), cm = -Math.log2(p);
+        if (co < best) { best = co; bestCell = i; bestKind = 'open'; bestP = p; }
+        if (cm < best) { best = cm; bestCell = i; bestKind = 'mine'; bestP = p; }
+      }
     }
-    return { safeExists, best };
+    return { safeExists, best, bestCell, bestKind, bestP };
   }
 
   // マス c を踏み、0 の連鎖などを済ませる。戻り値: { p, cost, opened: [開いたマス] }
@@ -121,7 +128,7 @@ export class Game {
     this.flags.delete(c);
     const { W, H, M } = this;
     const survive = analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
-    const classes = DETECTORS[this.det[c]].classes;
+    const classes = this.classes[c];
     const weights = classes.map(cls => {
       this.clues.set(c, maskOf(cls));
       return analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
@@ -134,7 +141,7 @@ export class Game {
     this.I += Math.log2(survive / weights[pick]);
   }
 
-  // 普通のマインスイーパーと同じく、精密な 0 の周りだけを続けて開ける。
+  // 普通のマインスイーパーと同じく、0 と確定した手がかりの周りだけを続けて開ける。
   // それ以外の安全なマスは自分で推理して開ける
   cascade(opened) {
     const queue = opened.slice();
