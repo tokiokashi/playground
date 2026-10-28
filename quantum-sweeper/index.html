@@ -63,10 +63,11 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
-.scen{display:grid;grid-template-columns:3.2em repeat(5,1fr);gap:6px;align-items:center;margin:0 0 8px}
-.scen span{font-weight:700}
-.scen button{padding:6px 0;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.scen{display:grid;grid-template-columns:3.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
+.scen span{font-weight:700;align-self:center}
+.scen button{min-height:3.4em;padding:4px 0;font-size:12px;font-family:ui-monospace,Menlo,monospace}
 .scen button.done{border-color:var(--gold);color:var(--gold)}
+.scen button b{display:block;font:800 15px/1.1 ui-monospace,Menlo,monospace}
 #entry{margin:8px 0 16px}
 #free{margin-top:6px}
 .stagelabel{font-weight:700;color:var(--gold)}
@@ -151,7 +152,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <details>
 <summary>遊び方</summary>
 <h3>キャンペーン</h3>
-<p>キャンペーンには、手がかりの曖昧さごとに4つのシナリオがあり、それぞれ盤の広さが違う5面でできています。面をクリアすると次の面が、シナリオの5面をすべてクリアすると次のシナリオが開きます。評価は安全第一で行います。「自由観測」では、盤の大きさや曖昧さ、評価のモードを自分で選べます。</p>
+<p>キャンペーンには、手がかりの曖昧さごとに4つのシナリオがあり、それぞれ盤の広さが違う5面でできています。面をクリアすると次の面が、シナリオの5面をすべてクリアすると次のシナリオが開きます。評価は安全第一で行い、面のボタンには、その面で一番良かったランクが出ます。運良く生き延びればクリアにはなりますが、ランクは運の大小に関係せず、推理ミスや賭けの損があると下がります。「自由観測」では、盤の大きさや曖昧さ、評価のモードを自分で選べます。</p>
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
 <p>最初の一歩は、◇ で降り立つ場所を選ぶことです（降り立つまで ◆ は置けません）。そこと周りの 8 マスに地雷がある世界は初めから数えないので、最初の一歩にコストはかかりません。</p>
@@ -519,7 +520,7 @@ function showResult(ok) {
   // 一番危なかった賭け: 外れる確率（開けるなら p、地雷に賭けるなら 1 − p）が一番高かったもの
   const worst = bets.reduce((a, m) => (!a || m.cost > a.cost ? m : a), null);
   const risk = worst ? 1 - 2 ** -worst.cost : 0;
-  let head, story, table = '', summary;
+  let head, story, table = '', summary, r;
   if (!ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
@@ -531,7 +532,7 @@ function showResult(ok) {
     summary = `観測者消滅・コイントス ${coins} 回分（${pctS(2 ** -g.L)}）を切り抜けた後`;
   } else {
     const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
-    const r = mode === 'safe' ? rank(loss) : rankCost(ratio);
+    r = mode === 'safe' ? rank(loss) : rankCost(ratio);
     const surv = 2 ** -g.L;
     const rows = mode === 'safe'
       ? [['推理ミス', `${f(b.error)}（${b.errors}）`], ['賭けの損', f(b.gap)], ['不可避', f(b.forced)]]
@@ -562,9 +563,10 @@ function showResult(ok) {
     setting = `${sc.name} ${camp.k + 1}/${sc.stages.length}・${g.W}×${g.H}・${g.M}個`;
     // 自動プレーを使った面は、次へ進めるがクリアとして記録しない
     if (ok && !g.botUsed) {
-      prog[camp.s][camp.k] = 1;
+      // 面ごとに一番良かったランクを残す
+      if (rankOrder(r) > rankOrder(prog[camp.s][camp.k])) prog[camp.s][camp.k] = r;
       saveProg();
-      if (last) story.push(prog.every(r => r.every(Boolean)) ? 'すべての観測を終えました。' : 'このシナリオの観測を、すべて終えました。');
+      if (last) story.push(prog.every(row => row.every(Boolean)) ? 'すべての観測を終えました。' : 'このシナリオの観測を、すべて終えました。');
     }
     next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button> `;
   }
@@ -698,7 +700,8 @@ const SCEN = [
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
 let freeSet = null;
-// 進み具合（クリアした面に 1）はこのブラウザにだけ残す。保存できない環境では、開いている間だけ覚える
+// 進み具合（クリアした面に、その面で一番良かったランク）はこのブラウザにだけ残す。保存できない環境では、開いている間だけ覚える。
+// ランクを残す前の形式の 1 は、ランク無しのクリアとして扱う
 let prog = loadProg();
 function loadProg() {
   try {
@@ -710,6 +713,9 @@ function loadProg() {
 function saveProg() {
   try { localStorage.setItem('qs-campaign', JSON.stringify(prog)); } catch { /* 保存できない環境 */ }
 }
+const RANKS = ['C', 'B', 'A', 'S', 'S+'];
+// 未クリアは -1、ランク無しのクリア（1）は 0 番目より下の -0.5
+const rankOrder = v => !v ? -1 : RANKS.includes(v) ? RANKS.indexOf(v) : -0.5;
 const scenOpen = i => i === 0 || prog[i - 1].every(Boolean);
 
 function showEntry() {
@@ -719,7 +725,7 @@ function showEntry() {
   $('entry').hidden = false;
   $('camp').innerHTML = SCEN.map((sc, i) => `<div class="scen"><span>${sc.name}</span>` + sc.stages.map(([W, H, M], k) => {
     const open = scenOpen(i) && (k === 0 || prog[i][k - 1]);
-    return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''}${open ? '' : ' disabled'} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}">${W}×${H}</button>`;
+    return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''}${open ? '' : ' disabled'} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}${RANKS.includes(prog[i][k]) ? ' ランク' + prog[i][k] : ''}">${W}×${H}${RANKS.includes(prog[i][k]) ? `<b>${prog[i][k]}</b>` : ''}</button>`;
   }).join('') + '</div>').join('');
 }
 function enterPlay() {
