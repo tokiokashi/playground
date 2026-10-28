@@ -112,7 +112,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-mode="safe" aria-pressed="true">安全第一</button>
     <button data-mode="cost" aria-pressed="false">最小コスト</button>
   </span>
-  <button id="autochord" aria-pressed="false" aria-label="◆ で決まるマスを自動で開ける">◆ 自動</button>
+  <button id="autochord" aria-pressed="true" aria-label="◆ で決まるマスを自動で開ける">◆ 自動</button>
 </div>
 <div class="bar">
   <span role="group" aria-label="タップの操作">
@@ -164,7 +164,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <li><b>◆ 地雷に賭ける</b>: 「このマスに地雷がある」と決めて進みます。地雷が無い世界に、そう決めたあなたの居場所はありません。踏み込まないので、数字は返りません。どちらのボタンを選んでいても、長押しか右クリックで ◆ になります。</li>
 </ul>
 <p>p = 100% のマスに踏み込むか、p = 0% のマスに地雷があると決めると、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもないマスでの決定を「外れうる賭け」と呼びます。</p>
-<p>開いた数字のマスを押すと、数字と周りの ◆ から空と読めるマスへ、まとめて踏み込みます。◆ のマスは、あなたのいる全ての世界で地雷なので、まとめて踏み込んでもコストはかかりません。安全第一のモードで「◆ 自動」をオンにすると、◆ を決めるたびに、そこから読めるマスへ自動で踏み込みます。</p>
+<p>開いた数字のマスを押すと、数字と周りの ◆ から空と読めるマスへ、まとめて踏み込みます。◆ のマスは、あなたのいる全ての世界で地雷なので、まとめて踏み込んでもコストはかかりません。安全第一のモードで「◆ 自動」がオンの間（最初はオン）は、◆ を決めるたびに、そこから読めるマスへ自動で踏み込みます。</p>
 <h3>曖昧な検出器</h3>
 <p>開けていないマスの右上の印は、そのマスの検出器の種類です。印の無いマスは、周りの8マスの地雷をそのまま数えます。</p>
 <ul>
@@ -197,7 +197,7 @@ import { Game, MIXES, rank, rankCost } from './game.js';
 const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋' };
-let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = false, tap = 'open', showP = false;
+let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, tap = 'open', showP = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 手ごとの L と I の推移。結果画面の流れ図に使う（m はその時点までの手の数）
 let hist = [];
