@@ -39,9 +39,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.w::after{content:"●";color:var(--gold)}
 #board.won{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(242,198,107,.45);border-radius:4px}
 #board.lost{box-shadow:0 0 0 2px var(--risk);border-radius:4px}
-.c .cl{position:absolute;inset:calc(28% - (1 - var(--p)) * 46%);border-radius:50%;background:radial-gradient(circle,var(--risk),rgba(255,107,107,0) 70%);opacity:var(--a);filter:blur(calc((1 - var(--p)) * 5px + 1px));pointer-events:none;z-index:1;animation:cloud 2.6s ease-in-out infinite alternate}
-@keyframes cloud{from{transform:scale(.8) translate(-4%,3%)}to{transform:scale(1.12) translate(4%,-3%)}}
-@media (prefers-reduced-motion:reduce){.c .cl{animation:none}}
+.stage{position:relative}
+#cloud{position:absolute;pointer-events:none;z-index:1;filter:blur(2px)}
+#cloud[hidden]{display:none}
 .c.k{background:#4a3416}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
@@ -113,7 +113,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <div class="stat"><span class="k">I</span><span class="v" id="Iv"></span></div>
   <div class="stat"><span class="k">2<sup>−L</sup></span><span class="v" id="surv"></span></div>
 </div>
-<div id="board" role="grid" aria-label="盤"></div>
+<div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas></div>
 <p id="msg" aria-live="polite"></p>
 <div id="result" aria-live="polite"></div>
 <details>
@@ -192,11 +192,72 @@ function newGame() {
   render();
 }
 
+// 観測者消滅の盤に、確定していない地雷の分布を雲として重ねる。地雷はまだどこにも置かれていないので、
+// マスごとに区切らず、各マスの p を中心にしたぼかしを足し合わせて1枚の濃さの場として描く
+const cloud = $('cloud');
+const CLOUD_RES = 8; // 1マスあたりの画素数。粗く描いて、拡大とぼかしで滑らかに見せる
+let cloudFrame = 0, cloudSrc = null;
+function startCloud() {
+  const { W, H } = g;
+  cloudSrc = [];
+  for (let i = 0; i < W * H; i++) {
+    if (g.opened[i] || g.mines.has(i)) continue;
+    const p = g.prob(i);
+    if (p > 1e-9 && p < 1 - 1e-9) cloudSrc.push({ x: i % W + 0.5, y: Math.floor(i / W) + 0.5, p, ph: i * 2.39 });
+  }
+  Object.assign(cloud.style, { left: board.offsetLeft + 'px', top: board.offsetTop + 'px', width: board.offsetWidth + 'px', height: board.offsetHeight + 'px' });
+  cloud.width = W * CLOUD_RES;
+  cloud.height = H * CLOUD_RES;
+  cloud.hidden = false;
+  if (cloudFrame) return;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const loop = t => {
+    drawCloud(still ? 0 : t / 1000);
+    cloudFrame = still ? 0 : requestAnimationFrame(loop);
+  };
+  cloudFrame = requestAnimationFrame(loop);
+}
+addEventListener('resize', () => { if (!cloud.hidden) startCloud(); });
+function stopCloud() {
+  if (cloudFrame) cancelAnimationFrame(cloudFrame);
+  cloudFrame = 0;
+  cloud.hidden = true;
+}
+function drawCloud(t) {
+  const { W, H } = g, R = CLOUD_RES, w = W * R, h = H * R;
+  const field = new Float32Array(w * h);
+  for (const s of cloudSrc) {
+    // 広がりは p が小さいほど大きく、時間でゆっくり揺らす
+    const sigma = (0.55 + 0.6 * (1 - s.p)) * (1 + 0.15 * Math.sin(t * 1.3 + s.ph)) * R;
+    const cx = (s.x + 0.12 * Math.sin(t * 0.9 + s.ph * 1.7)) * R, cy = (s.y + 0.12 * Math.cos(t * 0.8 + s.ph)) * R;
+    // 1つのマスの雲の総量が p になるように、ピークを広がりの2乗で割る
+    const amp = s.p * 0.55 * R * R / (sigma * sigma), k = -1 / (2 * sigma * sigma), rr = Math.ceil(3 * sigma);
+    for (let y = Math.max(0, Math.floor(cy - rr)); y < Math.min(h, cy + rr); y++) {
+      const dy = y + 0.5 - cy;
+      for (let x = Math.max(0, Math.floor(cx - rr)); x < Math.min(w, cx + rr); x++) {
+        const dx = x + 0.5 - cx;
+        field[y * w + x] += amp * Math.exp((dx * dx + dy * dy) * k);
+      }
+    }
+  }
+  const ctx = cloud.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
+  for (let j = 0; j < field.length; j++) {
+    const v = Math.min(1, Math.sqrt(field[j]));
+    // 薄いところは赤、濃く重なったところほど明るい色にする
+    d[j * 4] = 255;
+    d[j * 4 + 1] = 90 + 130 * v * v;
+    d[j * 4 + 2] = 90 + 90 * v * v;
+    d[j * 4 + 3] = 235 * v;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 function render() {
   const { W, H } = g;
   const over = g.state !== 'play';
   board.classList.toggle('won', g.state === 'clear');
   board.classList.toggle('lost', g.state === 'dead');
+  if (g.state === 'dead') startCloud(); else stopCloud();
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -215,11 +276,6 @@ function render() {
       // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
       const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
-      // 観測者消滅の盤では、確定していない地雷を、√p の濃さのぼやけた雲で示す（p が小さいマスも見えるように）。
-      // 地雷はまだどこにも置かれていないので、● では描かない
-      if (g.state === 'dead' && !g.mines.has(i) && p > 1e-9 && p < 1 - 1e-9) {
-        html += `<span class="cl" style="--p:${p.toFixed(3)};--a:${Math.sqrt(p).toFixed(3)};animation-delay:${(-(i * 0.37) % 2.6).toFixed(2)}s"></span>`;
-      }
       if (showP && !over && !g.mines.has(i)) {
         html += `<span class="pr">${pct(p)}</span>`;
         b.style.background = `color-mix(in srgb, var(--risk) ${Math.round(p * 70)}%, var(--cell))`;
