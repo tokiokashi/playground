@@ -51,6 +51,11 @@ export class Game {
   //   地雷に賭ける: 地雷が無かった世界が消える。コスト −log₂p。手がかりは出ない
   // どちらも全ての世界で外れるマス（開けるなら p = 1、地雷に賭けるなら p = 0）ではゲームオーバー
 
+  // 今の盤面の写し: 開いたマスと手がかりの表示、◆ のマス、各マスの地雷確率、Ω、それまでの L と I
+  snapshot() {
+    return { opened: this.opened.slice(), label: this.label.slice(), mines: [...this.mines], prob: this.an.prob.slice(), omega: this.an.omega, L: this.L, I: this.I };
+  }
+
   // まだ賭けられるマス（開けていない、地雷に賭けていない）
   free(c) { return !this.opened[c] && !this.mines.has(c); }
 
@@ -87,6 +92,8 @@ export class Game {
     if (!this.landed) { const r = this.land(c); if (r) return r; }
     const p = this.an.prob[c];
     const sit = this.situation();
+    // 外れうる賭けと観測者消滅の手には、賭ける前の盤面を残す（終局後の振り返り用）
+    if (p > 0) sit.snap = this.snapshot();
     if (p > 1 - 1e-9) {
       this.state = 'dead';
       this.moves.push({ kind: 'open', c, p, cost: Infinity, ...sit });
@@ -129,6 +136,7 @@ export class Game {
     if (this.state !== 'play') return null;
     const p = this.an.prob[c];
     const sit = this.situation();
+    if (p < 1) sit.snap = this.snapshot();
     if (p < 1e-9) {
       this.state = 'dead';
       this.moves.push({ kind: 'mine', c, p, cost: Infinity, ...sit });
