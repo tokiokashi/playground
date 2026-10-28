@@ -726,8 +726,8 @@ function showEntry() {
   // まだ開いていないシナリオの名前と、まだ開いていない面の大きさは「？」で伏せる
   $('camp').innerHTML = SCEN.map((sc, i) => `<div class="scen"><span>${scenOpen(i) ? sc.name : '？'}</span>` + sc.stages.map(([W, H, M], k) => {
     const open = scenOpen(i) && (k === 0 || prog[i][k - 1]);
-    if (!open) return '<button disabled aria-label="未開放">？</button>';
-    return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''}${open ? '' : ' disabled'} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}${RANKS.includes(prog[i][k]) ? ' ランク' + prog[i][k] : ''}">${W}×${H}${RANKS.includes(prog[i][k]) ? `<b>${prog[i][k]}</b>` : ''}</button>`;
+    if (!open) return `<button disabled aria-label="シナリオ${i + 1} ${k + 1}面 未開放">？</button>`;
+    return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}${RANKS.includes(prog[i][k]) ? ' ランク' + prog[i][k] : ''}">${W}×${H}${RANKS.includes(prog[i][k]) ? `<b>${prog[i][k]}</b>` : ''}</button>`;
   }).join('') + '</div>').join('');
 }
 function enterPlay() {
