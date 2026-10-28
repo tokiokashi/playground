@@ -748,14 +748,14 @@ function showEntry() {
 function showRecords() {
   const pct = x => x >= 0.001 ? (x * 100).toFixed(1) + '%' : (x * 100).toExponential(1) + '%';
   const rows = [];
-  let n = 0, sumL = 0, total = 0;
+  let n = 0, m = 0, sumL = 0, total = 0;
   SCEN.forEach((sc, i) => sc.stages.forEach(([W, H], k) => {
     total++;
     const v = prog[i][k];
     if (!v) return;
     n++;
     const rk = RANKS.includes(recRank(v)) ? recRank(v) : '—', L = recL(v);
-    if (L !== null) sumL += L;
+    if (L !== null) { m++; sumL += L; }
     rows.push(`<tr><td>${sc.name} ${k + 1}</td><td>${W}×${H}</td><td class="rk">${rk}</td><td>${L === null ? '—' : pct(2 ** -L)}</td><td>${L === null ? '—' : L.toFixed(1)}</td></tr>`);
   }));
   $('records').hidden = !n;
@@ -763,7 +763,10 @@ function showRecords() {
   $('records').innerHTML = '<summary>記録</summary>'
     + '<table><thead><tr><th>面</th><th></th><th>ランク</th><th>2<sup>−L</sup></th><th>L</th></tr></thead>'
     + `<tbody>${rows.join('')}</tbody></table>`
-    + `<p>クリアした面 <b>${n}</b> / ${total}。記録した面を続けて切り抜けたあなたは、最初にいたあなたのうち <b>${pct(2 ** -sumL)}</b>（コイントス <b>${sumL.toFixed(1)}</b> 回分）です。</p>`;
+    + `<p>クリアした面 <b>${n}</b> / ${total}。`
+    // 別々のプレーで取った一番良い記録を、続けて切り抜けたとした時の割合。L が分かる面だけで数える
+    + (m ? `L が分かる ${m} 面の記録を続けて切り抜けたとすると、残るあなたは最初の <b>${pct(2 ** -sumL)}</b>（コイントス <b>${sumL.toFixed(1)}</b> 回分）です。` : '')
+    + '</p>';
 }
 function enterPlay() {
   $('entry').hidden = true;
