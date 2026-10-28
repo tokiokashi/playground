@@ -113,7 +113,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-mode="safe" aria-pressed="true">安全第一</button>
     <button data-mode="cost" aria-pressed="false">最小コスト</button>
   </span>
-  <button id="autochord" aria-pressed="false" aria-label="◆ で決まるマスを自動で開ける">◆ 自動</button>
+  <button id="autochord" aria-pressed="true" aria-label="◆ で決まるマスを自動で開ける">◆ 自動</button>
 </div>
 <div class="bar">
   <span role="group" aria-label="タップの操作">
@@ -121,7 +121,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-tap="mine" aria-pressed="false" aria-label="地雷に賭ける">◆</button>
   </span>
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
-  <button id="showm" aria-pressed="false" aria-label="世界線メーターを表示">∿</button>
+  <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
   <span id="left" class="left" aria-label="残りの地雷"></span>
@@ -157,7 +157,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
 <p>最初の一歩は、◇ で降り立つ場所を選ぶことです（降り立つまで ◆ は置けません）。そこと周りの 8 マスに地雷がある世界は初めから数えないので、最初の一歩にコストはかかりません。</p>
 <p>マスごとの p は、残っている世界のうち、そのマスに地雷がある世界の割合です。p = 30% なら、3割の世界でそこに地雷があります。「|ψ|²」を押すと、p の分布が盤の上に赤い雲で重なります。雲が濃いほど p が大きく、p = 100% のマスは確定した地雷と同じ色になります。</p>
-<p>「∿」を押すと、盤の上側のメーターに、生き残っているあなたの割合 2<sup>−L</sup> が出ます。p = 0% のマスが一つも無く、外れうる賭けを打つしかない局面では、メーターの数字が揺らぎます。どのマスが安全かは教えません。</p>
+<p>「∿」がオンの間（最初はオン）は、盤の上側のメーターに、生き残っているあなたの割合 2<sup>−L</sup> が出ます。p = 0% のマスが一つも無く、外れうる賭けを打つしかない局面では、メーターの数字が揺らぎます。どのマスが安全かは教えません。</p>
 <h3>どの世界へ進むかを決める</h3>
 <p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身と違う世界でも盤は続きますが、そこにあなたはいません。盤の上にある ◇・◆ のボタンでどちらに決めるかを選んでから、マスを押します。目印だけを付ける手段はありません。</p>
 <ul>
@@ -165,7 +165,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <li><b>◆ 地雷に賭ける</b>: 「このマスに地雷がある」と決めて進みます。地雷が無い世界に、そう決めたあなたの居場所はありません。踏み込まないので、数字は返りません。どちらのボタンを選んでいても、長押しか右クリックで ◆ になります。</li>
 </ul>
 <p>p = 100% のマスに踏み込むか、p = 0% のマスに地雷があると決めると、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもないマスでの決定を「外れうる賭け」と呼びます。</p>
-<p>開いた数字のマスを押すと、数字と周りの ◆ から空と読めるマスへ、まとめて踏み込みます。◆ のマスは、あなたのいる全ての世界で地雷なので、まとめて踏み込んでもコストはかかりません。安全第一のモードで「◆ 自動」をオンにすると、◆ を決めるたびに、そこから読めるマスへ自動で踏み込みます。</p>
+<p>開いた数字のマスを押すと、数字と周りの ◆ から空と読めるマスへ、まとめて踏み込みます。◆ のマスは、あなたのいる全ての世界で地雷なので、まとめて踏み込んでもコストはかかりません。安全第一のモードで「◆ 自動」がオンの間（最初はオン）は、◆ を決めるたびに、そこから読めるマスへ自動で踏み込みます。</p>
 <h3>曖昧な検出器</h3>
 <p>開けていないマスの右上の印は、そのマスの検出器の種類です。印の無いマスは、周りの8マスの地雷をそのまま数えます。</p>
 <ul>
@@ -198,7 +198,7 @@ import { Game, MIXES, rank, rankCost } from './game.js';
 const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋' };
-let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = false, tap = 'open', showP = false;
+let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, tap = 'open', showP = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 手ごとの L と I の推移。結果画面の流れ図に使う（m はその時点までの手の数）
 let hist = [];
@@ -331,7 +331,7 @@ function render() {
 // 全ての世界で安全なマス（p = 0%）が一つも無く、外れうる賭けを打つしかない局面では、数字を揺らす。
 // p = 100% のマスに ◆ を置いても世界は減らず、他のマスの p は変わらないので、そのマスが残っていても揺らす。
 // 判定は推理ミスと同じ situation().safeExists を使う。教えるのは安全なマスがあるかどうかだけで、場所は教えない
-let showM = false, meterTimer = 0;
+let showM = true, meterTimer = 0;
 const meter = $('meter');
 function renderMeter() {
   clearInterval(meterTimer);
