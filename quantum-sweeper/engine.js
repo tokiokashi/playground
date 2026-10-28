@@ -139,8 +139,9 @@ function solveComponent(cells, cons, W, needMarginals) {
 //   opened: Uint8Array（1 = 開いた。開いたマスに地雷は無い）
 //   clues: Map<マス, mask>（mask の bit n が立っていれば「周囲の地雷が n 個」を許す）
 //   needProbs: false なら Ω だけ求める
+//   mines: 地雷に賭けて確定させたマスの集合（そのマスに地雷がある世界だけを数える）
 // 戻り値: { omega, prob: Float64Array（未開放マスの地雷確率。開いたマスは 0） }
-export function analyze(W, H, M, opened, clues, needProbs = true) {
+export function analyze(W, H, M, opened, clues, needProbs = true, mines = null) {
   const N = W * H;
   const prob = new Float64Array(N);
   const cons = [];
@@ -152,6 +153,7 @@ export function analyze(W, H, M, opened, clues, needProbs = true) {
     }
     cons.push({ cells, mask: mask & ((1 << (cells.length + 1)) - 1) });
   }
+  if (mines) for (const c of mines) cons.push({ cells: [c], mask: 0b10 });
   if (cons.some(k => !k.mask)) return { omega: 0, prob };
 
   // 境界のマスを制約でつないで成分に分ける

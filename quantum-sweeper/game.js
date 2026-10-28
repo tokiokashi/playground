@@ -19,6 +19,7 @@ export class Game {
     this.clues = new Map();
     this.label = new Array(N).fill('');
     this.flags = new Set();
+    this.mines = new Set();   // 地雷に賭けて確定させたマス
     this.H0 = Math.log2(binom(N, M));
     this.L = 0;   // 生き残ることで削った世界（命で払ったビット）
     this.I = 0;   // 手がかりを見ることで削った世界（観測で得たビット）
@@ -29,11 +30,31 @@ export class Game {
 
   refresh() {
     this.dirty = false;
-    this.an = analyze(this.W, this.H, this.M, this.opened, this.clues);
+    this.an = analyze(this.W, this.H, this.M, this.opened, this.clues, true, this.mines);
     if (this.an.omega < 1.5) this.state = 'clear';
   }
   get bitsLeft() { return Math.log2(this.an.omega); }
   prob(c) { return this.an.prob[c]; }
+
+  // マスに賭ける観測は2種類あり、外れた世界が消える。
+  //   開ける（安全に賭ける）: 地雷があった世界が消える。コスト −log₂(1−p)。生き残ると手がかりが出る
+  //   地雷に賭ける: 地雷が無かった世界が消える。コスト −log₂p。手がかりは出ない
+  // どちらも全ての世界で外れるマス（開けるなら p = 1、地雷に賭けるなら p = 0）ではゲームオーバー
+
+  // まだ賭けられるマス（開けていない、地雷に賭けていない）
+  free(c) { return !this.opened[c] && !this.mines.has(c); }
+
+  // 賭ける前の盤面の記録: 全ての世界で安全なマスがあるか、外れうる賭けのうち一番安いコスト
+  situation() {
+    let safeExists = false, best = Infinity;
+    for (let i = 0; i < this.N; i++) {
+      if (!this.free(i)) continue;
+      const p = this.an.prob[i];
+      if (p === 0) safeExists = true;
+      else if (p < 1) best = Math.min(best, -Math.log2(1 - p), -Math.log2(p));
+    }
+    return { safeExists, best };
+  }
 
   // マス c を踏み、0 の連鎖などを済ませる。戻り値: { p, cost, opened: [開いたマス] }
   step(c) {
@@ -44,23 +65,45 @@ export class Game {
 
   // マス c を踏む（0 の連鎖などはしない）
   open(c) {
-    if (this.state !== 'play' || this.opened[c]) return null;
+    if (this.state !== 'play' || !this.free(c)) return null;
     // 直前に別のマスを開けていれば確率が古いので数え直す
     if (this.dirty) this.refresh();
     if (this.state !== 'play') return null;
     const p = this.an.prob[c];
-    let pmin = 1;
-    for (let i = 0; i < this.N; i++) if (!this.opened[i]) pmin = Math.min(pmin, this.an.prob[i]);
+    const sit = this.situation();
     if (p > 1 - 1e-9) {
       this.state = 'dead';
-      this.moves.push({ c, p, pmin, cost: Infinity, costMin: -Math.log2(1 - pmin) });
+      this.moves.push({ kind: 'open', c, p, cost: Infinity, ...sit });
       return { p, cost: Infinity, opened: [] };
     }
     const cost = -Math.log2(1 - p);
     this.L += cost;
-    this.moves.push({ c, p, pmin, cost, costMin: -Math.log2(1 - pmin) });
+    this.moves.push({ kind: 'open', c, p, cost, ...sit });
     this.observe(c);
     return { p, cost, opened: [c] };
+  }
+
+  // マス c の地雷に賭ける。戻り値: { p, cost, opened }
+  claim(c) {
+    if (this.state !== 'play' || !this.free(c)) return null;
+    if (this.dirty) this.refresh();
+    if (this.state !== 'play') return null;
+    const p = this.an.prob[c];
+    const sit = this.situation();
+    if (p < 1e-9) {
+      this.state = 'dead';
+      this.moves.push({ kind: 'mine', c, p, cost: Infinity, ...sit });
+      return { p, cost: Infinity, opened: [] };
+    }
+    const cost = -Math.log2(p);
+    this.L += cost;
+    this.moves.push({ kind: 'mine', c, p, cost, ...sit });
+    this.mines.add(c);
+    this.flags.delete(c);
+    this.dirty = true;
+    const opened = [];
+    this.settle(opened);
+    return { p, cost, opened };
   }
 
   // c を開け、生き残った世界の中から c の手がかりを1つ引く
@@ -69,11 +112,11 @@ export class Game {
     this.dirty = true;
     this.flags.delete(c);
     const { W, H, M } = this;
-    const survive = analyze(W, H, M, this.opened, this.clues, false).omega;
+    const survive = analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
     const classes = DETECTORS[this.det[c]].classes;
     const weights = classes.map(cls => {
       this.clues.set(c, maskOf(cls));
-      return analyze(W, H, M, this.opened, this.clues, false).omega;
+      return analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
     });
     let u = this.rng() * weights.reduce((a, b) => a + b, 0), pick = 0;
     while (pick < weights.length - 1 && (u -= weights[pick]) >= 0) pick++;
@@ -91,7 +134,7 @@ export class Game {
       const c = queue.pop();
       if (this.clues.get(c) !== 1) continue;
       for (const d of neighbors(c, this.W, this.H)) {
-        if (this.opened[d]) continue;
+        if (!this.free(d)) continue;
         this.observe(d);
         opened.push(d);
         queue.push(d);
@@ -124,7 +167,7 @@ export class Game {
     }
     // Ω = 1 なら残りの安全なマスの数字も1つに決まっているので、全部開けて見せる
     if (this.state === 'clear') {
-      for (let i = 0; i < this.N; i++) if (!this.opened[i] && this.an.prob[i] === 0) { this.observe(i); opened.push(i); }
+      for (let i = 0; i < this.N; i++) if (this.free(i) && this.an.prob[i] === 0) { this.observe(i); opened.push(i); }
       this.refresh();
     }
     return opened;
@@ -139,7 +182,7 @@ export class Game {
     const rest = [];
     for (const d of neighbors(c, this.W, this.H)) {
       if (this.opened[d]) continue;
-      if (this.flags.has(d)) f++; else rest.push(d);
+      if (this.flags.has(d) || this.mines.has(d)) f++; else rest.push(d);
     }
     if (!rest.length) return [];
     // 旗の数 f から f + 残り の範囲で、手がかりが許す値が f だけなら残りは安全
@@ -147,18 +190,20 @@ export class Game {
     return window === 1 ? rest : [];
   }
 
-  // L を手ごとに3つに分ける。どれも踏んだ時点の盤面だけで決まり、後で引かれた数字の運に左右されない
-  //   error: 全ての世界で安全なマスが残っていたのに p > 0 を踏んだコスト（推理ミス）
-  //   gap:   賭けるしかない時に、一番安全なマスより危ないマスを選んだ差（賭けの損）
-  //   forced: 賭けるしかない時の、一番安全なマスのコスト（不可避）
+  // L を手ごとに3つに分ける。どれも賭けた時点の盤面だけで決まり、後で引かれた数字の運に左右されない。
+  // 開けると地雷に賭けるの両方を候補として比べる。コスト 0 の手（p = 0 を開ける、p = 1 に賭ける）は数えない
+  //   error:  全ての世界で安全なマスが残っていたのに、外れうる賭けをしたコスト（推理ミス）
+  //   gap:    賭けるしかない時に、一番安い賭けより高い賭けを選んだ差（賭けの損）
+  //   forced: 賭けるしかない時の、一番安い賭けのコスト（不可避）
   get breakdown() {
-    let error = 0, gap = 0, forced = 0, errors = 0;
+    let error = 0, gap = 0, forced = 0, errors = 0, mineCost = 0;
     for (const m of this.moves) {
-      if (!isFinite(m.cost)) continue;
-      if (m.pmin === 0) { error += m.cost; if (m.cost > 0) errors++; }
-      else { forced += m.costMin; gap += m.cost - m.costMin; }
+      if (!isFinite(m.cost) || m.cost === 0) continue;
+      if (m.kind === 'mine') mineCost += m.cost;
+      if (m.safeExists) { error += m.cost; errors++; }
+      else { forced += m.best; gap += m.cost - m.best; }
     }
-    return { error, gap, forced, errors };
+    return { error, gap, forced, errors, mineCost };
   }
 }
 
