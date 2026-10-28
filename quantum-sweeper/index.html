@@ -63,7 +63,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
-.scen{display:grid;grid-template-columns:3.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
+.scen{display:grid;grid-template-columns:4.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
 .scen span{font-weight:700;align-self:center}
 .scen button{min-height:3.4em;padding:4px 0;font-size:12px;font-family:ui-monospace,Menlo,monospace}
 .scen button.done{border-color:var(--gold);color:var(--gold)}
@@ -102,10 +102,10 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-size="16,16,40" aria-pressed="false">16×16</button>
   </span>
   <span role="group" aria-label="手がかりの曖昧さ">
-    <button data-fog="0" aria-pressed="false">精密</button>
-    <button data-fog="1" aria-pressed="true">曖昧</button>
-    <button data-fog="2" aria-pressed="false">濃霧</button>
-    <button data-fog="3" aria-pressed="false">闇</button>
+    <button data-fog="0" aria-pressed="false">射影測定</button>
+    <button data-fog="1" aria-pressed="true">弱測定</button>
+    <button data-fog="2" aria-pressed="false">雑音測定</button>
+    <button data-fog="3" aria-pressed="false">盲測定</button>
   </span>
 </div>
 <div class="bar">
@@ -152,7 +152,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <details>
 <summary>遊び方</summary>
 <h3>キャンペーン</h3>
-<p>キャンペーンには、手がかりの曖昧さごとに4つのシナリオがあり、それぞれ盤の広さが違う5面でできています。面をクリアすると次の面が、シナリオの5面をすべてクリアすると次のシナリオが開きます。評価は安全第一で行い、面のボタンには、その面で一番良かったランクが出ます。運良く生き延びればクリアにはなりますが、ランクは運の大小に関係せず、推理ミスや賭けの損があると下がります。「自由観測」では、盤の大きさや曖昧さ、評価のモードを自分で選べます。</p>
+<p>キャンペーンには、手がかりの曖昧さごとに4つのシナリオがあり、それぞれ盤の広さが違う5面でできています。シナリオの名前は、検出器がどれだけはっきり答えるかを、測定の種類になぞらえたものです。射影測定では全ての検出器が地雷の数をそのまま答え、弱測定・雑音測定・盲測定の順に、幅のある答えしか返さない検出器が増えます。面をクリアすると次の面が、シナリオの5面をすべてクリアすると次のシナリオが開きます。評価は安全第一で行い、面のボタンには、その面で一番良かったランクが出ます。運良く生き延びればクリアにはなりますが、ランクは運の大小に関係せず、推理ミスや賭けの損があると下がります。「自由観測」では、盤の大きさや曖昧さ、評価のモードを自分で選べます。</p>
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
 <p>最初の一歩は、◇ で降り立つ場所を選ぶことです（降り立つまで ◆ は置けません）。そこと周りの 8 マスに地雷がある世界は初めから数えないので、最初の一歩にコストはかかりません。</p>
@@ -692,10 +692,10 @@ $('botrun').addEventListener('click', () => {
 // 地雷の数は、自動プレー（安全なマスを開け、無ければ一番安い賭け）で生き残る割合が、
 // 1面でおよそ7〜9割、最終面でおよそ5〜6割になるように選んだ。前のシナリオを全てクリアすると次が開く
 const SCEN = [
-  { name: '精密', fog: 0, stages: [[5, 5, 4], [7, 7, 9], [9, 9, 15], [12, 12, 28], [16, 16, 50]] },
-  { name: '曖昧', fog: 1, stages: [[5, 5, 3], [7, 7, 8], [9, 9, 13], [12, 12, 22], [16, 16, 34]] },
-  { name: '濃霧', fog: 2, stages: [[5, 5, 3], [7, 7, 6], [9, 9, 10], [12, 12, 16], [16, 16, 26]] },
-  { name: '闇', fog: 3, stages: [[5, 5, 2], [7, 7, 4], [9, 9, 7], [12, 12, 10], [16, 16, 16]] },
+  { name: '射影測定', fog: 0, stages: [[5, 5, 4], [7, 7, 9], [9, 9, 15], [12, 12, 28], [16, 16, 50]] },
+  { name: '弱測定', fog: 1, stages: [[5, 5, 3], [7, 7, 8], [9, 9, 13], [12, 12, 22], [16, 16, 34]] },
+  { name: '雑音測定', fog: 2, stages: [[5, 5, 3], [7, 7, 6], [9, 9, 10], [12, 12, 16], [16, 16, 26]] },
+  { name: '盲測定', fog: 3, stages: [[5, 5, 2], [7, 7, 4], [9, 9, 7], [12, 12, 10], [16, 16, 16]] },
 ];
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
