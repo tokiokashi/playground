@@ -28,7 +28,6 @@ export class Game {
     this.opened = new Uint8Array(N);
     this.clues = new Map();
     this.label = new Array(N).fill('');
-    this.flags = new Set();
     this.mines = new Set();   // 地雷に賭けて確定させたマス
     this.H0 = Math.log2(binom(N, M));
     this.L = 0;   // 生き残ることで削った世界（命で払ったビット）
@@ -114,7 +113,6 @@ export class Game {
     this.L += cost;
     this.moves.push({ kind: 'mine', c, p, cost, ...sit });
     this.mines.add(c);
-    this.flags.delete(c);
     this.dirty = true;
     const opened = [];
     this.settle(opened);
@@ -125,7 +123,6 @@ export class Game {
   observe(c) {
     this.opened[c] = 1;
     this.dirty = true;
-    this.flags.delete(c);
     const { W, H, M } = this;
     const survive = analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
     const classes = this.classes[c];
@@ -158,10 +155,10 @@ export class Game {
     this.refresh();
   }
 
-  // 0 の連鎖、旗で決まるマスの自動開放（有効な時）、クリア時の残りの開放をまとめて行う。
-  // 自動で開けたマスの数・コスト・マス（risky はコストを払ったマス）を this.auto に残す
+  // 0 の連鎖、◆ で決まるマスの自動開放（有効な時）、クリア時の残りの開放をまとめて行う。
+  // 自動で開けたマスの数とマスを this.auto に残す
   settle(opened = []) {
-    this.auto = { count: 0, cost: 0, cells: [], risky: [] };
+    this.auto = { count: 0, cells: [] };
     this.cascade(opened);
     if (this.autoChord) {
       for (;;) {
@@ -174,8 +171,6 @@ export class Game {
           if (!r) continue;
           this.auto.count++;
           this.auto.cells.push(t);
-          if (r.cost > 0) this.auto.risky.push(t);
-          this.auto.cost += r.cost;
           opened.push(t);
         }
         if (this.state !== 'play') break;
@@ -191,7 +186,8 @@ export class Game {
   }
 
   // 開いた手がかりのマス c を押した時に開けるマス。普通のマインスイーパーの同時開けと同じく、
-  // 実際の確率ではなく、その手がかりとプレイヤーの旗だけで「残りは安全」と決まる時に限る
+  // その手がかりと周りの ◆ だけで「残りは安全」と決まる時に限る。◆ のマスは生き残った全ての世界で地雷なので、
+  // ここで開けるマスは必ずコスト 0 になる
   chordTargets(c) {
     if (!this.opened[c] || !this.clues.has(c)) return [];
     const mask = this.clues.get(c);
@@ -199,10 +195,10 @@ export class Game {
     const rest = [];
     for (const d of neighbors(c, this.W, this.H)) {
       if (this.opened[d]) continue;
-      if (this.flags.has(d) || this.mines.has(d)) f++; else rest.push(d);
+      if (this.mines.has(d)) f++; else rest.push(d);
     }
     if (!rest.length) return [];
-    // 旗の数 f から f + 残り の範囲で、手がかりが許す値が f だけなら残りは安全
+    // ◆ の数 f から f + 残り の範囲で、手がかりが許す値が f だけなら残りは安全
     const window = (mask >> f) & ((1 << (rest.length + 1)) - 1);
     return window === 1 ? rest : [];
   }
