@@ -487,9 +487,9 @@ function flowChart() {
     const mid = b - st.need * k;
     parts.push(tongue(x, b, mid, 1, '#8a3040'));
     parts.push(tongue(x, mid, nb, 1, 'var(--risk)', R + st.need * k));
-    // 残る帯は出ていく舌の根元で段を付けて細らせる。段は舌に隠れ、舌の外側の曲線がそのまま帯の縁につながる
-    band += ` L${x} ${a} L${x} ${na}`;
-    under.unshift(`L${x} ${nb} L${x} ${b}`);
+    // 残る帯は出ていく舌の根元で段を付けて細らせる。段は舌の根元から 0.5 だけ内側に置き、舌と重ねて継ぎ目を出さない
+    band += ` L${x + .5} ${a} L${x + .5} ${na}`;
+    under.unshift(`L${x + .5} ${nb} L${x + .5} ${b}`);
     a = na; b = nb;
   }
   band += ` L${x + dx} ${a} L${x + dx} ${b} ${under.join(' ')} L10 ${top0 + BAND} Z`;
@@ -503,7 +503,7 @@ function flowChart() {
     parts.push(tongue(sx, yb, ym, 1, '#8a3040'));
     parts.push(tongue(sx, ym, ye, 1, 'var(--risk)', R + (yb - ym)));
     if (st.miss) parts.push(`<text x="${sx + R}" y="${yb + R + T + 14}" font-size="12" fill="var(--risk)">✕</text>`);
-    sunder.unshift(`L${sx} ${ye} L${sx} ${yb}`);
+    sunder.unshift(`L${sx + .5} ${ye} L${sx + .5} ${yb}`);
     sv = after;
   }
   surv += ` L${sx + dx} ${y0} L${sx + dx} ${y0 + sv * S} ${sunder.join(' ')} L10 ${y0 + S} Z`;
