@@ -293,16 +293,6 @@ document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('cl
   document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === btn));
   mode = btn.dataset.mode;
   $('modedesc').textContent = MODE_DESC[mode];
-$('autozero').addEventListener('click', e => {
-  autoZero = !autoZero;
-  e.currentTarget.setAttribute('aria-pressed', autoZero);
-  g.autoZero = mode === 'safe' && autoZero;
-  if (g.state === 'play' && g.autoZero) {
-    g.settle();
-    if (g.state === 'clear') showResult(true);
-    render();
-  }
-});
   $('autozero').hidden = mode !== 'safe';
   newGame();
 }));
