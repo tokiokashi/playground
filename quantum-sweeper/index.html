@@ -60,6 +60,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 @keyframes nixie{50%{opacity:.5;text-shadow:0 0 2px #ff7a1a}}
 @media (prefers-reduced-motion:reduce){#meter.shaky span{animation:none;opacity:.6}}
 .c.auto{outline:2px dotted var(--gold);outline-offset:-2px}
+.c .pv{position:absolute;z-index:2;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.3);font-weight:400}
+.c.pick .pv{font-weight:800}
+.review{display:flex;align-items:center;gap:8px;margin:10px 0 0;font:13px ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.review span{min-width:4.5em;text-align:center}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
@@ -197,6 +201,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <li>金色の実線の枠は、最後に押したマスです。</li>
 <li>金色の点線の枠は、まとめて開いたマスです。</li>
 <li>灰色の破線の枠と薄い ◇・◆ は、安全なマスが無い場面で、直前の賭けより安く済んだ賭けの場所です。</li>
+<li>終局後の結果にある ◀ ▶ で、外れうる賭けを打った時の盤面を順に見返せます。マスの数字はその時の p（%）、金色の実線の枠は選んだマス、灰色の破線の枠はもっと安く済んだ選択肢です。</li>
 </ul>
 </details>
 </main>
@@ -210,6 +215,8 @@ let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, 
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 手ごとの L と I の推移。結果画面の流れ図に使う（m はその時点までの手の数）
 let hist = [];
+// 終局後の振り返りで見ている賭け（盤面を残した手の番号）。-1 なら終局の盤
+let review = -1;
 
 function fmtOmega(o) {
   if (o < 1e6) return Math.round(o).toLocaleString();
@@ -236,6 +243,7 @@ function newGame() {
     cells.push(b);
   }
   hist = [{ L: 0, I: 0, m: 0 }];
+  review = -1;
   $('msg').innerHTML = '';
   $('result').style.display = 'none';
   render();
@@ -286,6 +294,7 @@ function drawCloud(t) {
 }
 
 function render() {
+  if (review >= 0) return renderReview(reviewMoves()[review]);
   const { W, H } = g;
   const over = g.state !== 'play';
   board.classList.toggle('won', g.state === 'clear');
@@ -327,12 +336,69 @@ function render() {
   }
   // 残りの地雷: 地雷の総数から ◆ の数を引いたもの
   $('left').innerHTML = `<b>●</b>${g.M - g.mines.size}`;
-  $('omega').textContent = fmtOmega(g.an.omega);
-  $('Lv').textContent = g.L.toFixed(2);
-  $('Iv').textContent = g.I.toFixed(2);
-  const s = 2 ** -g.L;
+  renderStats(g.an.omega, g.L, g.I);
   renderMeter();
+}
+function renderStats(omega, L, I) {
+  $('omega').textContent = fmtOmega(omega);
+  $('Lv').textContent = L.toFixed(2);
+  $('Iv').textContent = I.toFixed(2);
+  const s = 2 ** -L;
   $('surv').textContent = s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
+}
+
+// 終局後の振り返り。外れうる賭けを打った時点の盤面に、各マスの地雷確率を重ねて出す。
+// 選んだマスを金の実線、その時もっと安く済んだ選択肢を灰色の破線で囲む
+// （安全第一で安全なマスが残っていた時は p = 0% のマス、賭けるしかない時は一番安い賭けのマス）
+const reviewMoves = () => g.moves.filter(m => m.snap);
+function renderReview(m) {
+  const s = m.snap, { W, H } = g;
+  stopCloud();
+  board.classList.remove('won', 'lost');
+  const safeMiss = m.safeExists && mode === 'safe';
+  const cheaper = !m.safeExists && m.cost > m.best + 1e-9 ? m.bestCell : -1;
+  for (let i = 0; i < W * H; i++) {
+    let cls = 'c', html = '';
+    if (s.opened[i]) {
+      cls += ' o';
+      const t = s.label[i];
+      html = t;
+      if (/^\d$/.test(t)) cls += ' n' + t;
+      else if (t) cls += ' nz fz';
+    } else if (s.mines.includes(i)) cls += ' k';
+    else {
+      const p = s.prob[i];
+      // p = 0% は数字の 2 と同じ緑、p が大きいほど濃い赤
+      const color = p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`;
+      html = `<span class="pv" style="color:${color}">${pct(p)}</span>`;
+      if (MARK[g.det[i]]) html += `<span class="d">${MARK[g.det[i]]}</span>`;
+      if (i === cheaper || (safeMiss && p === 0)) cls += ' hint';
+    }
+    if (i === m.c) cls += ' last pick';
+    cells[i].className = cls;
+    cells[i].innerHTML = html;
+  }
+  $('msg').innerHTML = reviewLine(m);
+  renderStats(s.omega, s.L, s.I);
+  renderMeter();
+}
+// 振り返りの1行: 選んだ手の記号、p、コスト。推理ミスなら ✕、もっと安い賭けがあればその賭け
+function reviewLine(m) {
+  let t = `${m.kind === 'mine' ? '◆' : '◇'} p ${(m.p * 100).toFixed(1)}%`;
+  if (isFinite(m.cost)) t += ` · <b>+${m.cost.toFixed(2)} bit</b>`;
+  if (m.safeExists && mode === 'safe') t += ' · ✕';
+  else if (!m.safeExists && m.cost > m.best + 1e-9) t += ` · 最安 ${m.bestKind === 'mine' ? '◆' : '◇'} ${(m.bestP * 100).toFixed(1)}%`;
+  return t;
+}
+function setReview(k) {
+  const n = reviewMoves().length;
+  review = k >= 0 && k < n ? k : -1;
+  if (review < 0) $('msg').innerHTML = '';
+  render();
+  const pos = review < 0 ? n : review;
+  $('rvpos').textContent = review < 0 ? '終局' : `${pos + 1} / ${n}`;
+  $('rvprev').disabled = pos === 0;
+  $('rvnext').disabled = review < 0;
 }
 
 // 世界線メーター: 生き残っている割合 2^−L をニキシー管風の数字で出す。
@@ -341,13 +407,15 @@ function render() {
 // 判定は推理ミスと同じ situation().safeExists を使う。教えるのは安全なマスがあるかどうかだけで、場所は教えない
 let showM = true, meterTimer = 0;
 const meter = $('meter');
+// 振り返りでは、見ている賭けの直前の L と、その時に安全なマスがあったかで描く
 function renderMeter() {
   clearInterval(meterTimer);
   meterTimer = 0;
   meter.hidden = !showM;
   if (!showM) return;
-  const digits = (2 ** -g.L).toFixed(6);
-  const shaky = g.state === 'play' && g.landed && !g.situation().safeExists;
+  const m = review >= 0 ? reviewMoves()[review] : null;
+  const digits = (2 ** -(m ? m.snap.L : g.L)).toFixed(6);
+  const shaky = m ? !m.safeExists : g.state === 'play' && g.landed && !g.situation().safeExists;
   meter.classList.toggle('shaky', shaky);
   meter.setAttribute('aria-label', `2^−L ${digits}${shaky ? '、賭けるしかない局面' : ''}`);
   // n 個の桁を乱数の数字に置き換えて描く
@@ -584,8 +652,17 @@ function showResult(ok) {
     next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button> `;
   }
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
-  el.innerHTML = `${head}<p class="story">${story.filter(Boolean).join('<br>')}</p>${table}${next}<button id="share">共有</button>`;
+  // 外れうる賭けを打っていれば、その時々の盤面を送って見られるようにする
+  const nRev = reviewMoves().length;
+  const rev = nRev ? '<div class="review"><button id="rvprev" aria-label="前の賭け">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の賭け">▶</button></div>' : '';
+  el.innerHTML = `${head}<p class="story">${story.filter(Boolean).join('<br>')}</p>${rev}${table}${next}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
+  if (nRev) {
+    $('rvprev').addEventListener('click', () => setReview(review < 0 ? nRev - 1 : review - 1));
+    $('rvnext').addEventListener('click', () => setReview(review + 1));
+    $('rvpos').textContent = '終局';
+    $('rvnext').disabled = true;
+  }
   if (camp) $('next').addEventListener('click', () => {
     if (!ok) newGame();
     else if (camp.k === SCEN[camp.s].stages.length - 1) showEntry();
