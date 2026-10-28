@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>量子自殺マインスイーパー</title>
+<style>
+:root{--bg:#0b0f1a;--panel:#121a2b;--line:#26324d;--ink:#e7ecf6;--mute:#8e9ab5;--gold:#f2c66b;--safe:#1a2338;--cell:#2b3858;--cellhi:#364670;--risk:#ff6b6b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px 16px 40px}
+main{max-width:680px;margin:0 auto}
+a.back{display:inline-block;margin:0 0 6px;font-size:13px;color:var(--mute);text-decoration:none}
+a.back:hover,a.back:focus-visible{color:var(--gold)}
+h1{margin:0 0 4px;font:700 clamp(22px,5vw,30px)/1.25 "Hiragino Mincho ProN","Yu Mincho",serif}
+p.lead{color:var(--mute);margin:0 0 14px;font-size:14px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover,button:focus-visible{border-color:var(--gold);outline:none}
+button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin:0 0 10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.stat .k{display:block;font-size:11px;color:var(--mute)}
+.stat .v{font:600 17px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+#board{--w:9;display:grid;grid-template-columns:repeat(var(--w),1fr);gap:2px;width:min(100%,calc(var(--w)*38px));margin:0 auto;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.c{position:relative;aspect-ratio:1;border:0;border-radius:3px;padding:0;background:var(--cell);color:var(--ink);font:700 calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.42)/1 ui-monospace,Menlo,monospace;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-touch-callout:none}
+.c:hover{background:var(--cellhi)}
+.c.o{background:var(--safe);cursor:default}
+.c.o.fz{font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.32)}
+.c .d{position:absolute;right:2px;top:1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.26);color:var(--mute);font-weight:400}
+.c .pr{position:absolute;inset:auto 0 1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.24);font-weight:400;color:#fff;opacity:.85}
+.c.f::after{content:"⚑";color:var(--gold)}
+.c.m{background:#5a2330}
+.c.m::after{content:"●";color:var(--risk)}
+.c.last{outline:2px solid var(--gold);outline-offset:-2px}
+.n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
+#msg{min-height:3.2em;margin:10px 0 0;font-size:14px}
+#msg b{color:var(--gold)}
+#result{display:none;margin:12px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:10px}
+#result h2{margin:0 0 6px;font-size:18px}
+#result ul{margin:4px 0;padding-left:20px;font-size:14px}
+#result .note{color:var(--mute);font-size:12px}
+#result .rank{font:800 32px/1 ui-monospace,monospace;color:var(--gold);margin-right:10px}
+details{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px}
+summary{cursor:pointer;font-weight:700}
+details p,details li{font-size:14px;color:#cdd5e6}
+.mono{font-family:ui-monospace,Menlo,monospace}
+</style></head><body><main>
+<a class="back" href="../">← 作品一覧</a>
+<h1>量子自殺マインスイーパー</h1>
+<p class="lead">この盤には最初から決まった地雷の配置が無い。手がかりと矛盾しない全ての配置（世界）が重なっていて、マスを踏むと、そこに地雷があった世界は消え、あんたは生き残った世界へ進む。世界を1つ（Ω = 1）に絞ればクリア。</p>
+<div class="bar">
+  <span role="group" aria-label="盤の大きさ">
+    <button data-size="9,9,10" aria-pressed="true">9×9・10個</button>
+    <button data-size="16,16,40" aria-pressed="false">16×16・40個</button>
+  </span>
+  <button id="fuzzy" aria-pressed="false">曖昧な手がかり</button>
+</div>
+<div class="bar">
+  <button id="flagmode" aria-pressed="false">⚑ 旗を置く</button>
+  <button id="showp" aria-pressed="false">確率を見る</button>
+  <button id="reset">新しい宇宙</button>
+</div>
+<div class="stats">
+  <div class="stat"><span class="k">残っている世界 Ω</span><span class="v" id="omega"></span></div>
+  <div class="stat"><span class="k">命で払った L</span><span class="v" id="Lv"></span></div>
+  <div class="stat"><span class="k">観測で得た I</span><span class="v" id="Iv"></span></div>
+  <div class="stat"><span class="k">この世界線のあんたが残る確率 2<sup>−L</sup></span><span class="v" id="surv"></span></div>
+</div>
+<div id="board" role="grid" aria-label="盤"></div>
+<p id="msg" aria-live="polite"></p>
+<div id="result" aria-live="polite"></div>
+<details>
+<summary>ルールと数え方</summary>
+<p>盤は地雷の配置を持っていない。開いたマスの手がかりと地雷の総数に矛盾しない配置を全て数え、その数を Ω とする。マスの地雷確率 p は、Ω 個の世界のうち、そのマスに地雷がある世界の割合。</p>
+<ul>
+<li>p のマスを踏むと、地雷があった世界が消える。生き残る世界は Ω(1−p) 個になり、そのぶんを <span class="mono">−log₂(1−p)</span> ビットとして L に足す。p = 0 のマスならコストは 0。</li>
+<li>開いたマスの数字は、生き残った世界の中から重みどおりに引かれる。開ける前は本当に決まっていない。数字で世界が絞られたぶんを I に足す。</li>
+<li>最初の世界の数は Ω₀ = C(マス数, 地雷数)。常に <span class="mono">L + I + log₂Ω = log₂Ω₀</span> が成り立つ。</li>
+<li>クリア時の評価は L を手ごとに分けて付ける。安全なマスが残っていたのに危ないマスを踏んだ分（推理ミス）と、賭けるしかない時に一番安全なマスより危ないマスを選んだ分（賭けの損）の合計でランクが決まる。どちらも踏んだ時点の盤面だけで決まるので、後から引かれた数字の運に左右されない。</li>
+<li>2<sup>−L</sup> は、地雷の配置が最初から1つ決まっていたとしたら、あんたがここまで生き残れた確率と同じ値になる。</li>
+<li>精密な 0 の周りは自動で開く。それ以外の安全なマスは自分で推理して開ける。全ての世界で地雷のマス（p = 1）を踏むと、どの世界にもあんたは残らない。</li>
+<li>旗はメモで、世界の数には影響しない。長押し、右クリック、「旗を置く」で置ける。</li>
+</ul>
+<p>「曖昧な手がかり」を有効にすると、マスごとに検出器の種類が決まり、右上の印で見分けられる。</p>
+<ul>
+<li>印なし: 精密。周囲の地雷の数をそのまま出す。</li>
+<li><span class="mono">≈</span> 幅: <span class="mono">0-1 / 2-3 / 4-5 / 6-7 / 8</span> のどれかを出す。</li>
+<li><span class="mono">|</span> 二重: <span class="mono">0|2 / 1|3 / 4|6 / 5|7 / 8</span> のどれかを出す。</li>
+<li><span class="mono">◐</span> 偶奇: 偶か奇だけを出す。</li>
+</ul>
+<p>同じ表示になる地雷数の組は配置によらず決まっているので、どの世界も同じ重みのまま数えられる。</p>
+</details>
+</main>
+<script type="module">
+import { Game, rank } from './game.js';
+
+const $ = id => document.getElementById(id);
+const board = $('board');
+const MARK = { exact: '', range: '≈', pair: '|', parity: '◐' };
+let size = [9, 9, 10], fuzzy = false, flagMode = false, showP = false;
+let g, cells, last = -1;
+
+function fmtOmega(o) {
+  if (o < 1e6) return Math.round(o).toLocaleString();
+  const e = Math.floor(Math.log10(o));
+  return `${(o / 10 ** e).toFixed(2)}e${e}`;
+}
+const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' : (p * 100).toFixed(0);
+
+function newGame() {
+  const [W, H, M] = size;
+  g = new Game(W, H, M, fuzzy);
+  last = -1;
+  board.style.setProperty('--w', W);
+  board.innerHTML = '';
+  cells = [];
+  for (let i = 0; i < W * H; i++) {
+    const b = document.createElement('button');
+    b.className = 'c';
+    b.dataset.i = i;
+    board.appendChild(b);
+    cells.push(b);
+  }
+  $('msg').innerHTML = `最初の一歩は、どこを踏んでも p = ${(M / (W * H) * 100).toFixed(1)}%。`;
+  $('result').style.display = 'none';
+  render();
+}
+
+function render() {
+  const { W, H } = g;
+  const over = g.state !== 'play';
+  for (let i = 0; i < W * H; i++) {
+    const b = cells[i];
+    let cls = 'c', html = '';
+    if (g.opened[i]) {
+      cls += ' o';
+      const t = g.label[i];
+      html = t;
+      if (/^\d$/.test(t)) cls += ' n' + t;
+      else if (t) cls += ' nz fz';
+    } else {
+      const p = g.prob(i);
+      if (over && p > 1 - 1e-9) cls += ' m';
+      else if (g.flags.has(i)) cls += ' f';
+      if (MARK[g.det[i]]) html += `<span class="d">${MARK[g.det[i]]}</span>`;
+      if (showP && !over) {
+        html += `<span class="pr">${pct(p)}</span>`;
+        b.style.background = `color-mix(in srgb, var(--risk) ${Math.round(p * 70)}%, var(--cell))`;
+      } else b.style.background = '';
+    }
+    if (g.opened[i]) b.style.background = '';
+    if (i === last) cls += ' last';
+    b.className = cls;
+    b.innerHTML = html;
+    b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.flags.has(i) ? '旗' : '未開放');
+  }
+  $('omega').textContent = fmtOmega(g.an.omega);
+  $('Lv').textContent = g.L.toFixed(2) + ' bit';
+  $('Iv').textContent = g.I.toFixed(2) + ' bit';
+  const s = 2 ** -g.L;
+  $('surv').textContent = s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
+}
+
+function act(i) {
+  if (g.state !== 'play' || g.opened[i]) return;
+  if (flagMode) { toggleFlag(i); return; }
+  const r = g.step(i);
+  last = i;
+  const m = g.moves[g.moves.length - 1];
+  if (g.state === 'dead') {
+    $('msg').innerHTML = 'このマスは<b>全ての世界で地雷</b>だった。どの世界線にも、あんたは残らない。';
+    showResult(false);
+  } else {
+    let t = r.p === 0
+      ? '全ての世界で安全なマスだった。コストは 0。'
+      : `p = <b>${(r.p * 100).toFixed(1)}%</b> のマスを踏んで生き残った（+${r.cost.toFixed(2)} bit）。`;
+    if (r.p > 0 && m.pmin < r.p) t += ` このとき一番安全なマスは ${(m.pmin * 100).toFixed(1)}% だった。`;
+    if (r.p > 0 && m.pmin === 0) t += ' 安全なマスが残っていたのに。';
+    $('msg').innerHTML = t;
+    if (g.state === 'clear') showResult(true);
+  }
+  render();
+}
+
+function showResult(ok) {
+  const el = $('result');
+  if (!ok) {
+    el.innerHTML = '<h2>観測者消滅</h2><p>p = 1 のマスは、どの世界でも地雷がある。「新しい宇宙」でやり直せる。</p>';
+  } else {
+    const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
+    el.innerHTML = `<h2><span class="rank">${rank(loss)}</span>観測完了 Ω = 1</h2>
+      <p>推理の評価（運に左右されない部分）: <b>${loss.toFixed(2)} bit</b> の損</p>
+      <ul>
+        <li>推理ミス ${b.error.toFixed(2)} bit（安全なマスが残っていたのに危ないマスを踏んだ ${b.errors} 回）</li>
+        <li>賭けの損 ${b.gap.toFixed(2)} bit（賭けるしかない時に、一番安全なマスより危ないマスを選んだ差）</li>
+        <li>不可避 ${b.forced.toFixed(2)} bit（賭けるしかない時の、一番安全なマスのコスト。盤面の運）</li>
+      </ul>
+      <p>総合: 必要だった情報 ${g.H0.toFixed(1)} bit のうち、命で払ったのは ${g.L.toFixed(2)} bit（${(ratio * 100).toFixed(1)}%）。
+      配置が最初から決まっていたら、ここまで生き残れた確率は ${(2 ** -g.L * 100).toPrecision(3)}%。</p>
+      <p class="note">「一番安全なマス」は最善手の近似。少し危なくても、開けると数字で大きく絞れるマスの方が得なこともある。</p>`;
+  }
+  el.style.display = 'block';
+}
+
+function toggleFlag(i) {
+  if (g.opened[i] || g.state !== 'play') return;
+  g.flags.has(i) ? g.flags.delete(i) : g.flags.add(i);
+  render();
+}
+
+// タップで開ける。長押しと右クリックで旗
+let pressTimer = 0, longPressed = false;
+board.addEventListener('pointerdown', e => {
+  const b = e.target.closest('.c'); if (!b) return;
+  longPressed = false;
+  if (e.pointerType !== 'mouse') pressTimer = setTimeout(() => { longPressed = true; toggleFlag(+b.dataset.i); }, 420);
+});
+const cancel = () => clearTimeout(pressTimer);
+board.addEventListener('pointerup', cancel);
+board.addEventListener('pointerleave', cancel);
+board.addEventListener('pointercancel', cancel);
+board.addEventListener('click', e => {
+  const b = e.target.closest('.c'); if (!b) return;
+  if (longPressed) { longPressed = false; return; }
+  act(+b.dataset.i);
+});
+board.addEventListener('contextmenu', e => {
+  const b = e.target.closest('.c'); if (!b) return;
+  e.preventDefault();
+  toggleFlag(+b.dataset.i);
+});
+
+document.querySelectorAll('[data-size]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-size]').forEach(x => x.setAttribute('aria-pressed', x === btn));
+  size = btn.dataset.size.split(',').map(Number);
+  newGame();
+}));
+$('fuzzy').addEventListener('click', e => { fuzzy = !fuzzy; e.currentTarget.setAttribute('aria-pressed', fuzzy); newGame(); });
+$('flagmode').addEventListener('click', e => { flagMode = !flagMode; e.currentTarget.setAttribute('aria-pressed', flagMode); });
+$('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
+$('reset').addEventListener('click', newGame);
+
+newGame();
+</script>
+</body></html>
