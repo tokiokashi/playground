@@ -114,3 +114,8 @@ export class Game {
 export function rank(loss) {
   return loss <= 0.05 ? 'S+' : loss <= 0.5 ? 'S' : loss <= 1.5 ? 'A' : loss <= 3 ? 'B' : 'C';
 }
+
+// 最小コストモードは、払った L の合計を log₂Ω₀ に対する割合で評価する
+export function rankCost(ratio) {
+  return ratio <= 0.01 ? 'S+' : ratio <= 0.03 ? 'S' : ratio <= 0.06 ? 'A' : ratio <= 0.12 ? 'B' : 'C';
+}

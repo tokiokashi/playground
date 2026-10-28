@@ -35,6 +35,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #msg b{color:var(--gold)}
 #result{display:none;margin:12px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:10px}
 #result h2{margin:0 0 6px;font-size:18px}
+.desc{flex-basis:100%;font-size:12px;color:var(--mute)}
 #result ul{margin:4px 0;padding-left:20px;font-size:14px}
 #result .note{color:var(--mute);font-size:12px}
 #result .rank{font:800 32px/1 ui-monospace,monospace;color:var(--gold);margin-right:10px}
@@ -51,7 +52,14 @@ details p,details li{font-size:14px;color:#cdd5e6}
     <button data-size="9,9,10" aria-pressed="true">9×9・10個</button>
     <button data-size="16,16,40" aria-pressed="false">16×16・40個</button>
   </span>
-  <button id="fuzzy" aria-pressed="false">曖昧な手がかり</button>
+  <button id="fuzzy" aria-pressed="true">曖昧な手がかり</button>
+</div>
+<div class="bar">
+  <span role="group" aria-label="評価のモード">
+    <button data-mode="safe" aria-pressed="true">安全第一</button>
+    <button data-mode="cost" aria-pressed="false">最小コスト</button>
+  </span>
+  <span class="desc" id="modedesc"></span>
 </div>
 <div class="bar">
   <button id="flagmode" aria-pressed="false">⚑ 旗を置く</button>
@@ -74,12 +82,16 @@ details p,details li{font-size:14px;color:#cdd5e6}
 <li>p のマスを踏むと、地雷があった世界が消える。生き残る世界は Ω(1−p) 個になり、そのぶんを <span class="mono">−log₂(1−p)</span> ビットとして L に足す。p = 0 のマスならコストは 0。</li>
 <li>開いたマスの数字は、生き残った世界の中から重みどおりに引かれる。開ける前は本当に決まっていない。数字で世界が絞られたぶんを I に足す。</li>
 <li>最初の世界の数は Ω₀ = C(マス数, 地雷数)。常に <span class="mono">L + I + log₂Ω = log₂Ω₀</span> が成り立つ。</li>
-<li>クリア時の評価は L を手ごとに分けて付ける。安全なマスが残っていたのに危ないマスを踏んだ分（推理ミス）と、賭けるしかない時に一番安全なマスより危ないマスを選んだ分（賭けの損）の合計でランクが決まる。どちらも踏んだ時点の盤面だけで決まるので、後から引かれた数字の運に左右されない。</li>
+<li>評価のモードは2つある。
+  <ul>
+  <li><b>安全第一</b>: 地雷の可能性をできるだけ避ける推理を評価する。L を手ごとに分け、安全なマスが残っていたのに危ないマスを踏んだ分（推理ミス）と、賭けるしかない時に一番安全なマスより危ないマスを選んだ分（賭けの損）の合計でランクが決まる。どちらも踏んだ時点の盤面だけで決まるので、後から引かれた数字の運に左右されない。</li>
+  <li><b>最小コスト</b>: 払った L の合計を、必要だった情報 log₂Ω₀ に対する割合で評価する。安全なマスを残したまま賭けてもよい。安全なマスの数字は開けるまで決まっていないので、残りの世界をちょうど半分に割れる場面までとっておくと、得られる情報が大きくなる。そのため、先に賭けた方が L の合計が小さくなる局面がある。最善手は計算できないので、評価は数字の運も含む。</li>
+  </ul></li>
 <li>2<sup>−L</sup> は、地雷の配置が最初から1つ決まっていたとしたら、あんたがここまで生き残れた確率と同じ値になる。</li>
 <li>精密な 0 の周りは自動で開く。それ以外の安全なマスは自分で推理して開ける。全ての世界で地雷のマス（p = 1）を踏むと、どの世界にもあんたは残らない。</li>
 <li>旗はメモで、世界の数には影響しない。長押し、右クリック、「旗を置く」で置ける。</li>
 </ul>
-<p>「曖昧な手がかり」を有効にすると、マスごとに検出器の種類が決まり、右上の印で見分けられる。</p>
+<p>「曖昧な手がかり」が有効だと（最初から有効）、マスごとに検出器の種類が決まり、右上の印で見分けられる。</p>
 <ul>
 <li>印なし: 精密。周囲の地雷の数をそのまま出す。</li>
 <li><span class="mono">≈</span> 幅: <span class="mono">0-1 / 2-3 / 4-5 / 6-7 / 8</span> のどれかを出す。</li>
@@ -90,12 +102,12 @@ details p,details li{font-size:14px;color:#cdd5e6}
 </details>
 </main>
 <script type="module">
-import { Game, rank } from './game.js';
+import { Game, rank, rankCost } from './game.js';
 
 const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐' };
-let size = [9, 9, 10], fuzzy = false, flagMode = false, showP = false;
+let size = [9, 9, 10], fuzzy = true, mode = 'safe', flagMode = false, showP = false;
 let g, cells, last = -1;
 
 function fmtOmega(o) {
@@ -173,7 +185,7 @@ function act(i) {
       ? '全ての世界で安全なマスだった。コストは 0。'
       : `p = <b>${(r.p * 100).toFixed(1)}%</b> のマスを踏んで生き残った（+${r.cost.toFixed(2)} bit）。`;
     if (r.p > 0 && m.pmin < r.p) t += ` このとき一番安全なマスは ${(m.pmin * 100).toFixed(1)}% だった。`;
-    if (r.p > 0 && m.pmin === 0) t += ' 安全なマスが残っていたのに。';
+    if (r.p > 0 && m.pmin === 0) t += mode === 'safe' ? ' 安全なマスが残っていたのに。' : ' 安全なマスは残してある。';
     $('msg').innerHTML = t;
     if (g.state === 'clear') showResult(true);
   }
@@ -186,16 +198,25 @@ function showResult(ok) {
     el.innerHTML = '<h2>観測者消滅</h2><p>p = 1 のマスは、どの世界でも地雷がある。「新しい宇宙」でやり直せる。</p>';
   } else {
     const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
-    el.innerHTML = `<h2><span class="rank">${rank(loss)}</span>観測完了 Ω = 1</h2>
+    const total = `必要だった情報 ${g.H0.toFixed(1)} bit のうち、命で払ったのは <b>${g.L.toFixed(2)} bit（${(ratio * 100).toFixed(1)}%）</b>。
+      配置が最初から決まっていたら、ここまで生き残れた確率は ${(2 ** -g.L * 100).toPrecision(3)}%。`;
+    el.innerHTML = mode === 'safe'
+      ? `<h2><span class="rank">${rank(loss)}</span>観測完了 Ω = 1（安全第一）</h2>
       <p>推理の評価（運に左右されない部分）: <b>${loss.toFixed(2)} bit</b> の損</p>
       <ul>
         <li>推理ミス ${b.error.toFixed(2)} bit（安全なマスが残っていたのに危ないマスを踏んだ ${b.errors} 回）</li>
         <li>賭けの損 ${b.gap.toFixed(2)} bit（賭けるしかない時に、一番安全なマスより危ないマスを選んだ差）</li>
         <li>不可避 ${b.forced.toFixed(2)} bit（賭けるしかない時の、一番安全なマスのコスト。盤面の運）</li>
       </ul>
-      <p>総合: 必要だった情報 ${g.H0.toFixed(1)} bit のうち、命で払ったのは ${g.L.toFixed(2)} bit（${(ratio * 100).toFixed(1)}%）。
-      配置が最初から決まっていたら、ここまで生き残れた確率は ${(2 ** -g.L * 100).toPrecision(3)}%。</p>
-      <p class="note">「一番安全なマス」は最善手の近似。少し危なくても、開けると数字で大きく絞れるマスの方が得なこともある。</p>`;
+      <p>総合: ${total}</p>
+      <p class="note">「一番安全なマス」は最善手の近似。少し危なくても、開けると数字で大きく絞れるマスの方が得なこともある。</p>`
+      : `<h2><span class="rank">${rankCost(ratio)}</span>観測完了 Ω = 1（最小コスト）</h2>
+      <p>${total}</p>
+      <ul>
+        <li>安全なマスを残したまま賭けた分 ${b.error.toFixed(2)} bit（${b.errors} 回）</li>
+        <li>賭けるしかない時に払った分 ${(b.forced + b.gap).toFixed(2)} bit（うち一番安全なマスとの差 ${b.gap.toFixed(2)} bit）</li>
+      </ul>
+      <p class="note">ランクは L / log₂Ω₀ で付ける。最善手は計算できないので、数字の運も含んだ評価になる。</p>`;
   }
   el.style.display = 'block';
 }
@@ -237,6 +258,14 @@ $('fuzzy').addEventListener('click', e => { fuzzy = !fuzzy; e.currentTarget.setA
 $('flagmode').addEventListener('click', e => { flagMode = !flagMode; e.currentTarget.setAttribute('aria-pressed', flagMode); });
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
 $('reset').addEventListener('click', newGame);
+const MODE_DESC = { safe: '地雷の可能性をできるだけ避ける推理を評価する', cost: '払った L の合計を評価する。安全なマスを温存して賭けてもよい' };
+document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === btn));
+  mode = btn.dataset.mode;
+  $('modedesc').textContent = MODE_DESC[mode];
+  newGame();
+}));
+$('modedesc').textContent = MODE_DESC[mode];
 
 newGame();
 </script>
