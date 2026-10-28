@@ -34,7 +34,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c .d{position:absolute;right:2px;top:1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.26);color:var(--mute);font-weight:400}
 .c .pr{position:absolute;inset:auto 0 1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.24);font-weight:400;color:#fff;opacity:.85}
 .c.m{background:#5a2330}
-.c.m::after{content:"●";color:var(--risk)}
+.c.m::after{content:"●";color:var(--risk);position:relative;z-index:2}
 .c.w{background:#3a3216}
 .c.w::after{content:"●";color:var(--gold)}
 #board.won{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(242,198,107,.45);border-radius:4px}
@@ -203,7 +203,8 @@ function startCloud() {
   for (let i = 0; i < W * H; i++) {
     if (g.opened[i] || g.mines.has(i)) continue;
     const p = g.prob(i);
-    if (p > 1e-9 && p < 1 - 1e-9) cloudSrc.push({ i, p, ph: i * 2.39 });
+    // p = 1 のマスも同じ色で置く。確定したマスの背景と同じ色なので、補間で隣とつながっても色が途切れない
+    if (p > 1e-9) cloudSrc.push({ i, p, ph: p < 1 - 1e-9 ? i * 2.39 : null });
   }
   Object.assign(cloud.style, { left: board.offsetLeft + 'px', top: board.offsetTop + 'px', width: board.offsetWidth + 'px', height: board.offsetHeight + 'px' });
   cloud.width = W;
@@ -227,10 +228,10 @@ function drawCloud(t) {
   const { W, H } = g;
   const ctx = cloud.getContext('2d'), img = ctx.createImageData(W, H), d = img.data;
   for (const s of cloudSrc) {
-    // 濃さは √p。p が数% のマスも見えるようにする。マスごとに位相をずらして、ゆっくり明滅させる
-    const v = Math.sqrt(s.p) * (1 + 0.15 * Math.sin(t * 1.3 + s.ph));
-    // 確定した地雷の ● より目立たないよう、暗い赤で、濃いところでも半透明に留める
-    d.set([200, 60, 72, Math.min(255, 150 * v)], s.i * 4);
+    // 濃さは √p。p が数% のマスも見えるようにする。確定していないマスは、位相をずらしてゆっくり明滅させる
+    const v = Math.sqrt(s.p) * (s.ph === null ? 1 : 1 + 0.15 * Math.sin(t * 1.3 + s.ph));
+    // 色は確定したマスの背景（.c.m）と同じにし、p = 1 で不透明になって確定したマスと一致させる
+    d.set([0x5a, 0x23, 0x30, Math.min(255, 255 * v)], s.i * 4);
   }
   ctx.putImageData(img, 0, 0);
 }
