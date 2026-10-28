@@ -315,10 +315,10 @@ function showResult(ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
     story = [
-      `コイン <b>${coins}</b> 回分の運（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けた。`,
+      `コイントス <b>${coins}</b> 回分の運（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けた。`,
       fatal.kind === 'mine' ? '最後は、全ての世界で安全なマスに ◆ を賭けた。' : '最後は、全ての世界で地雷のマスを ◇ で開けた。',
     ];
-    summary = `観測者消滅・コイン ${coins} 回分（${pctS(2 ** -g.L)}）を切り抜けた後`;
+    summary = `観測者消滅・コイントス ${coins} 回分（${pctS(2 ** -g.L)}）を切り抜けた後`;
   } else {
     const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
     const r = mode === 'safe' ? rank(loss) : rankCost(ratio);
@@ -329,7 +329,7 @@ function showResult(ok) {
     rows.push(['L', `${f(g.L)} / ${g.H0.toFixed(1)}（${(ratio * 100).toFixed(1)}%）`], ['◆', f(b.mineCost)]);
     head = `<h2><span class="rank">${r}</span>Ω = 1</h2>`;
     story = [
-      `コイン <b>${coins}</b> 回分の運（<b>${pctS(surv)}</b>）で生き延びた。`,
+      `コイントス <b>${coins}</b> 回分の運（<b>${pctS(surv)}</b>）で生き延びた。`,
       !worst ? '一度も外れうる賭けをせずに観測を終えた。'
         : `外れうる賭けは <b>${bets.length}</b> 回。一番危なかったのは、` + (worst.kind === 'mine'
           ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスに ◆ を賭けた手。`
@@ -337,7 +337,7 @@ function showResult(ok) {
       `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち、手がかりで <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を絞った。`,
     ];
     table = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
-    summary = `${r}・コイン ${coins} 回分（${pctS(surv)}）` + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
+    summary = `${r}・コイントス ${coins} 回分（${pctS(surv)}）` + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
   const setting = `${g.W}×${g.H}・${g.M}個・${fog ? fog.textContent : '詳細設定'}・${mode === 'safe' ? '安全第一' : '最小コスト'}`;
