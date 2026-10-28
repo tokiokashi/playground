@@ -411,18 +411,34 @@ function flowChart() {
     const mid = b - st.need * k;
     parts.push(tongue(x, b, mid, 1, '#8a3040'));
     parts.push(tongue(x, mid, nb, 1, 'var(--risk)', R + st.need * k));
-    if (st.miss) parts.push(`<text x="${x + R}" y="${b + R + T + 14}" font-size="12" fill="var(--risk)">✕</text>`);
     band += ` L${x} ${a} C${x + dx * .25} ${a} ${x + dx * .25} ${na} ${x + dx * .5} ${na}`;
     under.unshift(`L${x + dx * .5} ${nb} C${x + dx * .25} ${nb} ${x + dx * .25} ${b} ${x} ${b}`);
     a = na; b = nb;
   }
   band += ` L${x + dx} ${a} L${x + dx} ${b} ${under.join(' ')} L10 ${top0 + BAND} Z`;
-  const H = top0 + BAND + PAD + 8;
+  // 下の帯: 太さは生き残ったあなたの割合（2^−L）。運で払った分だけ、上の図と同じ手の位置で細る
+  const S = 70, y0 = top0 + BAND + PAD + 24;
+  let sv = 1, sb = y0 + S, sx = 10, surv = `M10 ${y0}`, sunder = [];
+  for (const st of steps) {
+    sx += dx;
+    const afterNeed = sv * 2 ** -st.need, after = afterNeed * 2 ** -st.extra;
+    const yb = y0 + sv * S, ym = y0 + afterNeed * S, ye = y0 + after * S;
+    parts.push(tongue(sx, yb, ym, 1, '#8a3040'));
+    parts.push(tongue(sx, ym, ye, 1, 'var(--risk)', R + (yb - ym)));
+    if (st.miss) parts.push(`<text x="${sx + R}" y="${yb + R + T + 14}" font-size="12" fill="var(--risk)">✕</text>`);
+    sunder.unshift(`L${sx + dx * .5} ${ye} C${sx + dx * .25} ${ye} ${sx + dx * .25} ${yb} ${sx} ${yb}`);
+    sv = after;
+  }
+  surv += ` L${sx + dx} ${y0} L${sx + dx} ${y0 + sv * S} ${sunder.join(' ')} L10 ${y0 + S} Z`;
+  const pct = v => v >= 0.001 ? (v * 100).toFixed(1) + '%' : (v * 100).toExponential(1) + '%';
+  const H = y0 + S + T + R + 24;
   return `<svg class="flow" viewBox="0 0 ${VW} ${H}" role="img" aria-label="世界の減り方">` +
-    `<path d="${band}" fill="var(--cell)"/>${parts.join('')}` +
+    `<path d="${band}" fill="var(--cell)"/><path d="${surv}" fill="var(--cell)"/>${parts.join('')}` +
+    `<text x="10" y="${y0 - 6}" font-size="12" fill="var(--mute)">100%</text>` +
+    `<text x="${VW - 4}" y="${y0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">${pct(sv)}</text>` +
     `<text x="10" y="${top0 + BAND + 16}" font-size="12" fill="var(--mute)">2^${g.H0.toFixed(1)}</text>` +
-    `<text x="${VW - 4}" y="${top0 + BAND + PAD}" font-size="12" fill="var(--mute)" text-anchor="end">Ω = 1</text></svg>` +
-    '<p class="flowcap">世界の減り方。上の青は数字で、下の赤は運で削った分。暗い赤は、その場で一番安い賭けでも払うしかなかった分です。</p>';
+    `<text x="${VW - 4}" y="${top0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">Ω = 1</text></svg>` +
+    '<p class="flowcap">上は世界の減り方で、青は数字、赤は運で削った分です。下は生き残ったあなたの割合で、運を使った手で細ります。暗い赤は、その場で一番安い賭けでも払うしかなかった分です。</p>';
 }
 
 function showResult(ok) {
