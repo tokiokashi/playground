@@ -59,6 +59,7 @@ details p,details li{font-size:14px;color:#cdd5e6}
     <button data-mode="safe" aria-pressed="true">安全第一</button>
     <button data-mode="cost" aria-pressed="false">最小コスト</button>
   </span>
+  <button id="autozero" aria-pressed="false">0% を自動で開ける</button>
   <span class="desc" id="modedesc"></span>
 </div>
 <div class="bar">
@@ -89,6 +90,8 @@ details p,details li{font-size:14px;color:#cdd5e6}
   </ul></li>
 <li>2<sup>−L</sup> は、地雷の配置が最初から1つ決まっていたとしたら、あんたがここまで生き残れた確率と同じ値になる。</li>
 <li>精密な 0 の周りは自動で開く。それ以外の安全なマスは自分で推理して開ける。全ての世界で地雷のマス（p = 1）を踏むと、どの世界にもあんたは残らない。</li>
+<li>開いた手がかりのマスを押すと、その手がかりと周りの旗だけで残りが安全と決まる時に、周りをまとめて開ける。旗が世界と合っていなければ、開けたマスの確率どおりにコストを払う。</li>
+<li>安全第一のモードでは、「0% を自動で開ける」を有効にすると、全ての世界で安全なマスをコストなしで自動で開ける。</li>
 <li>旗はメモで、世界の数には影響しない。長押し、右クリック、「旗を置く」で置ける。</li>
 </ul>
 <p>「曖昧な手がかり」が有効だと（最初から有効）、マスごとに検出器の種類が決まり、右上の印で見分けられる。</p>
@@ -107,7 +110,7 @@ import { Game, rank, rankCost } from './game.js';
 const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐' };
-let size = [9, 9, 10], fuzzy = true, mode = 'safe', flagMode = false, showP = false;
+let size = [9, 9, 10], fuzzy = true, mode = 'safe', autoZero = false, flagMode = false, showP = false;
 let g, cells, last = -1;
 
 function fmtOmega(o) {
@@ -120,6 +123,7 @@ const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' 
 function newGame() {
   const [W, H, M] = size;
   g = new Game(W, H, M, fuzzy);
+  g.autoZero = mode === 'safe' && autoZero;
   last = -1;
   board.style.setProperty('--w', W);
   board.innerHTML = '';
@@ -171,8 +175,34 @@ function render() {
   $('surv').textContent = s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
 }
 
+// 開いた手がかりのマスを押すと、その手がかりと旗で安全と決まる周りのマスをまとめて開ける
+function chord(i) {
+  const targets = g.chordTargets(i);
+  if (!targets.length) return;
+  let cost = 0, risky = 0;
+  for (const t of targets) {
+    if (g.state !== 'play' || g.opened[t]) continue;
+    const r = g.step(t);
+    last = t;
+    if (g.state === 'dead') break;
+    cost += r.cost;
+    if (r.p > 0) risky++;
+  }
+  if (g.state === 'dead') {
+    $('msg').innerHTML = '旗が間違っていた。開けたマスは<b>全ての世界で地雷</b>だった。どの世界線にも、あんたは残らない。';
+    showResult(false);
+  } else {
+    $('msg').innerHTML = risky
+      ? `旗の置き方が世界と合っていなかった。周りを開けて <b>+${cost.toFixed(2)} bit</b> 払った。`
+      : `周りの ${targets.length} マスを開けた。どれも全ての世界で安全だった。`;
+    if (g.state === 'clear') showResult(true);
+  }
+  render();
+}
+
 function act(i) {
-  if (g.state !== 'play' || g.opened[i]) return;
+  if (g.state !== 'play') return;
+  if (g.opened[i]) { chord(i); return; }
   if (flagMode) { toggleFlag(i); return; }
   const r = g.step(i);
   last = i;
@@ -263,9 +293,30 @@ document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('cl
   document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === btn));
   mode = btn.dataset.mode;
   $('modedesc').textContent = MODE_DESC[mode];
+$('autozero').addEventListener('click', e => {
+  autoZero = !autoZero;
+  e.currentTarget.setAttribute('aria-pressed', autoZero);
+  g.autoZero = mode === 'safe' && autoZero;
+  if (g.state === 'play' && g.autoZero) {
+    g.settle();
+    if (g.state === 'clear') showResult(true);
+    render();
+  }
+});
+  $('autozero').hidden = mode !== 'safe';
   newGame();
 }));
 $('modedesc').textContent = MODE_DESC[mode];
+$('autozero').addEventListener('click', e => {
+  autoZero = !autoZero;
+  e.currentTarget.setAttribute('aria-pressed', autoZero);
+  g.autoZero = mode === 'safe' && autoZero;
+  if (g.state === 'play' && g.autoZero) {
+    g.settle();
+    if (g.state === 'clear') showResult(true);
+    render();
+  }
+});
 
 newGame();
 </script>
