@@ -1,14 +1,19 @@
 // 盤の進行。DOM には触らない（node から試せるようにする）。
 import { analyze, binom, neighbors, DETECTORS, maskOf, classLabel } from './engine.js';
 
-// 検出器の割合のプリセット（精密・幅・二重・偶奇・広い幅の順、%）
-export const TYPES = ['exact', 'range', 'pair', 'parity', 'wide'];
+// 検出器の割合の並び。比べる検出器（cmp）は、向き（⇆ か ⇅）をマスごとにくじで決める
+export const TYPES = ['exact', 'range', 'pair', 'parity', 'wide', 'cross', 'diag', 'knight', 'cmp'];
+const pad = a => a.concat(Array(TYPES.length - a.length).fill(0));
+// 検出器の割合のプリセット（TYPES の順、%）。前の4つは粗視化の度合い、後ろの2つは見る範囲の違う検出器を混ぜる
 export const MIXES = [
   [100, 0, 0, 0, 0],
   [60, 10, 10, 10, 10],
   [35, 15, 15, 15, 20],
   [0, 25, 20, 25, 30],
-];
+  [40, 0, 0, 0, 0, 20, 20, 20],
+  [40, 0, 0, 0, 0, 0, 0, 0, 60],
+].map(pad);
+export const normMix = mix => pad(mix.slice(0, TYPES.length));
 
 export class Game {
   constructor(W, H, M, mix = MIXES[1], rng = Math.random) {
@@ -16,13 +21,18 @@ export class Game {
     const N = W * H;
     this.N = N;
     // 検出器の種類はマスごとに最初から決まっていて、開ける前から見える。割合が全て 0 なら精密だけ
-    const total = mix.reduce((a, b) => a + b, 0);
-    if (!total) mix = MIXES[0];
-    this.det = Array.from({ length: N }, () => {
+    mix = normMix(mix);
+    let total = mix.reduce((a, b) => a + b, 0);
+    if (!total) { mix = MIXES[0]; total = 100; }
+    const pick = () => {
       let u = rng() * total;
       for (let j = 0; j < TYPES.length; j++) if ((u -= mix[j]) < 0) return TYPES[j];
       return 'exact';
-    });
+    };
+    this.det = Array.from({ length: N }, () => { const t = pick(); return t === 'cmp' ? (rng() < 0.5 ? 'lr' : 'ud') : t; });
+    // 検出器ごとの見る範囲 { cells, w, off }
+    this.areas = this.det.map((t, c) => DETECTORS[t].area(c, W, H));
+    this.area = c => this.areas[c];
     // 区切りの位置が何通りかある種類は、どれで分けるかもマスごとにくじで決めておく（開けるまで見えない）
     this.classes = this.det.map(t => { const ps = DETECTORS[t].parts; return ps[Math.floor(rng() * ps.length)]; });
     this.opened = new Uint8Array(N);
@@ -40,7 +50,7 @@ export class Game {
 
   refresh() {
     this.dirty = false;
-    this.an = analyze(this.W, this.H, this.M, this.opened, this.clues, true, this.mines);
+    this.an = analyze(this.W, this.H, this.M, this.opened, this.clues, true, this.mines, this.area);
     if (this.an.omega < 1.5) this.state = 'clear';
   }
   get bitsLeft() { return Math.log2(this.an.omega); }
@@ -116,7 +126,7 @@ export class Game {
     const area = [c, ...neighbors(c, W, H)].filter(d => this.free(d));
     for (const cells of [area, [c]]) {
       for (const d of cells) this.opened[d] = 1;
-      const after = analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
+      const after = analyze(W, H, M, this.opened, this.clues, false, this.mines, this.area).omega;
       if (after > 0) {
         this.H0 -= Math.log2(before / after);
         this.moves.push({ kind: 'open', c, p: 0, cost: 0, ...sit });
@@ -157,28 +167,29 @@ export class Game {
     this.opened[c] = 1;
     this.dirty = true;
     const { W, H, M } = this;
-    const survive = analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
+    const survive = analyze(W, H, M, this.opened, this.clues, false, this.mines, this.area).omega;
     const classes = this.classes[c];
+    const off = this.areas[c].off;
     const weights = classes.map(cls => {
-      this.clues.set(c, maskOf(cls));
-      return analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
+      this.clues.set(c, maskOf(cls, off));
+      return analyze(W, H, M, this.opened, this.clues, false, this.mines, this.area).omega;
     });
     let u = this.rng() * weights.reduce((a, b) => a + b, 0), pick = 0;
     while (pick < weights.length - 1 && (u -= weights[pick]) >= 0) pick++;
     while (!weights[pick]) pick--;
-    this.clues.set(c, maskOf(classes[pick]));
+    this.clues.set(c, maskOf(classes[pick], off));
     this.label[c] = classLabel(this.det[c], classes[pick]);
     this.I += Math.log2(survive / weights[pick]);
   }
 
-  // 普通のマインスイーパーと同じく、0 と確定した手がかりの周りだけを続けて開ける。
+  // 普通のマインスイーパーと同じく、0 と確定した手がかりの範囲だけを続けて開ける。
   // それ以外の安全なマスは自分で推理して開ける
   cascade(opened) {
     const queue = opened.slice();
     while (queue.length) {
       const c = queue.pop();
-      if (this.clues.get(c) !== 1) continue;
-      for (const d of neighbors(c, this.W, this.H)) {
+      if (this.clues.get(c) !== 1 || !DETECTORS[this.det[c]].count) continue;
+      for (const d of this.areas[c].cells) {
         if (!this.free(d)) continue;
         this.observe(d);
         opened.push(d);
@@ -218,15 +229,15 @@ export class Game {
     return opened;
   }
 
-  // 開いた手がかりのマス c を押した時に開けるマス。普通のマインスイーパーの同時開けと同じく、
+  // 開いた手がかりのマス c を押した時に開けるマス。普通のマインスイーパーの同時開けと同じく、数える検出器で、
   // その手がかりと周りの ◆ だけで「残りは安全」と決まる時に限る。◆ のマスは生き残った全ての世界で地雷なので、
   // ここで開けるマスは必ずコスト 0 になる
   chordTargets(c) {
-    if (!this.opened[c] || !this.clues.has(c)) return [];
+    if (!this.opened[c] || !this.clues.has(c) || !DETECTORS[this.det[c]].count) return [];
     const mask = this.clues.get(c);
     let f = 0;
     const rest = [];
-    for (const d of neighbors(c, this.W, this.H)) {
+    for (const d of this.areas[c].cells) {
       if (this.opened[d]) continue;
       if (this.mines.has(d)) f++; else rest.push(d);
     }
