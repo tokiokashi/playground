@@ -22,7 +22,6 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #custom label:has(.mix){grid-column:span 3}
 .left{margin-left:auto;font:600 15px/1 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
 .left b{color:var(--risk);margin-right:4px}
-.left.neg{color:var(--risk)}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:6px;margin:0 0 10px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .stat .k{display:block;font-size:11px;color:var(--mute)}
@@ -34,7 +33,6 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.o.fz{font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.32)}
 .c .d{position:absolute;right:2px;top:1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.26);color:var(--mute);font-weight:400}
 .c .pr{position:absolute;inset:auto 0 1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.24);font-weight:400;color:#fff;opacity:.85}
-.c.f::after{content:"⚑";color:var(--gold)}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk)}
 .c.w{background:#3a3216}
@@ -49,9 +47,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #result .story{margin:6px 0 0;font-size:14px;line-height:1.8}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
 #share{margin-top:10px}
-.c.auto,#msg .auto{outline:2px dotted var(--gold);outline-offset:-2px}
-.c.auto.risk,#msg .auto{outline-color:var(--risk)}
-#msg .auto{padding:0 4px;border-radius:3px}
+.c.auto{outline:2px dotted var(--gold);outline-offset:-2px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
@@ -86,13 +82,12 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-mode="safe" aria-pressed="true">安全第一</button>
     <button data-mode="cost" aria-pressed="false">最小コスト</button>
   </span>
-  <button id="autochord" aria-pressed="false" aria-label="旗で決まるマスを自動で開ける">⚑ 自動</button>
+  <button id="autochord" aria-pressed="false" aria-label="◆ で決まるマスを自動で開ける">◆ 自動</button>
 </div>
 <div class="bar">
   <span role="group" aria-label="タップの操作">
     <button data-tap="open" aria-pressed="true" aria-label="安全に賭ける">◇</button>
     <button data-tap="mine" aria-pressed="false" aria-label="地雷に賭ける">◆</button>
-    <button data-tap="flag" aria-pressed="false" aria-label="旗">⚑</button>
   </span>
   <button id="showp" aria-pressed="false">p</button>
   <button id="reset" aria-label="新しい盤">↻</button>
@@ -124,14 +119,13 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
 <p>「p」を押すと、各マスに p が表示されます。p は、残っている世界のうち、そのマスに地雷がある世界の割合です。p = 30% なら、3割の世界でそこに地雷があります。</p>
 <h3>どの世界へ進むかを決める</h3>
-<p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身と違う世界でも盤は続きますが、そこにあなたはいません。盤の上にある ◇・◆・⚑ のボタンで何をするかを選んでから、マスを押します。</p>
+<p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身と違う世界でも盤は続きますが、そこにあなたはいません。盤の上にある ◇・◆ のボタンでどちらに決めるかを選んでから、マスを押します。目印だけを付ける手段はありません。</p>
 <ul>
 <li><b>◇ 開ける</b>: 「このマスは空だ」と決めて踏み込みます。地雷がある世界のあなたは、そこで終わります。生き残った世界では、足元の検出器が数字を返します。数字は踏み込むまでどこにも無く、生き残った世界の中からくじで引かれます。</li>
-<li><b>◆ 地雷に賭ける</b>: 「このマスに地雷がある」と決めて進みます。地雷が無い世界に、そう決めたあなたの居場所はありません。踏み込まないので、数字は返りません。</li>
-<li><b>⚑ 旗</b>: ただの目印です。何も決めないので、世界は減りません。長押しか右クリックでも立てられます。</li>
+<li><b>◆ 地雷に賭ける</b>: 「このマスに地雷がある」と決めて進みます。地雷が無い世界に、そう決めたあなたの居場所はありません。踏み込まないので、数字は返りません。どちらのボタンを選んでいても、長押しか右クリックで ◆ になります。</li>
 </ul>
 <p>p = 100% のマスに踏み込むか、p = 0% のマスに地雷があると決めると、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもないマスでの決定を「外れうる賭け」と呼びます。</p>
-<p>開いた数字のマスを押すと、数字と周りの旗・◆ から空と読めるマスへ、まとめて踏み込みます。安全第一のモードで「⚑ 自動」をオンにすると、旗を立てるたびに、そこから読めるマスへ自動で踏み込みます。旗の下の地雷がまだ確定していなければ、まとめて踏み込むことも賭けになります。</p>
+<p>開いた数字のマスを押すと、数字と周りの ◆ から空と読めるマスへ、まとめて踏み込みます。◆ のマスは、あなたのいる全ての世界で地雷なので、まとめて踏み込んでもコストはかかりません。安全第一のモードで「◆ 自動」をオンにすると、◆ を決めるたびに、そこから読めるマスへ自動で踏み込みます。</p>
 <h3>曖昧な検出器</h3>
 <p>開けていないマスの右上の印は、そのマスの検出器の種類です。印の無いマスは、周りの8マスの地雷をそのまま数えます。</p>
 <ul>
@@ -151,9 +145,9 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </ul>
 <h3>盤の印</h3>
 <ul>
-<li>◇・◆・⚑ の行の右端にある ● の数は、地雷の総数から ◆ と旗の数を引いた残りです。旗を立てすぎて負になると赤くなります。</li>
+<li>◇・◆ の行の右端にある ● の数は、地雷の総数から ◆ の数を引いた残りです。</li>
 <li>金色の実線の枠は、最後に押したマスです。</li>
-<li>点線の枠は、まとめて開いたマスです。金色ならコスト 0、赤ならコストを払っています。</li>
+<li>金色の点線の枠は、まとめて開いたマスです。</li>
 <li>灰色の破線の枠と薄い ◇・◆ は、安全なマスが無い場面で、直前の賭けより安く済んだ賭けの場所です。</li>
 </ul>
 </details>
@@ -214,10 +208,9 @@ function render() {
       if (g.mines.has(i)) cls += ' k';
       // 終わった時の地雷: クリアなら確定した地雷として落ち着いた色、ゲームオーバーなら赤
       else if (over && p > 1 - 1e-9) cls += g.state === 'clear' ? ' w' : ' m';
-      else if (g.flags.has(i)) cls += ' f';
-      // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（◆・旗）と、
+      // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（◆）と、
       // 確率を表示している時の p = 1 のマス。確率を隠している時に p から消すと、答えが漏れる
-      const hideMark = g.mines.has(i) || g.flags.has(i) || ((showP || over) && p > 1 - 1e-9);
+      const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
       if (showP && !over && !g.mines.has(i)) {
         html += `<span class="pr">${pct(p)}</span>`;
@@ -231,16 +224,14 @@ function render() {
       cls += ' hint';
       html += `<span class="gh">${hintKind === 'mine' ? '◆' : '◇'}</span>`;
     }
-    // まとめて開けたマスと自動で開けたマス。旗が確定していなくてコストを払ったマスは赤い点線にする
-    if (g.auto && g.auto.cells.includes(i)) cls += g.auto.risky.includes(i) ? ' auto risk' : ' auto';
+    // まとめて開けたマスと自動で開けたマス
+    if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
     b.className = cls;
     b.innerHTML = html;
-    b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
+    b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : '未開放');
   }
-  // 残りの地雷: 地雷の総数から ◆ と旗の数を引いたもの（旗を置きすぎると負になる）
-  const left = g.M - g.mines.size - g.flags.size;
-  $('left').innerHTML = `<b>●</b>${left}`;
-  $('left').classList.toggle('neg', left < 0);
+  // 残りの地雷: 地雷の総数から ◆ の数を引いたもの
+  $('left').innerHTML = `<b>●</b>${g.M - g.mines.size}`;
   $('omega').textContent = fmtOmega(g.an.omega);
   $('Lv').textContent = g.L.toFixed(2);
   $('Iv').textContent = g.I.toFixed(2);
@@ -248,57 +239,34 @@ function render() {
   $('surv').textContent = s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
 }
 
-// 開いた手がかりのマスを押すと、その手がかりと旗で安全と決まる周りのマスをまとめて開ける
+// 開いた手がかりのマスを押すと、その手がかりと周りの ◆ で安全と決まるマスをまとめて開ける。コストは常に 0
 function chord(i) {
   const targets = g.chordTargets(i);
   hint = -1;
   if (!targets.length) return;
-  let cost = 0, risky = 0;
-  const opened = [], riskyCells = [];
+  const opened = [];
   for (const t of targets) {
     if (g.state !== 'play' || !g.free(t)) continue;
     const r = g.open(t);
     // 直前のマスで世界が1つに決まっていると、開ける前にクリアになって null が返る
     if (!r) break;
     last = t;
-    if (g.state === 'dead') break;
-    cost += r.cost;
-    if (r.p > 0) { risky++; riskyCells.push(t); }
     opened.push(t);
   }
   const chorded = opened.slice();
-  g.auto = null;
-  if (g.state !== 'dead') {
-    g.settle(opened);
-    // まとめて開けたマスも、自動で開けたマスと同じ点線の枠で示す
-    g.auto.cells.push(...chorded);
-    g.auto.risky.push(...riskyCells);
-  }
-  if (g.state === 'dead') showResult(false);
-  else {
-    $('msg').innerHTML = risky ? `<b>+${cost.toFixed(2)} bit</b>` : '+0';
-    $('msg').innerHTML += autoNote();
-    if (g.state === 'clear') showResult(true);
-  }
+  g.settle(opened);
+  // まとめて開けたマスも、自動で開けたマスと同じ点線の枠で示す
+  g.auto.cells.push(...chorded);
+  $('msg').innerHTML = '+0';
+  if (g.state === 'clear') showResult(true);
   render();
 }
 
-// 旗で決まるマスを自動で開けた分。開けたマスは盤の上で点線の枠で示し、コストがあれば同じ枠で添える
-function autoNote() {
-  const a = g.auto;
-  if (!a || !a.cost || g.state === 'dead') return '';
-  return ` · <span class="auto">+${a.cost.toFixed(2)} bit</span>`;
-}
-
-// 旗を置いた後や自動開放を有効にした時に、旗で決まるマスを開ける
+// 自動開放を有効にした時に、それまでの ◆ で決まるマスを開ける
 function settleNow() {
   if (g.state !== 'play' || !g.autoChord) return;
   g.settle();
-  if (g.state === 'dead') showResult(false);
-  else {
-    if (g.auto.count) $('msg').innerHTML = autoNote().replace(/^ · /, '');
-    if (g.state === 'clear') showResult(true);
-  }
+  if (g.state === 'clear') showResult(true);
 }
 
 // 賭けの直後に出す数字: p とコスト。一番安い賭けより高かった時はその値も並べる
@@ -320,14 +288,13 @@ function act(i) {
   if (g.state !== 'play') return;
   if (g.opened[i]) { chord(i); return; }
   if (g.mines.has(i)) return;
-  if (tap === 'flag') { toggleFlag(i); return; }
   if (tap === 'mine') { betMine(i); return; }
   const r = g.step(i);
   last = i;
   const m = g.moves[g.moves.length - 1];
   if (g.state === 'dead') showResult(false);
   else {
-    $('msg').innerHTML = betLine(r, m) + autoNote();
+    $('msg').innerHTML = betLine(r, m);
     if (g.state === 'clear') showResult(true);
   }
   render();
@@ -340,7 +307,7 @@ function betMine(i) {
   const m = g.moves[g.moves.length - 1];
   if (g.state === 'dead') showResult(false);
   else {
-    $('msg').innerHTML = betLine(r, m) + autoNote();
+    $('msg').innerHTML = betLine(r, m);
     if (g.state === 'clear') showResult(true);
   }
   render();
@@ -408,20 +375,13 @@ async function shareResult(e) {
   } catch { /* 共有を取り消した時など */ }
 }
 
-function toggleFlag(i) {
-  if (!g.free(i) || g.state !== 'play') return;
-  g.flags.has(i) ? g.flags.delete(i) : g.flags.add(i);
-  g.auto = null;
-  settleNow();
-  render();
-}
-
-// タップで開ける。長押しと右クリックで旗
+// タップは選んだ動作。長押しと右クリックは、選んだ動作によらず ◆
+const quickMine = i => { if (g.state === 'play' && g.free(i)) betMine(i); };
 let pressTimer = 0, longPressed = false;
 board.addEventListener('pointerdown', e => {
   const b = e.target.closest('.c'); if (!b) return;
   longPressed = false;
-  if (e.pointerType !== 'mouse') pressTimer = setTimeout(() => { longPressed = true; toggleFlag(+b.dataset.i); }, 420);
+  if (e.pointerType !== 'mouse') pressTimer = setTimeout(() => { longPressed = true; quickMine(+b.dataset.i); }, 420);
 });
 const cancel = () => clearTimeout(pressTimer);
 board.addEventListener('pointerup', cancel);
@@ -435,7 +395,7 @@ board.addEventListener('click', e => {
 board.addEventListener('contextmenu', e => {
   const b = e.target.closest('.c'); if (!b) return;
   e.preventDefault();
-  toggleFlag(+b.dataset.i);
+  quickMine(+b.dataset.i);
 });
 
 // プリセットを押すと詳細設定の値もそろえる。詳細設定をいじるとプリセットの選択が外れる
