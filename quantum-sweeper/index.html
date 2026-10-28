@@ -29,6 +29,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.f::after{content:"⚑";color:var(--gold)}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk)}
+.c.k{background:#4a3416}
+.c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:3.2em;margin:10px 0 0;font-size:14px}
@@ -46,7 +48,7 @@ details p,details li{font-size:14px;color:#cdd5e6}
 </style></head><body><main>
 <a class="back" href="../">← 作品一覧</a>
 <h1>量子自殺マインスイーパー</h1>
-<p class="lead">この盤には最初から決まった地雷の配置が無い。手がかりと矛盾しない全ての配置（世界）が重なっていて、マスを踏むと、そこに地雷があった世界は消え、あんたは生き残った世界へ進む。世界を1つ（Ω = 1）に絞ればクリア。</p>
+<p class="lead">この盤には最初から決まった地雷の配置が無い。手がかりと矛盾しない全ての配置（世界）が重なっている。マスを開けるのは「安全」に、◆ は「地雷」に命を賭ける観測で、賭けが外れた世界は消え、あなたは当たった世界へ進む。世界を1つ（Ω = 1）に絞ればクリア。</p>
 <div class="bar">
   <span role="group" aria-label="盤の大きさ">
     <button data-size="9,9,10" aria-pressed="true">9×9・10個</button>
@@ -59,11 +61,15 @@ details p,details li{font-size:14px;color:#cdd5e6}
     <button data-mode="safe" aria-pressed="true">安全第一</button>
     <button data-mode="cost" aria-pressed="false">最小コスト</button>
   </span>
-  <button id="autozero" aria-pressed="false">0% を自動で開ける</button>
+  <button id="autochord" aria-pressed="false">旗で決まるマスを自動で開ける</button>
   <span class="desc" id="modedesc"></span>
 </div>
 <div class="bar">
-  <button id="flagmode" aria-pressed="false">⚑ 旗を置く</button>
+  <span role="group" aria-label="タップの操作">
+    <button data-tap="open" aria-pressed="true">安全に賭ける</button>
+    <button data-tap="mine" aria-pressed="false">◆ 地雷に賭ける</button>
+    <button data-tap="flag" aria-pressed="false">⚑ 旗（メモ）</button>
+  </span>
   <button id="showp" aria-pressed="false">確率を見る</button>
   <button id="reset">新しい宇宙</button>
 </div>
@@ -71,7 +77,7 @@ details p,details li{font-size:14px;color:#cdd5e6}
   <div class="stat"><span class="k">残っている世界 Ω</span><span class="v" id="omega"></span></div>
   <div class="stat"><span class="k">命で払った L</span><span class="v" id="Lv"></span></div>
   <div class="stat"><span class="k">観測で得た I</span><span class="v" id="Iv"></span></div>
-  <div class="stat"><span class="k">この世界線のあんたが残る確率 2<sup>−L</sup></span><span class="v" id="surv"></span></div>
+  <div class="stat"><span class="k">この世界線のあなたが残る確率 2<sup>−L</sup></span><span class="v" id="surv"></span></div>
 </div>
 <div id="board" role="grid" aria-label="盤"></div>
 <p id="msg" aria-live="polite"></p>
@@ -80,19 +86,24 @@ details p,details li{font-size:14px;color:#cdd5e6}
 <summary>ルールと数え方</summary>
 <p>盤は地雷の配置を持っていない。開いたマスの手がかりと地雷の総数に矛盾しない配置を全て数え、その数を Ω とする。マスの地雷確率 p は、Ω 個の世界のうち、そのマスに地雷がある世界の割合。</p>
 <ul>
-<li>p のマスを踏むと、地雷があった世界が消える。生き残る世界は Ω(1−p) 個になり、そのぶんを <span class="mono">−log₂(1−p)</span> ビットとして L に足す。p = 0 のマスならコストは 0。</li>
+<li>マスに賭ける観測は2種類ある。どちらも、賭けが外れた世界が消え、あなたは当たった世界へ進む。消えた世界のぶんを L に足す。
+  <ul>
+  <li><b>安全に賭ける</b>（開ける）: 地雷があった世界が消える。生き残る世界は Ω(1−p) 個になり、コストは <span class="mono">−log₂(1−p)</span> ビット。開いたマスには手がかりが出る。</li>
+  <li><b>地雷に賭ける</b>（◆）: 地雷が無かった世界が消える。生き残る世界は Ωp 個になり、コストは <span class="mono">−log₂p</span> ビット。手がかりは出ないが、そのマスの地雷は確定し、旗と同じように周りをまとめて開ける判定に使われる。</li>
+  </ul>
+  全ての世界で当たる賭け（p = 0 を開ける、p = 1 に賭ける）はコスト 0。全ての世界で外れる賭け（p = 1 を開ける、p = 0 に賭ける）をすると、どの世界にもあなたは残らない。</li>
 <li>開いたマスの数字は、生き残った世界の中から重みどおりに引かれる。開ける前は本当に決まっていない。数字で世界が絞られたぶんを I に足す。</li>
 <li>最初の世界の数は Ω₀ = C(マス数, 地雷数)。常に <span class="mono">L + I + log₂Ω = log₂Ω₀</span> が成り立つ。</li>
 <li>評価のモードは2つある。
   <ul>
-  <li><b>安全第一</b>: 地雷の可能性をできるだけ避ける推理を評価する。L を手ごとに分け、安全なマスが残っていたのに危ないマスを踏んだ分（推理ミス）と、賭けるしかない時に一番安全なマスより危ないマスを選んだ分（賭けの損）の合計でランクが決まる。どちらも踏んだ時点の盤面だけで決まるので、後から引かれた数字の運に左右されない。</li>
+  <li><b>安全第一</b>: 地雷の可能性をできるだけ避ける推理を評価する。L を手ごとに分け、全ての世界で安全なマスが残っていたのに外れうる賭けをした分（推理ミス）と、賭けるしかない時に一番安い賭けより高い賭けを選んだ分（賭けの損）の合計でランクが決まる。賭けの候補には、開けると地雷に賭けるの両方を含める。どちらも賭けた時点の盤面だけで決まるので、後から引かれた数字の運に左右されない。</li>
   <li><b>最小コスト</b>: 払った L の合計を、必要だった情報 log₂Ω₀ に対する割合で評価する。安全なマスを残したまま賭けてもよい。安全なマスの数字は開けるまで決まっていないので、残りの世界をちょうど半分に割れる場面までとっておくと、得られる情報が大きくなる。そのため、先に賭けた方が L の合計が小さくなる局面がある。最善手は計算できないので、評価は数字の運も含む。</li>
   </ul></li>
-<li>2<sup>−L</sup> は、地雷の配置が最初から1つ決まっていたとしたら、あんたがここまで生き残れた確率と同じ値になる。</li>
-<li>精密な 0 の周りは自動で開く。それ以外の安全なマスは自分で推理して開ける。全ての世界で地雷のマス（p = 1）を踏むと、どの世界にもあんたは残らない。</li>
+<li>2<sup>−L</sup> は、地雷の配置が最初から1つ決まっていたとしたら、あなたがここまで生き残れた確率と同じ値になる。</li>
+<li>精密な 0 の周りは自動で開く。それ以外の安全なマスは自分で推理して開ける。</li>
 <li>開いた手がかりのマスを押すと、その手がかりと周りの旗だけで残りが安全と決まる時に、周りをまとめて開ける。旗が世界と合っていなければ、開けたマスの確率どおりにコストを払う。</li>
-<li>安全第一のモードでは、「0% を自動で開ける」を有効にすると、全ての世界で安全なマスをコストなしで自動で開ける。</li>
-<li>旗はメモで、世界の数には影響しない。長押し、右クリック、「旗を置く」で置ける。</li>
+<li>安全第一のモードでは、「旗で決まるマスを自動で開ける」を有効にすると、手がかりのマスを押してまとめて開ける操作を自動で行う。手がかりと周りの旗だけで残りが安全と決まったマスは、旗を置いた時やマスを開けた時にすぐ開く。旗が世界と合っていなければ、開けたマスの確率どおりにコストを払う。</li>
+<li>旗はメモで、世界の数には影響しない。長押し、右クリック、「旗（メモ）」で置ける。</li>
 </ul>
 <p>「曖昧な手がかり」が有効だと（最初から有効）、マスごとに検出器の種類が決まり、右上の印で見分けられる。</p>
 <ul>
@@ -110,7 +121,7 @@ import { Game, rank, rankCost } from './game.js';
 const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐' };
-let size = [9, 9, 10], fuzzy = true, mode = 'safe', autoZero = false, flagMode = false, showP = false;
+let size = [9, 9, 10], fuzzy = true, mode = 'safe', autoChord = false, tap = 'open', showP = false;
 let g, cells, last = -1;
 
 function fmtOmega(o) {
@@ -123,7 +134,7 @@ const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' 
 function newGame() {
   const [W, H, M] = size;
   g = new Game(W, H, M, fuzzy);
-  g.autoZero = mode === 'safe' && autoZero;
+  g.autoChord = mode === 'safe' && autoChord;
   last = -1;
   board.style.setProperty('--w', W);
   board.innerHTML = '';
@@ -154,10 +165,11 @@ function render() {
       else if (t) cls += ' nz fz';
     } else {
       const p = g.prob(i);
-      if (over && p > 1 - 1e-9) cls += ' m';
+      if (g.mines.has(i)) cls += ' k';
+      else if (over && p > 1 - 1e-9) cls += ' m';
       else if (g.flags.has(i)) cls += ' f';
       if (MARK[g.det[i]]) html += `<span class="d">${MARK[g.det[i]]}</span>`;
-      if (showP && !over) {
+      if (showP && !over && !g.mines.has(i)) {
         html += `<span class="pr">${pct(p)}</span>`;
         b.style.background = `color-mix(in srgb, var(--risk) ${Math.round(p * 70)}%, var(--cell))`;
       } else b.style.background = '';
@@ -166,7 +178,7 @@ function render() {
     if (i === last) cls += ' last';
     b.className = cls;
     b.innerHTML = html;
-    b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.flags.has(i) ? '旗' : '未開放');
+    b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
   }
   $('omega').textContent = fmtOmega(g.an.omega);
   $('Lv').textContent = g.L.toFixed(2) + ' bit';
@@ -180,43 +192,99 @@ function chord(i) {
   const targets = g.chordTargets(i);
   if (!targets.length) return;
   let cost = 0, risky = 0;
+  const opened = [];
   for (const t of targets) {
-    if (g.state !== 'play' || g.opened[t]) continue;
-    const r = g.step(t);
+    if (g.state !== 'play' || !g.free(t)) continue;
+    const r = g.open(t);
+    // 直前のマスで世界が1つに決まっていると、開ける前にクリアになって null が返る
+    if (!r) break;
     last = t;
     if (g.state === 'dead') break;
     cost += r.cost;
     if (r.p > 0) risky++;
+    opened.push(t);
   }
+  g.auto = null;
+  if (g.state !== 'dead') g.settle(opened);
   if (g.state === 'dead') {
-    $('msg').innerHTML = '旗が間違っていた。開けたマスは<b>全ての世界で地雷</b>だった。どの世界線にも、あんたは残らない。';
+    $('msg').innerHTML = '旗が間違っていた。開けたマスは<b>全ての世界で地雷</b>だった。どの世界線にも、あなたは残らない。';
     showResult(false);
   } else {
     $('msg').innerHTML = risky
       ? `旗の置き方が世界と合っていなかった。周りを開けて <b>+${cost.toFixed(2)} bit</b> 払った。`
       : `周りの ${targets.length} マスを開けた。どれも全ての世界で安全だった。`;
+    $('msg').innerHTML += autoNote();
     if (g.state === 'clear') showResult(true);
   }
   render();
 }
 
+// 旗で決まるマスを自動で開けた時の一言
+function autoNote() {
+  const a = g.auto;
+  if (!a || !a.count) return '';
+  if (g.state === 'dead') return '';
+  return a.cost > 0
+    ? ` 旗から安全と決まった ${a.count} マスを自動で開けたが、旗が世界と合っていなかった（+${a.cost.toFixed(2)} bit）。`
+    : ` 旗から安全と決まった ${a.count} マスを自動で開けた。`;
+}
+
+// 旗を置いた後や自動開放を有効にした時に、旗で決まるマスを開ける
+function settleNow() {
+  if (g.state !== 'play' || !g.autoChord) return;
+  g.settle();
+  if (g.state === 'dead') {
+    $('msg').innerHTML = '旗から安全と決まったマスを自動で開けたが、旗が間違っていた。そのマスは<b>全ての世界で地雷</b>だった。どの世界線にも、あなたは残らない。';
+    showResult(false);
+  } else {
+    if (g.auto.count) $('msg').innerHTML = autoNote().trim();
+    if (g.state === 'clear') showResult(true);
+  }
+}
+
+// 賭けの後の一言。一番安い賭けより高い賭けだった時と、安全なマスが残っていた時に添える
+function betNote(m) {
+  if (!m || m.cost === 0) return '';
+  if (m.safeExists) return mode === 'safe' ? ' 全ての世界で安全なマスが残っていたのに。' : ' 全ての世界で安全なマスは残してある。';
+  if (m.cost > m.best + 1e-9) return ` このとき一番安い賭けは ${m.best.toFixed(2)} bit だった。`;
+  return '';
+}
+
 function act(i) {
   if (g.state !== 'play') return;
   if (g.opened[i]) { chord(i); return; }
-  if (flagMode) { toggleFlag(i); return; }
+  if (g.mines.has(i)) return;
+  if (tap === 'flag') { toggleFlag(i); return; }
+  if (tap === 'mine') { betMine(i); return; }
   const r = g.step(i);
   last = i;
   const m = g.moves[g.moves.length - 1];
   if (g.state === 'dead') {
-    $('msg').innerHTML = 'このマスは<b>全ての世界で地雷</b>だった。どの世界線にも、あんたは残らない。';
+    $('msg').innerHTML = 'このマスは<b>全ての世界で地雷</b>だった。安全に賭けたあなたは、どの世界線にも残らない。';
     showResult(false);
   } else {
-    let t = r.p === 0
+    const t = r.p === 0
       ? '全ての世界で安全なマスだった。コストは 0。'
-      : `p = <b>${(r.p * 100).toFixed(1)}%</b> のマスを踏んで生き残った（+${r.cost.toFixed(2)} bit）。`;
-    if (r.p > 0 && m.pmin < r.p) t += ` このとき一番安全なマスは ${(m.pmin * 100).toFixed(1)}% だった。`;
-    if (r.p > 0 && m.pmin === 0) t += mode === 'safe' ? ' 安全なマスが残っていたのに。' : ' 安全なマスは残してある。';
-    $('msg').innerHTML = t;
+      : `p = <b>${(r.p * 100).toFixed(1)}%</b> のマスを安全に賭けて開け、生き残った（+${r.cost.toFixed(2)} bit）。`;
+    $('msg').innerHTML = t + betNote(m) + autoNote();
+    if (g.state === 'clear') showResult(true);
+  }
+  render();
+}
+
+function betMine(i) {
+  const r = g.claim(i);
+  if (!r) return;
+  last = i;
+  const m = g.moves[g.moves.length - 1];
+  if (g.state === 'dead') {
+    $('msg').innerHTML = 'このマスは<b>全ての世界で安全</b>だった。地雷に賭けたあなたは、どの世界線にも残らない。';
+    showResult(false);
+  } else {
+    const t = r.p === 1
+      ? '全ての世界で地雷のマスだった。コストは 0。'
+      : `p = <b>${(r.p * 100).toFixed(1)}%</b> のマスの地雷に賭けて生き残った（+${r.cost.toFixed(2)} bit）。地雷が無かった世界は消えた。`;
+    $('msg').innerHTML = t + betNote(m) + autoNote();
     if (g.state === 'clear') showResult(true);
   }
   render();
@@ -225,26 +293,26 @@ function act(i) {
 function showResult(ok) {
   const el = $('result');
   if (!ok) {
-    el.innerHTML = '<h2>観測者消滅</h2><p>p = 1 のマスは、どの世界でも地雷がある。「新しい宇宙」でやり直せる。</p>';
+    el.innerHTML = '<h2>観測者消滅</h2><p>全ての世界で外れる賭けだった。開けるなら p = 1 のマス、地雷に賭けるなら p = 0 のマスがそれに当たる。「新しい宇宙」でやり直せる。</p>';
   } else {
     const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
-    const total = `必要だった情報 ${g.H0.toFixed(1)} bit のうち、命で払ったのは <b>${g.L.toFixed(2)} bit（${(ratio * 100).toFixed(1)}%）</b>。
+    const total = `必要だった情報 ${g.H0.toFixed(1)} bit のうち、命で払ったのは <b>${g.L.toFixed(2)} bit（${(ratio * 100).toFixed(1)}%）</b>、うち地雷に賭けて払った分は ${b.mineCost.toFixed(2)} bit。
       配置が最初から決まっていたら、ここまで生き残れた確率は ${(2 ** -g.L * 100).toPrecision(3)}%。`;
     el.innerHTML = mode === 'safe'
       ? `<h2><span class="rank">${rank(loss)}</span>観測完了 Ω = 1（安全第一）</h2>
       <p>推理の評価（運に左右されない部分）: <b>${loss.toFixed(2)} bit</b> の損</p>
       <ul>
-        <li>推理ミス ${b.error.toFixed(2)} bit（安全なマスが残っていたのに危ないマスを踏んだ ${b.errors} 回）</li>
-        <li>賭けの損 ${b.gap.toFixed(2)} bit（賭けるしかない時に、一番安全なマスより危ないマスを選んだ差）</li>
-        <li>不可避 ${b.forced.toFixed(2)} bit（賭けるしかない時の、一番安全なマスのコスト。盤面の運）</li>
+        <li>推理ミス ${b.error.toFixed(2)} bit（全ての世界で安全なマスが残っていたのに、外れうる賭けをした ${b.errors} 回）</li>
+        <li>賭けの損 ${b.gap.toFixed(2)} bit（賭けるしかない時に、一番安い賭けより高い賭けを選んだ差）</li>
+        <li>不可避 ${b.forced.toFixed(2)} bit（賭けるしかない時の、一番安い賭けのコスト。盤面の運）</li>
       </ul>
       <p>総合: ${total}</p>
-      <p class="note">「一番安全なマス」は最善手の近似。少し危なくても、開けると数字で大きく絞れるマスの方が得なこともある。</p>`
+      <p class="note">「一番安い賭け」は最善手の近似。少し高くても、開けると数字で大きく絞れるマスの方が得なこともある。</p>`
       : `<h2><span class="rank">${rankCost(ratio)}</span>観測完了 Ω = 1（最小コスト）</h2>
       <p>${total}</p>
       <ul>
         <li>安全なマスを残したまま賭けた分 ${b.error.toFixed(2)} bit（${b.errors} 回）</li>
-        <li>賭けるしかない時に払った分 ${(b.forced + b.gap).toFixed(2)} bit（うち一番安全なマスとの差 ${b.gap.toFixed(2)} bit）</li>
+        <li>賭けるしかない時に払った分 ${(b.forced + b.gap).toFixed(2)} bit（うち一番安い賭けとの差 ${b.gap.toFixed(2)} bit）</li>
       </ul>
       <p class="note">ランクは L / log₂Ω₀ で付ける。最善手は計算できないので、数字の運も含んだ評価になる。</p>`;
   }
@@ -252,8 +320,9 @@ function showResult(ok) {
 }
 
 function toggleFlag(i) {
-  if (g.opened[i] || g.state !== 'play') return;
+  if (!g.free(i) || g.state !== 'play') return;
   g.flags.has(i) ? g.flags.delete(i) : g.flags.add(i);
+  settleNow();
   render();
 }
 
@@ -285,7 +354,10 @@ document.querySelectorAll('[data-size]').forEach(btn => btn.addEventListener('cl
   newGame();
 }));
 $('fuzzy').addEventListener('click', e => { fuzzy = !fuzzy; e.currentTarget.setAttribute('aria-pressed', fuzzy); newGame(); });
-$('flagmode').addEventListener('click', e => { flagMode = !flagMode; e.currentTarget.setAttribute('aria-pressed', flagMode); });
+document.querySelectorAll('[data-tap]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-tap]').forEach(x => x.setAttribute('aria-pressed', x === btn));
+  tap = btn.dataset.tap;
+}));
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
 $('reset').addEventListener('click', newGame);
 const MODE_DESC = { safe: '地雷の可能性をできるだけ避ける推理を評価する', cost: '払った L の合計を評価する。安全なマスを温存して賭けてもよい' };
@@ -293,19 +365,16 @@ document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('cl
   document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === btn));
   mode = btn.dataset.mode;
   $('modedesc').textContent = MODE_DESC[mode];
-  $('autozero').hidden = mode !== 'safe';
+  $('autochord').hidden = mode !== 'safe';
   newGame();
 }));
 $('modedesc').textContent = MODE_DESC[mode];
-$('autozero').addEventListener('click', e => {
-  autoZero = !autoZero;
-  e.currentTarget.setAttribute('aria-pressed', autoZero);
-  g.autoZero = mode === 'safe' && autoZero;
-  if (g.state === 'play' && g.autoZero) {
-    g.settle();
-    if (g.state === 'clear') showResult(true);
-    render();
-  }
+$('autochord').addEventListener('click', e => {
+  autoChord = !autoChord;
+  e.currentTarget.setAttribute('aria-pressed', autoChord);
+  g.autoChord = mode === 'safe' && autoChord;
+  settleNow();
+  render();
 });
 
 newGame();
