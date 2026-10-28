@@ -11,6 +11,7 @@ a.back{display:inline-block;margin:0 0 6px;font-size:13px;color:var(--mute);text
 a.back:hover,a.back:focus-visible{color:var(--gold)}
 h1{margin:0 0 12px;font:700 clamp(22px,5vw,30px)/1.25 "Hiragino Mincho ProN","Yu Mincho",serif}
 .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+button:disabled{opacity:.4;cursor:default}
 button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
 button:hover,button:focus-visible{border-color:var(--gold);outline:none}
 button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
@@ -123,6 +124,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <summary>遊び方</summary>
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「世界」と呼び、残っている世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
+<p>最初の一歩は、◇ で降り立つ場所を選ぶことです（降り立つまで ◆ は置けません）。そこと周りの 8 マスに地雷がある世界は初めから数えないので、最初の一歩にコストはかかりません。</p>
 <p>マスごとの p は、残っている世界のうち、そのマスに地雷がある世界の割合です。p = 30% なら、3割の世界でそこに地雷があります。「|ψ|²」を押すと、p の分布が盤の上に赤い雲で重なります。雲が濃いほど p が大きく、p = 100% のマスは確定した地雷と同じ色になります。</p>
 <h3>どの世界へ進むかを決める</h3>
 <p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身と違う世界でも盤は続きますが、そこにあなたはいません。盤の上にある ◇・◆ のボタンでどちらに決めるかを選んでから、マスを押します。目印だけを付ける手段はありません。</p>
@@ -143,7 +145,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <p>≈・≋・| は、どこで区切るかがマスごとに違い、踏み込むまで分かりません。例えば ≈ では、周りの地雷が1個でも、「0-1」と出ることも「1-2」と出ることもあります。周りの地雷が0個と確定したマスが開くと、その周りのマスも続けて開きます。「0-1」や「偶」のように、0個の可能性があるだけでは開きません。</p>
 <h3>L（Life）は命で払った運、I（Information）は数字から得た情報</h3>
 <p>外れうる賭けを生き延びるたびに、あなたのいない世界が増えます。L はその分を足し合わせた値で、コインを何回続けて表にしたのと同じ運かを表します。単位は bit です。50% の賭けを生き延びれば 1 bit、p = 10% のマスに踏み込んで無事なら 0.15 bit 増えます。1回の賭けで増える L を、その賭けのコストと呼びます。2<sup>−L</sup> は、最初にいたあなたのうち、今ここにいるあなたの割合です。</p>
-<p>I は、数字を見て世界が減った分を、同じ bit で数えた値です。最初の世界の数を Ω₀ とすると、Ω が 1 になった時、L と I の合計は log₂Ω₀（Ω₀ が 2 の何乗か）にちょうど一致します。世界を減らす方法は二つしかありません。命で払うか、根拠を持って絞るかです。</p>
+<p>I は、数字を見て世界が減った分を、同じ bit で数えた値です。降り立った直後の世界の数を Ω₀ とすると、Ω が 1 になった時、L と I の合計は log₂Ω₀（Ω₀ が 2 の何乗か）にちょうど一致します。世界を減らす方法は二つしかありません。命で払うか、根拠を持って絞るかです。</p>
 <h3>モード</h3>
 <ul>
 <li><b>安全第一</b>: 運に頼らない推理を評価します。p = 0% のマスが残っているのに外れうる賭けをすると「推理ミス」となり、盤の下に ✕ が付きます。賭けるしかない場面で、盤全体の ◇・◆ のうち一番安い賭けより高い賭けを選ぶと、その差が「賭けの損」になります。ランクはこの二つの合計で決まります。賭けるしかない場面で一番安い賭けを選んでも払う分は「不可避」として別に数え、ランクには入れません。</li>
@@ -247,6 +249,7 @@ function render() {
   const { W, H } = g;
   const over = g.state !== 'play';
   board.classList.toggle('won', g.state === 'clear');
+  document.querySelector('[data-tap="mine"]').disabled = !g.landed;
   board.classList.toggle('lost', g.state === 'dead');
   // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す
   if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(); else stopCloud();
@@ -356,6 +359,8 @@ function betOpen(i) {
 }
 
 function betMine(i) {
+  // 降り立つ前は ◆ を置けないので、どの操作でも降り立つ
+  if (!g.landed) return betOpen(i);
   const r = g.claim(i);
   if (!r) return;
   last = i;

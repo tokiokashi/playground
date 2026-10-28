@@ -33,6 +33,7 @@ export class Game {
     this.L = 0;   // 生き残ることで削った世界（命で払ったビット）
     this.I = 0;   // 手がかりを見ることで削った世界（観測で得たビット）
     this.moves = [];
+    this.landed = false;
     this.state = 'play';
     this.refresh();
   }
@@ -83,6 +84,7 @@ export class Game {
     // 直前に別のマスを開けていれば確率が古いので数え直す
     if (this.dirty) this.refresh();
     if (this.state !== 'play') return null;
+    if (!this.landed) { const r = this.land(c); if (r) return r; }
     const p = this.an.prob[c];
     const sit = this.situation();
     if (p > 1 - 1e-9) {
@@ -97,9 +99,32 @@ export class Game {
     return { p, cost, opened: [c] };
   }
 
+  // 最初に開けるマスは、プレイヤーが降り立つ場所。そこと周りの8マスが空の世界だけを残し、コストは取らない。
+  // 削った分は運でも数字でもないので、Ω₀ の側から引き、Ω₀ を降り立った直後の世界の数にする（L + I = log₂Ω₀ を保つ）。
+  // 地雷が多くて周りまで空にできない盤では、降り立つマスだけを空にする
+  land(c) {
+    this.landed = true;
+    const { W, H, M } = this;
+    const before = this.an.omega, sit = this.situation();
+    const area = [c, ...neighbors(c, W, H)].filter(d => this.free(d));
+    for (const cells of [area, [c]]) {
+      for (const d of cells) this.opened[d] = 1;
+      const after = analyze(W, H, M, this.opened, this.clues, false, this.mines).omega;
+      if (after > 0) {
+        this.H0 -= Math.log2(before / after);
+        this.moves.push({ kind: 'open', c, p: 0, cost: 0, ...sit });
+        for (const d of cells) this.observe(d);
+        return { p: 0, cost: 0, opened: cells.slice() };
+      }
+      for (const d of cells) this.opened[d] = 0;
+    }
+    return null;
+  }
+
   // マス c の地雷に賭ける。戻り値: { p, cost, opened }
   claim(c) {
-    if (this.state !== 'play' || !this.free(c)) return null;
+    // 降り立つ前は ◆ を置けない。最初の一歩は必ず ◇ で降り立つ場所を選ぶ
+    if (this.state !== 'play' || !this.free(c) || !this.landed) return null;
     if (this.dirty) this.refresh();
     if (this.state !== 'play') return null;
     const p = this.an.prob[c];
@@ -203,11 +228,13 @@ export class Game {
     return window === 1 ? rest : [];
   }
 
-  // 自動で打つ次の手。p = 100% のマスがあれば ◆、無ければ全ての世界で安全なマスを開ける
+  // 自動で打つ次の手。降り立った後は、p = 100% のマスがあれば ◆、無ければ全ての世界で安全なマスを開ける
   // （手がかり1つと周りの ◆ だけで読めるマスを先に）、それも無ければ一番安い賭けを打つ。
   // 戻り値は { c: マス, kind: 'open' か 'mine' }。打てる手が無ければ null
   botMove() {
     if (this.state !== 'play') return null;
+    // 最初は盤の中央に降り立つ
+    if (!this.landed) return { c: (this.H >> 1) * this.W + (this.W >> 1), kind: 'open' };
     if (this.dirty) this.refresh();
     let safe = -1;
     for (let i = 0; i < this.N; i++) {
