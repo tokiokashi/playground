@@ -56,6 +56,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #msg b{color:var(--gold)}
 #result{display:none;margin:12px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:10px}
 #result h2{margin:0 0 6px;font-size:18px}
+#result .flow{display:block;width:100%;height:auto;margin:10px 0 0}
+#result .flowcap{margin:2px 0 0;font-size:12px;color:var(--mute)}
 #result dl{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;margin:8px 0 0;font-size:14px}
 #result dt{color:var(--mute)}
 #result dd{margin:0;font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
@@ -163,6 +165,8 @@ const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋' };
 let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = false, tap = 'open', showP = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
+// 手ごとの L と I の推移。結果画面の流れ図に使う（m はその時点までの手の数）
+let hist = [];
 
 function fmtOmega(o) {
   if (o < 1e6) return Math.round(o).toLocaleString();
@@ -187,6 +191,7 @@ function newGame() {
     board.appendChild(b);
     cells.push(b);
   }
+  hist = [{ L: 0, I: 0, m: 0 }];
   $('msg').innerHTML = '';
   $('result').style.display = 'none';
   render();
@@ -241,6 +246,7 @@ function render() {
   board.classList.toggle('won', g.state === 'clear');
   board.classList.toggle('lost', g.state === 'dead');
   if (g.state === 'dead') startCloud(); else stopCloud();
+  recordHist();
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -361,6 +367,64 @@ function betMine(i) {
 }
 
 // 結果画面。ランクと内訳に加えて、どれだけの運で生き延びたかを短い文で出し、そのまま共有できるようにする
+// 結果画面の流れ図。残っている世界の bit 数（log₂Ω）を帯の太さにして、左の log₂Ω₀ から右の Ω = 1 まで描く。
+// 一手ごとに、数字で絞った分（I）を上へ青で、運で払った分（L）を下へ赤で分岐させる。
+// 赤は、その場の一番安い賭けでも払う分（不可避）を暗く、それを超えた分（賭けの損・推理ミス）を明るくする
+function recordHist() {
+  const h = hist[hist.length - 1];
+  if (isFinite(g.L) && (g.L !== h.L || g.I !== h.I)) hist.push({ L: g.L, I: g.I, m: g.moves.length });
+}
+function flowChart() {
+  recordHist();
+  const steps = [];
+  for (let j = 1; j < hist.length; j++) {
+    const a = hist[j - 1], b = hist[j];
+    let need = 0, extra = 0, miss = false;
+    for (const m of g.moves.slice(a.m, b.m)) {
+      if (!isFinite(m.cost) || m.cost === 0) continue;
+      if (m.safeExists) { extra += m.cost; miss = true; }
+      else { need += m.best; extra += m.cost - m.best; }
+    }
+    const dL = b.L - a.L;
+    // 手ごとの内訳の合計を、実際に増えた L に合わせる（まとめ開けなどで手の記録と増分がずれないように）
+    const sum = need + extra, f = sum > 0 ? dL / sum : 0;
+    steps.push({ dI: b.I - a.I, need: need * f, extra: extra * f, miss });
+  }
+  if (!steps.length) return '';
+  const VW = 600, PAD = 40, BAND = 110, top0 = PAD, k = BAND / g.H0;
+  const dx = (VW - 30) / (steps.length + 1), R = Math.min(10, dx * 0.4), T = 26;
+  let a = top0, b = top0 + BAND, x = 10;
+  let band = `M${x} ${a}`, under = [], parts = [];
+  // 帯から外へ曲がって出ていく舌の形。y1–y2 の幅を保ったまま、dir = -1 なら上、1 なら下へ向ける
+  const tongue = (x, y1, y2, dir, color, r = R) => {
+    const t = Math.abs(y2 - y1);
+    if (t < 0.05) return '';
+    const yi = dir < 0 ? Math.min(y1, y2) : Math.max(y1, y2), yo = dir < 0 ? Math.max(y1, y2) : Math.min(y1, y2);
+    const ro = r + t, end = yi + dir * (r + T);
+    return `<path fill="${color}" d="M${x} ${yi} C${x + r * .55} ${yi} ${x + r} ${yi + dir * r * .45} ${x + r} ${yi + dir * r} L${x + r} ${end} L${x + ro} ${end} L${x + ro} ${yi + dir * r} C${x + ro} ${yo + dir * ro * .45} ${x + ro * .55} ${yo} ${x} ${yo} Z"/>`;
+  };
+  for (const st of steps) {
+    x += dx;
+    const na = a + st.dI * k, nRed = (st.need + st.extra) * k, nb = b - nRed;
+    parts.push(tongue(x, a, na, -1, '#6f9cff'));
+    // 赤は曲がりの内側に不可避（暗い赤）、外側に余分（明るい赤）を並べる
+    const mid = b - st.need * k;
+    parts.push(tongue(x, b, mid, 1, '#8a3040'));
+    parts.push(tongue(x, mid, nb, 1, 'var(--risk)', R + st.need * k));
+    if (st.miss) parts.push(`<text x="${x + R}" y="${b + R + T + 14}" font-size="12" fill="var(--risk)">✕</text>`);
+    band += ` L${x} ${a} C${x + dx * .25} ${a} ${x + dx * .25} ${na} ${x + dx * .5} ${na}`;
+    under.unshift(`L${x + dx * .5} ${nb} C${x + dx * .25} ${nb} ${x + dx * .25} ${b} ${x} ${b}`);
+    a = na; b = nb;
+  }
+  band += ` L${x + dx} ${a} L${x + dx} ${b} ${under.join(' ')} L10 ${top0 + BAND} Z`;
+  const H = top0 + BAND + PAD + 8;
+  return `<svg class="flow" viewBox="0 0 ${VW} ${H}" role="img" aria-label="世界の減り方">` +
+    `<path d="${band}" fill="var(--cell)"/>${parts.join('')}` +
+    `<text x="10" y="${top0 + BAND + 16}" font-size="12" fill="var(--mute)">2^${g.H0.toFixed(1)}</text>` +
+    `<text x="${VW - 4}" y="${top0 + BAND + PAD}" font-size="12" fill="var(--mute)" text-anchor="end">Ω = 1</text></svg>` +
+    '<p class="flowcap">世界の減り方。上の青は数字で、下の赤は運で削った分。暗い赤は、その場で一番安い賭けでも払うしかなかった分です。</p>';
+}
+
 function showResult(ok) {
   const el = $('result');
   $('msg').innerHTML = '';
@@ -402,7 +466,7 @@ function showResult(ok) {
       `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち、数字で <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を絞りました。`,
       '観測を終了します。',
     ];
-    table = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    table = flowChart() + `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
     summary = `${r}・コイントス ${coins} 回分（${pctS(surv)}）` + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
