@@ -1,18 +1,22 @@
 // 盤の進行。DOM には触らない（node から試せるようにする）。
 import { analyze, binom, neighbors, DETECTORS, maskOf, classLabel } from './engine.js';
 
-const FUZZY_MIX = [['exact', 0.5], ['range', 0.2], ['pair', 0.15], ['parity', 0.15]];
+// 霧の濃さごとの検出器の割合
+export const MIXES = {
+  0: [['exact', 1]],
+  1: [['exact', 0.5], ['range', 0.2], ['pair', 0.15], ['parity', 0.15]],
+  2: [['exact', 0.2], ['range', 0.3], ['pair', 0.25], ['parity', 0.25]],
+};
 
 export class Game {
-  constructor(W, H, M, fuzzy, rng = Math.random) {
+  constructor(W, H, M, mix = MIXES[1], rng = Math.random) {
     Object.assign(this, { W, H, M, rng });
     const N = W * H;
     this.N = N;
     // 検出器の種類はマスごとに最初から決まっていて、開ける前から見える
     this.det = Array.from({ length: N }, () => {
-      if (!fuzzy) return 'exact';
       let u = rng();
-      for (const [t, w] of FUZZY_MIX) { if ((u -= w) < 0) return t; }
+      for (const [t, w] of mix) { if ((u -= w) < 0) return t; }
       return 'exact';
     });
     this.opened = new Uint8Array(N);

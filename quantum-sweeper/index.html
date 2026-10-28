@@ -52,7 +52,11 @@ details p,details li{font-size:14px;color:#cdd5e6}
     <button data-size="9,9,10" aria-pressed="true">9×9</button>
     <button data-size="16,16,40" aria-pressed="false">16×16</button>
   </span>
-  <button id="fuzzy" aria-pressed="true">曖昧</button>
+  <span role="group" aria-label="手がかりの曖昧さ">
+    <button data-fog="0" aria-pressed="false">精密</button>
+    <button data-fog="1" aria-pressed="true">曖昧</button>
+    <button data-fog="2" aria-pressed="false">濃霧</button>
+  </span>
 </div>
 <div class="bar">
   <span role="group" aria-label="評価のモード">
@@ -90,12 +94,12 @@ details p,details li{font-size:14px;color:#cdd5e6}
 </details>
 </main>
 <script type="module">
-import { Game, rank, rankCost } from './game.js';
+import { Game, MIXES, rank, rankCost } from './game.js';
 
 const $ = id => document.getElementById(id);
 const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐' };
-let size = [9, 9, 10], fuzzy = true, mode = 'safe', autoChord = false, tap = 'open', showP = false;
+let size = [9, 9, 10], fog = 1, mode = 'safe', autoChord = false, tap = 'open', showP = false;
 let g, cells, last = -1;
 
 function fmtOmega(o) {
@@ -107,7 +111,7 @@ const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' 
 
 function newGame() {
   const [W, H, M] = size;
-  g = new Game(W, H, M, fuzzy);
+  g = new Game(W, H, M, MIXES[fog]);
   g.autoChord = mode === 'safe' && autoChord;
   last = -1;
   board.style.setProperty('--w', W);
@@ -158,8 +162,8 @@ function render() {
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : g.flags.has(i) ? '旗' : '未開放');
   }
   $('omega').textContent = fmtOmega(g.an.omega);
-  $('Lv').textContent = g.L.toFixed(2) + ' bit';
-  $('Iv').textContent = g.I.toFixed(2) + ' bit';
+  $('Lv').textContent = g.L.toFixed(2);
+  $('Iv').textContent = g.I.toFixed(2);
   const s = 2 ** -g.L;
   $('surv').textContent = s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
 }
@@ -301,7 +305,11 @@ document.querySelectorAll('[data-size]').forEach(btn => btn.addEventListener('cl
   size = btn.dataset.size.split(',').map(Number);
   newGame();
 }));
-$('fuzzy').addEventListener('click', e => { fuzzy = !fuzzy; e.currentTarget.setAttribute('aria-pressed', fuzzy); newGame(); });
+document.querySelectorAll('[data-fog]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-fog]').forEach(x => x.setAttribute('aria-pressed', x === btn));
+  fog = +btn.dataset.fog;
+  newGame();
+}));
 document.querySelectorAll('[data-tap]').forEach(btn => btn.addEventListener('click', () => {
   document.querySelectorAll('[data-tap]').forEach(x => x.setAttribute('aria-pressed', x === btn));
   tap = btn.dataset.tap;
