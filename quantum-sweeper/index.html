@@ -107,6 +107,15 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
+/* 初めて見る検出器の手がかりが開いた時の、一度だけの実演。手がかりのマスを脈打つ枠で囲み、見ている範囲を青く縁取って、読み方を1行で出す */
+#tip{min-height:1.6em;text-align:center;margin:4px 0 0;font-size:14px;color:#cdd5e6}
+#tip b{color:#7fb2ff;font-family:ui-monospace,Menlo,monospace;margin-right:.6em}
+.c.ta{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
+.c.tq{outline:2px solid #7fb2ff;outline-offset:-2px;animation:tq 1.2s ease-in-out infinite}
+@keyframes tq{50%{outline-color:rgba(127,178,255,.25)}}
+@media (prefers-reduced-motion:reduce){.c.tq{animation:none}}
+.bar #skip{margin-left:auto}
+#intro{margin:6px 0 0 6px}
 .scen{display:grid;grid-template-columns:4.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
 .scen span{font-weight:700;align-self:center}
 .scen span.hard{color:var(--risk)}
@@ -167,7 +176,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <div id="camp" role="group" aria-label="キャンペーン"></div>
   <div id="gridrow"></div>
   <div id="grid" role="group" aria-label="検出器の組み合わせ"></div>
-  <button id="free">自由観測</button>
+  <button id="free">自由観測</button><button id="intro" aria-label="導入を最初から">◇ 導入</button>
   <details id="records" hidden></details>
 </div>
 <div id="play" hidden>
@@ -175,6 +184,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div class="bar">
   <button id="toentry" aria-label="入口へ">←</button>
   <span id="stagelabel" class="stagelabel"></span>
+  <button id="skip" hidden>スキップ</button>
 </div>
 <div class="bar" id="setbar">
   <span role="group" aria-label="盤の大きさ">
@@ -238,6 +248,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
 <div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="false" aria-label="各マスの p を数字で表示">%</button></div>
 <p id="msg" aria-live="polite"></p>
+<p id="tip" aria-live="polite"></p>
 </div>
 <div id="result" aria-live="polite"></div>
 </div>
@@ -305,6 +316,43 @@ function openedCell(i, t) {
   if (DETECTORS[g.det[i]].show) html = `<span class="wm">${MARK[g.det[i]]}</span><span class="v">${t}</span>`;
   return { cls, html };
 }
+// 検出器の種類ごとの実演。初めてその種類の手がかりが開いた時に一度だけ、手がかりのマスと見ている範囲を枠で示し、
+// 表示の読み方を1行で出す。次にマスを操作すると消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
+let tipCell = -1, introSeen = new Set(), seen = new Set();
+try { seen = new Set(JSON.parse(localStorage.getItem('qs-seen')) || []); } catch { /* 保存できない環境 */ }
+const seenSet = () => camp && camp.s < 0 ? introSeen : seen;
+// この手で開いたマスのうち、まだ見ていない種類の手がかりを、開く動きの早い順に探す。0 個と確定した数字（空白）は除く
+function pickTip(fresh) {
+  const set = seenSet();
+  const c = fresh.filter(i => g.clues.has(i) && g.label[i] && !set.has(g.det[i]))
+    .sort((a, b) => (pops.get(a) || 0) - (pops.get(b) || 0))[0];
+  if (c === undefined) return;
+  tipCell = c;
+  set.add(g.det[c]);
+  seen.add(g.det[c]);
+  try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
+}
+// 手がかりの表示の読み方。範囲は枠で見せているので、文では「枠の中」とだけ言う
+function tipText(i) {
+  const t = g.det[i], lab = g.label[i];
+  const head = `<b>${MARK[t] ? MARK[t] + ' ' : ''}${lab}</b>`;
+  let m;
+  if (t === 'parity') return head + `枠の中の地雷は${lab === '偶' ? '偶数' : '奇数'}個`;
+  if (t === 'lr') return head + (lab === '⇔' ? '左の列と右の列の地雷は同じ数' : `${lab === '←' ? '左' : '右'}の列の地雷の方が多い`);
+  if (t === 'ud') return head + (lab === '⇕' ? '上の行と下の行の地雷は同じ数' : `${lab === '↑' ? '上' : '下'}の行の地雷の方が多い`);
+  if ((m = /^(\d+)\|(\d+)$/.exec(lab))) return head + `枠の中の地雷は ${m[1]} 個か ${m[2]} 個`;
+  if ((m = /^(\d+)-(\d+)$/.exec(lab))) return head + `枠の中の地雷は ${m[1]}〜${m[2]} 個`;
+  return head + `枠の中の地雷は ${lab} 個`;
+}
+// 導入の2面では、◆ を一度置くまで、◆ の操作を1行で出す（長押しと右クリックは見た目から分からないので）
+const fineMouse = matchMedia('(hover:hover) and (pointer:fine)');
+function renderTip() {
+  let t = '';
+  if (tipCell >= 0 && review < 0) t = tipText(tipCell);
+  else if (camp && camp.s < 0 && camp.k === 1 && g.state === 'play' && g.landed && !g.mines.size)
+    t = `<b style="color:var(--gold)">◆</b>${fineMouse.matches ? '右クリック' : '長押し'}で地雷を観測する`;
+  $('tip').innerHTML = t;
+}
 // 開いた手がかりのマスに触れている間、その検出器が見ている範囲のマスを枠で示す。
 // 開いていないマスに触れている間は、そのマスを範囲に含む手がかりのマスを枠で示す。
 // 手がかりの全部を示し、そのマスを決めている手がかりだけに絞ることはしない（絞ると推理の答えになる）
@@ -352,10 +400,10 @@ const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' 
 function newGame() {
   stopBot();
   const [W, H, M] = size;
-  g = new Game(W, H, M, mix, Math.random, camp ? SCEN[camp.s].parts : undefined);
+  g = new Game(W, H, M, mix, Math.random, camp ? scenOf(camp).parts : undefined);
   syncCustom();
   g.autoChord = mode === 'safe' && autoChord;
-  last = hint = areaOf = -1;
+  last = hint = areaOf = tipCell = -1;
   marked = [];
   board.style.setProperty('--w', W);
   board.style.setProperty('--h', H);
@@ -373,6 +421,7 @@ function newGame() {
   pops = new Map();
   clps = new Map();
   $('msg').innerHTML = '';
+  $('tip').innerHTML = '';
   $('result').style.display = 'none';
   $('revbar').hidden = true;
   render();
@@ -450,7 +499,9 @@ function render() {
       pops.set(i, Math.min(d, POP_MAX) * POP_STEP);
     }
     popEnd = performance.now() + Math.max(...pops.values()) + 550;
+    if (g.state === 'play') pickTip(fresh);
   }
+  const tipArea = tipCell >= 0 ? new Set(g.areas[tipCell].cells) : null;
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -470,6 +521,8 @@ function render() {
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
     }
     if (i === last) cls += ' last';
+    if (i === tipCell) cls += ' tq';
+    else if (tipArea && tipArea.has(i)) cls += ' ta';
     // 一番安かった賭けのマスには、その賭けの記号（◇ 開ける / ◆ 地雷に賭ける）を薄く重ねる
     if (i === hint && !g.opened[i] && !g.mines.has(i)) {
       cls += ' hint';
@@ -490,6 +543,7 @@ function render() {
   renderStats(g.an.omega, liveL(), g.I);
   renderMeter();
   markArea(areaOf);
+  renderTip();
 }
 const liveL = () => g.state === 'dead' ? Infinity : g.L;
 function renderStats(omega, L, I) {
@@ -565,6 +619,7 @@ function renderReview(m) {
   renderStats(s.omega, s.L, s.I);
   renderMeter();
   markArea(areaOf);
+  renderTip();
 }
 // 振り返りの1行: 選んだ手の記号と p。賭けの手ではコストも出し、推理ミスなら ✕、もっと安い賭けがあればその賭け
 function reviewLine(m) {
@@ -771,6 +826,7 @@ function act(i) {
     return;
   }
   if (g.state !== 'play') return;
+  tipCell = -1;
   if (g.opened[i]) { chord(i); return; }
   if (g.mines.has(i)) return;
   betOpen(i);
@@ -974,10 +1030,12 @@ function showResult(ok) {
   // キャンペーンでは、クリアを記録し、次の面・やり直しのボタンを出す
   let next = '';
   if (camp) {
-    const sc = SCEN[camp.s], last = camp.k === sc.stages.length - 1;
+    const sc = scenOf(camp), last = camp.k === sc.stages.length - 1;
     setting = `${sc.name} ${camp.k + 1}/${sc.stages.length}・${g.W}×${g.H}・${g.M}個`;
+    // 導入は、最後の面をクリアしたら終えたことにする。ランクは記録しない
+    if (ok && camp.s < 0 && last) introDone();
     // 自動プレーを使った面は、次へ進めるがクリアとして記録しない
-    if (ok && !g.botUsed) {
+    else if (ok && camp.s >= 0 && !g.botUsed) {
       // 面ごとに一番良かった記録（ランクと、その時の L）を残す。ランクが同じなら L が小さい方
       const old = prog[camp.s][camp.k], d = rankOrder(r) - rankOrder(old);
       if (d > 0 || (d === 0 && (recL(old) === null || g.L < recL(old)))) prog[camp.s][camp.k] = { r, L: g.L };
@@ -1004,7 +1062,7 @@ function showResult(ok) {
   }
   if (camp) $('next').addEventListener('click', () => {
     if (!ok) newGame();
-    else if (camp.k === SCEN[camp.s].stages.length - 1) showEntry();
+    else if (camp.k === scenOf(camp).stages.length - 1) showEntry();
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
@@ -1023,7 +1081,7 @@ async function shareResult(e) {
 }
 
 // タップとクリックは ◇（空と決めて踏み込む）。長押しと右クリックは ◆（地雷を観測する）
-const quickMine = i => { if (g.state === 'play' && g.free(i)) betMine(i); };
+const quickMine = i => { if (g.state === 'play' && g.free(i)) { tipCell = -1; betMine(i); } };
 let pressTimer = 0, longPressed = false;
 board.addEventListener('pointerover', e => {
   const b = e.target.closest('.c');
@@ -1201,6 +1259,19 @@ const SCEN = [
   // ≋ 単体は、0 を常に単独の値として返す（今の分け方それぞれから 0 を切り出す）。0 の連鎖が起きるので地雷を置ける
   { name: '≋', cell: [4, 4], hard: true, mix: [0, 0, 0, 0, 100, 0, 0, 0, 0], parts: { wide: [[[0], [1, 2], [3, 4, 5], [6, 7, 8]], [[0], [1, 2, 3], [4, 5, 6], [7, 8]], [[0], [1], [2, 3, 4], [5, 6, 7], [8]]] }, stages: [[9, 9, 7], [10, 10, 9], [12, 12, 12], [14, 14, 16], [16, 16, 21]] },
 ];
+// 導入。初めての人が最初に遊ぶ3面。1面で教えることを1つに絞る:
+// 1面は降り立つことと ◇、2面は ◆（長押し・右クリック）、3面は初めての粗視化した検出器（≈）。
+// 盤と地雷の数は、測った面（非粗視化の1・2面、精密≈の1面）と同じにする。シナリオの一覧には出さず、camp.s を -1 にして遊ぶ
+const INTRO = {
+  name: '導入',
+  heads: ['観測記録 001', '観測記録 002', '観測記録 003'],
+  stages: [[6, 6, 7], [7, 7, 9], [8, 8, 6]],
+  mixes: [MIXES[0], MIXES[0], [50, 50, 0, 0, 0, 0, 0, 0, 0]],
+};
+const scenOf = c => c.s < 0 ? INTRO : SCEN[c.s];
+function introDone() {
+  try { localStorage.setItem('qs-intro', '1'); } catch { /* 保存できない環境 */ }
+}
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
 let freeSet = null;
@@ -1317,13 +1388,17 @@ function enterPlay() {
   // 詳細設定の自動プレーは残す
   for (const id of ['setbar', 'modegrp']) $(id).hidden = !!camp;
   document.querySelectorAll('#custom label').forEach(l => l.hidden = !!camp);
-  $('stagelabel').textContent = camp ? `${SCEN[camp.s].name} ${camp.k + 1}/${SCEN[camp.s].stages.length}` : '';
+  $('stagelabel').textContent = !camp ? '' : camp.s < 0 ? INTRO.heads[camp.k] : `${SCEN[camp.s].name} ${camp.k + 1}/${SCEN[camp.s].stages.length}`;
+  $('skip').hidden = !camp || camp.s >= 0;
 }
 function startStage(s, k) {
   if (!freeSet) freeSet = { size, mix, mode };
   camp = { s, k };
-  size = SCEN[s].stages[k].slice();
-  mix = scenMix(SCEN[s]).slice();
+  const sc = scenOf(camp);
+  size = sc.stages[k].slice();
+  mix = (sc.mixes ? sc.mixes[k] : scenMix(sc)).slice();
+  // 導入を始める時は、導入に出る検出器の実演をもう一度見せる
+  if (s < 0 && k === 0) introSeen = new Set();
   mode = 'safe';
   document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === 'safe'));
   $('autochord').hidden = false;
@@ -1352,9 +1427,14 @@ $('free').addEventListener('click', () => {
   enterPlay();
   newGame();
 });
-$('toentry').addEventListener('click', showEntry);
+$('toentry').addEventListener('click', () => { if (camp && camp.s < 0) introDone(); showEntry(); });
+$('skip').addEventListener('click', () => { introDone(); showEntry(); });
+$('intro').addEventListener('click', () => startStage(-1, 0));
 
 newGame();
-showEntry();
+// 初めて開いた時は、入口の表を出さずに導入の1面から始める。キャンペーンの記録がある時は、導入を終えた人として扱う
+let introOk = prog.some(row => row.some(Boolean));
+try { introOk ||= localStorage.getItem('qs-intro') === '1'; } catch { /* 保存できない環境 */ }
+if (introOk) showEntry(); else startStage(-1, 0);
 </script>
 </body></html>
