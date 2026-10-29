@@ -43,7 +43,8 @@ export class Game {
     this.mines = new Set();   // 地雷に賭けて確定させたマス
     this.H0 = Math.log2(binom(N, M));
     this.L = 0;   // 生き残ることで削った世界（命で払ったビット）
-    this.I = 0;   // 手がかりを見ることで削った世界（観測で得たビット）
+    this.I = 0;   // 手がかりを見ることで削った世界（観測で得たビット）。refresh で L + I = log₂Ω₀ − log₂Ω から求める
+    this.world = null;   // 手がかりを答えるために引いた世界（observe 参照）
     this.moves = [];
     this.landed = false;
     this.state = 'play';
@@ -53,6 +54,7 @@ export class Game {
   refresh() {
     this.dirty = false;
     this.an = analyze(this.W, this.H, this.M, this.opened, this.clues, true, this.mines, this.area);
+    this.I = this.H0 - this.L - Math.log2(this.an.omega);
     if (this.an.omega < 1.5) this.state = 'clear';
   }
   get bitsLeft() { return Math.log2(this.an.omega); }
@@ -161,6 +163,7 @@ export class Game {
       const after = analyze(W, H, M, this.opened, this.clues, false, this.mines, this.area).omega;
       if (after > 0) {
         this.H0 -= Math.log2(before / after);
+        this.world = null;
         this.moves.push({ kind: 'open', c, p: 0, cost: 0, ...sit });
         for (const d of cells) this.observe(d);
         return { p: 0, cost: 0, opened: cells.slice() };
@@ -189,29 +192,26 @@ export class Game {
     this.moves.push({ kind: 'mine', c, p, cost, ...sit });
     this.mines.add(c);
     this.dirty = true;
+    this.world = null;
     const opened = [];
     this.settle(opened);
     return { p, cost, opened };
   }
 
-  // c を開け、生き残った世界の中から c の手がかりを1つ引く
+  // c を開け、c の手がかりを出す。生き残った世界から1つを等確率に引いておき（this.world）、その世界での値を答える。
+  // 続けて開けるマス（0 の連鎖など）も同じ世界から答えるので、1つずつ引き直すのと同じ分布になり、数え直しは1回で済む。
+  // 地雷に賭けた時や、地雷がありうるマスを開けた時は、生き残る世界が変わるので引き直す（world を null にする）
   observe(c) {
     this.opened[c] = 1;
     this.dirty = true;
     const { W, H, M } = this;
-    const survive = analyze(W, H, M, this.opened, this.clues, false, this.mines, this.area).omega;
-    const classes = this.classes[c];
-    const off = this.areas[c].off;
-    const weights = classes.map(cls => {
-      this.clues.set(c, maskOf(cls, off));
-      return analyze(W, H, M, this.opened, this.clues, false, this.mines, this.area).omega;
-    });
-    let u = this.rng() * weights.reduce((a, b) => a + b, 0), pick = 0;
-    while (pick < weights.length - 1 && (u -= weights[pick]) >= 0) pick++;
-    while (!weights[pick]) pick--;
-    this.clues.set(c, maskOf(classes[pick], off));
-    this.label[c] = classLabel(this.det[c], classes[pick]);
-    this.I += Math.log2(survive / weights[pick]);
+    if (!this.world) this.world = analyze(W, H, M, this.opened, this.clues, false, this.mines, this.area, this.rng).world;
+    const a = this.areas[c];
+    let v = 0;
+    a.cells.forEach((d, j) => { v += this.world[d] * (a.w ? a.w[j] : 1); });
+    const cls = this.classes[c].find(cl => cl.includes(v));
+    this.clues.set(c, maskOf(cls, a.off));
+    this.label[c] = classLabel(this.det[c], cls);
   }
 
   // 普通のマインスイーパーと同じく、0 と確定した手がかりの範囲だけを続けて開ける。
