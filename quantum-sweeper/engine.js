@@ -273,9 +273,9 @@ export const DETECTORS = {
   cross: { area: shape(CROSS), count: true, show: true, parts: [single(4)], fmt: countLabel },
   diag: { area: shape(DIAG), count: true, show: true, parts: [single(4)], fmt: countLabel },
   knight: { area: shape(KNIGHT), count: true, show: true, parts: [single(8)], fmt: countLabel },
-  // 値は（左 − 右）または（上 − 下）。多い側を矢印で、同数を「=」で答える
-  lr: { area: shape(LR), show: true, parts: [[[1, 2, 3], [0], [-3, -2, -1]]], fmt: cls => cls[0] > 0 ? '←' : cls[0] < 0 ? '→' : '=' },
-  ud: { area: shape(UD), show: true, parts: [[[1, 2, 3], [0], [-3, -2, -1]]], fmt: cls => cls[0] > 0 ? '↑' : cls[0] < 0 ? '↓' : '=' },
+  // 値は（左 − 右）または（上 − 下）。多い側を矢印で、同数を両向きの矢印（⇔・⇕）で答えるので、表示だけで向きが分かる
+  lr: { area: shape(LR), parts: [[[1, 2, 3], [0], [-3, -2, -1]]], fmt: cls => cls[0] > 0 ? '←' : cls[0] < 0 ? '→' : '⇔' },
+  ud: { area: shape(UD), parts: [[[1, 2, 3], [0], [-3, -2, -1]]], fmt: cls => cls[0] > 0 ? '↑' : cls[0] < 0 ? '↓' : '⇕' },
 };
 export function classLabel(type, cls) {
   return DETECTORS[type].fmt(cls);
