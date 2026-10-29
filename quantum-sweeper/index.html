@@ -283,7 +283,7 @@ let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 終局後の振り返りで見ている手の番号。-1 なら終局の盤
 let review = -1;
 // 盤に開いた姿で描いたマスと、直前の手で開いたマスごとの開く遅れ（ms）
-let shown = null, pops = new Map();
+let shown = null, pops = new Map(), popEnd = 0;
 
 function fmtOmega(o) {
   if (o < 1e6) return Math.round(o).toLocaleString();
@@ -376,8 +376,11 @@ function render() {
   // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す（振り返りの盤では renderReview が出す）
   if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(null); else stopCloud();
   // 前に描いた時から新しく開いたマスがあれば、押したマスからの距離で開く時刻をずらす
+  // 動き終わった後の描き直し（◆ を置いた時や表示の切り替え）では、前の手の動きを繰り返さない。
+  // 動いている間の描き直し（終局の画面を出す時など）では消さない
   const fresh = [];
   for (let i = 0; i < W * H; i++) if (g.opened[i] && !shown[i]) fresh.push(i);
+  if (performance.now() > popEnd) pops = new Map();
   if (fresh.length) {
     pops = new Map();
     const o = last >= 0 ? last : fresh[0];
@@ -386,6 +389,7 @@ function render() {
       const d = Math.max(Math.abs(i % W - o % W), Math.abs(Math.floor(i / W) - Math.floor(o / W)));
       pops.set(i, Math.min(d, 14) * 55);
     }
+    popEnd = performance.now() + Math.max(...pops.values()) + 250;
   }
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
