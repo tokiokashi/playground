@@ -4,7 +4,7 @@ import { analyze, binom, neighbors, DETECTORS, maskOf, classLabel } from './engi
 // 検出器の割合の並び。比べる検出器（cmp）は、向き（⇆ か ⇅）をマスごとにくじで決める
 export const TYPES = ['exact', 'range', 'pair', 'parity', 'wide', 'cross', 'diag', 'knight', 'cmp'];
 const pad = a => a.concat(Array(TYPES.length - a.length).fill(0));
-// 検出器の割合のプリセット（TYPES の順、%）。前の4つは粗視化の度合い、次の2つは見る範囲の違う検出器を混ぜ、最後は全種類を混ぜる
+// 検出器の割合のプリセット（TYPES の順。和に対する比で使う。スライダーが5刻みなので5の倍数にする）。前の4つは粗視化の度合い、次の2つは見る範囲の違う検出器を混ぜ、最後の2つは全種類を混ぜる（最後は精密を入れない）
 export const MIXES = [
   [100, 0, 0, 0, 0],
   [60, 10, 10, 10, 10],
@@ -13,6 +13,7 @@ export const MIXES = [
   [40, 0, 0, 0, 0, 20, 20, 20],
   [40, 0, 0, 0, 0, 0, 0, 0, 60],
   [20, 10, 10, 10, 10, 10, 10, 10, 10],
+  [0, 10, 10, 10, 10, 10, 10, 10, 10],
 ].map(pad);
 export const normMix = mix => pad(mix.slice(0, TYPES.length));
 
