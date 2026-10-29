@@ -292,7 +292,7 @@ let review = -1;
 // 盤に開いた姿で描いたマスと、直前の手で開いたマスごとの開く遅れ（ms）
 let shown = null, pops = new Map(), popEnd = 0;
 // 開く動きで、押したマスから1マス離れるごとの遅れ（ms）と、遅れの頭打ちの距離
-const POP_STEP = 80, POP_MAX = 12;
+const POP_STEP = 130, POP_MAX = 8;
 // 直前の賭けで確率が 0 か 1 に決まったマスごとの、光る遅れ（ms）
 let clps = new Map(), clpEnd = 0;
 // 開く動きの起点。同時開けでは押した手がかりのマス。-1 なら最後に開けたマス
