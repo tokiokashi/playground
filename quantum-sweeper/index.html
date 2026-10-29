@@ -557,6 +557,7 @@ function renderReview(m) {
     cells[i]._h = html;
   }
   $('msg').innerHTML = reviewLine(m);
+  $('left').innerHTML = `<b>●</b>${g.M - s.mines.length}`;
   renderStats(s.omega, s.L, s.I);
   renderMeter();
   markArea(areaOf);
