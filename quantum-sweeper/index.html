@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>量子自殺マインスイーパー</title>
+<title>量子自○マインスイーパー</title>
 <style>
 :root{--bg:#0b0f1a;--panel:#121a2b;--line:#26324d;--ink:#e7ecf6;--mute:#8e9ab5;--gold:#f2c66b;--safe:#1a2338;--cell:#2b3858;--cellhi:#364670;--risk:#ff6b6b;color-scheme:dark}
 *{box-sizing:border-box}
@@ -171,7 +171,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 .mono{font-family:ui-monospace,Menlo,monospace}
 </style></head><body><main>
 <a class="back" href="../">← 作品一覧</a>
-<h1>量子自殺マインスイーパー</h1>
+<h1>量子自○マインスイーパー</h1>
 <div id="entry">
   <div id="camp" role="group" aria-label="キャンペーン"></div>
   <div id="gridrow"></div>
@@ -1044,7 +1044,7 @@ function showResult(ok) {
     }
     next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button>`;
   }
-  shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
+  shareText = `量子自○マインスイーパー ${setting}\n${summary}`;
   // ランクと次へ、流れ図を先に置き、文章と表はその後ろに回す。振り返りの操作は盤のすぐ下（#revbar）に出す
   el.innerHTML = `<div class="rhead">${head}${next}</div>${chart}<p class="story">${story.filter(Boolean).join('<br>')}</p>${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
