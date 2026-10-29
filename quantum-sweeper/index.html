@@ -59,7 +59,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #result .story{margin:6px 0 0;font-size:14px;line-height:1.8}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
 #share{margin-top:10px}
-#next{display:block;margin:8px 0 2px;padding:8px 22px;font-size:16px;font-weight:bold;background:var(--gold);color:var(--bg);border-color:var(--gold)}
+#result .rhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#result .rhead h2{margin:0}
+#next{display:block;margin:0;padding:8px 22px;font-size:16px;font-weight:bold;background:var(--gold);color:var(--bg);border-color:var(--gold)}
 #meter{display:flex;justify-content:center;gap:3px;margin:0 0 10px}
 #meter span{width:1.1em;padding:1px 0;text-align:center;font:400 26px/1.25 ui-monospace,Menlo,monospace;color:#ffb35c;background:radial-gradient(ellipse at 50% 40%,#2a1608,#0d0805);border:1px solid #3a2414;border-radius:40%/16%;text-shadow:0 0 4px #ff7a1a,0 0 10px rgba(255,122,26,.6)}
 #meter span.dot{width:.45em;background:none;border:0}
@@ -707,7 +709,7 @@ function showResult(ok) {
   // 一番危なかった賭け: 外れる確率（開けるなら p、地雷に賭けるなら 1 − p）が一番高かったもの
   const worst = bets.reduce((a, m) => (!a || m.cost > a.cost ? m : a), null);
   const risk = worst ? 1 - 2 ** -worst.cost : 0;
-  let head, story, table = '', summary, r;
+  let head, story, table = '', chart = '', summary, r;
   if (!ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
@@ -739,7 +741,8 @@ function showResult(ok) {
       `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を、根拠を持って絞り込みました。`,
       '観測を終了します。',
     ];
-    table = flowChart() + `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    chart = flowChart();
+    table = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
     summary = r + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(surv)}）` : '') + (worst ? `・最も危うい分岐 ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
@@ -763,7 +766,8 @@ function showResult(ok) {
   // 一手ずつ、打つ前の盤面を送って見られるようにする。外側のボタンは賭けの手へ飛ぶ
   const nRev = reviewMoves().length;
   const rev = nRev ? '<div class="review"><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button></div>' : '';
-  el.innerHTML = `${head}${next}<p class="story">${story.filter(Boolean).join('<br>')}</p>${rev}${table}<button id="share">共有</button>`;
+  // 盤のすぐ下に、ランクと次へ、振り返りの操作、流れ図を置く。スマホで盤と見比べながら操作できるようにし、文章と表はその後ろに回す
+  el.innerHTML = `<div class="rhead">${head}${next}</div>${rev}${chart}<p class="story">${story.filter(Boolean).join('<br>')}</p>${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
   if (nRev) {
     $('rvprev').addEventListener('click', () => setReview(review < 0 ? nRev - 1 : review - 1));
@@ -783,8 +787,9 @@ function showResult(ok) {
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
-  // 結果は盤の下に出るので、次へのボタンが見える所まで送る
-  if (camp) $('next').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // 結果は盤の下に出るので、操作と流れ図が見える所まで送る
+  const tail = el.querySelector('.flow') || el.querySelector('.review') || (camp && $('next'));
+  if (tail) tail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 let shareText = '';
