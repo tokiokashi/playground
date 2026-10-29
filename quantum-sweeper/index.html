@@ -59,7 +59,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #result .story{margin:6px 0 0;font-size:14px;line-height:1.8}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
 #share{margin-top:10px}
-#next{display:block;margin:8px 0 2px;padding:8px 22px;font-size:16px;font-weight:bold;background:var(--gold);color:var(--bg);border-color:var(--gold)}
+#result .rhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#result .rhead h2{margin:0}
+#next{display:block;margin:0;padding:8px 22px;font-size:16px;font-weight:bold;background:var(--gold);color:var(--bg);border-color:var(--gold)}
 #meter{display:flex;justify-content:center;gap:3px;margin:0 0 10px}
 #meter span{width:1.1em;padding:1px 0;text-align:center;font:400 26px/1.25 ui-monospace,Menlo,monospace;color:#ffb35c;background:radial-gradient(ellipse at 50% 40%,#2a1608,#0d0805);border:1px solid #3a2414;border-radius:40%/16%;text-shadow:0 0 4px #ff7a1a,0 0 10px rgba(255,122,26,.6)}
 #meter span.dot{width:.45em;background:none;border:0}
@@ -287,13 +289,17 @@ function newGame() {
 // マスごとに区切らない。1マスを1画素とした小さな canvas に各マスの濃さを置き、盤の大きさへ拡大する。
 // 拡大の補間で隣のマスとの間が滑らかにつながり、境目が消える
 const cloud = $('cloud');
-let cloudFrame = 0, cloudSrc = null;
-function startCloud() {
+// 振り返りの盤に p の数字を出すか。最初は雲だけにし、プレー中の |ψ|² と同じく数字は自分で出す
+let showPv = false;
+// cloudSnap: 振り返りで見ている盤面の写し。null なら今の盤から描く
+let cloudFrame = 0, cloudSrc = null, cloudSnap = null;
+function startCloud(snap = cloudSnap) {
   const { W, H } = g;
+  cloudSnap = snap;
   cloudSrc = [];
   for (let i = 0; i < W * H; i++) {
-    if (g.opened[i] || g.mines.has(i)) continue;
-    const p = g.prob(i);
+    if (snap ? snap.opened[i] || snap.mines.includes(i) : g.opened[i] || g.mines.has(i)) continue;
+    const p = snap ? snap.prob[i] : g.prob(i);
     // p = 1 のマスも同じ色で置く。確定したマスの背景と同じ色なので、補間で隣とつながっても色が途切れない
     if (p > 1e-9) cloudSrc.push({ i, p, ph: p < 1 - 1e-9 ? i * 2.39 : null });
   }
@@ -333,8 +339,8 @@ function render() {
   const over = g.state !== 'play';
   board.classList.toggle('won', g.state === 'clear');
   board.classList.toggle('lost', g.state === 'dead');
-  // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す
-  if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(); else stopCloud();
+  // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す（振り返りの盤では renderReview が出す）
+  if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(null); else stopCloud();
   recordHist();
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
@@ -407,7 +413,8 @@ function pickDefault(m) {
 }
 function renderReview(m) {
   const s = m.snap, { W, H } = g;
-  stopCloud();
+  // 振り返りでは、その時の地雷の分布を雲で出す。p の数字は % のボタンで重ねる
+  startCloud(s);
   board.classList.remove('won', 'lost');
   const safeMiss = isBet(m) && m.safeExists && mode === 'safe';
   const cheaper = isBet(m) && !m.safeExists && m.cost > m.best + 1e-9 ? m.bestCell : -1;
@@ -425,7 +432,7 @@ function renderReview(m) {
       const p = s.prob[i];
       // p = 0% は数字の 2 と同じ緑、p が大きいほど濃い赤
       const color = p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`;
-      html = `<span class="pv" style="color:${color}">${pct(p)}</span>`;
+      if (showPv) html = `<span class="pv" style="color:${color}">${pct(p)}</span>`;
       if (MARK[g.det[i]]) html += `<span class="d">${MARK[g.det[i]]}</span>`;
       if (i === m.sel) cls += selMine ? ' selm' : ' sel';
       else if (i === cheaper || (safeMiss && p === 0)) cls += ' hint';
@@ -707,7 +714,7 @@ function showResult(ok) {
   // 一番危なかった賭け: 外れる確率（開けるなら p、地雷に賭けるなら 1 − p）が一番高かったもの
   const worst = bets.reduce((a, m) => (!a || m.cost > a.cost ? m : a), null);
   const risk = worst ? 1 - 2 ** -worst.cost : 0;
-  let head, story, table = '', summary, r;
+  let head, story, table = '', chart = '', summary, r;
   if (!ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
@@ -739,7 +746,8 @@ function showResult(ok) {
       `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を、根拠を持って絞り込みました。`,
       '観測を終了します。',
     ];
-    table = flowChart() + `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+    chart = flowChart();
+    table = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
     summary = r + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(surv)}）` : '') + (worst ? `・最も危うい分岐 ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
@@ -762,14 +770,20 @@ function showResult(ok) {
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
   // 一手ずつ、打つ前の盤面を送って見られるようにする。外側のボタンは賭けの手へ飛ぶ
   const nRev = reviewMoves().length;
-  const rev = nRev ? '<div class="review"><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button></div>' : '';
-  el.innerHTML = `${head}${next}<p class="story">${story.filter(Boolean).join('<br>')}</p>${rev}${table}<button id="share">共有</button>`;
+  const rev = nRev ? `<div class="review"><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvpv" aria-pressed="${showPv}" aria-label="各マスの p を数字で表示">%</button></div>` : '';
+  // 盤のすぐ下に、ランクと次へ、振り返りの操作、流れ図を置く。スマホで盤と見比べながら操作できるようにし、文章と表はその後ろに回す
+  el.innerHTML = `<div class="rhead">${head}${next}</div>${rev}${chart}<p class="story">${story.filter(Boolean).join('<br>')}</p>${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
   if (nRev) {
     $('rvprev').addEventListener('click', () => setReview(review < 0 ? nRev - 1 : review - 1));
     $('rvnext').addEventListener('click', () => setReview(review + 1));
     $('rvprevb').addEventListener('click', () => setReview(betNear(-1)));
     $('rvnextb').addEventListener('click', () => setReview(betNear(1)));
+    $('rvpv').addEventListener('click', e => {
+      showPv = !showPv;
+      e.currentTarget.setAttribute('aria-pressed', showPv);
+      if (review >= 0) render();
+    });
     $('rvpos').textContent = '終局';
     const flow = el.querySelector('.flow');
     if (flow) flow.addEventListener('click', flowClick);
@@ -783,8 +797,9 @@ function showResult(ok) {
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
-  // 結果は盤の下に出るので、次へのボタンが見える所まで送る
-  if (camp) $('next').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // 結果は盤の下に出るので、操作と流れ図が見える所まで送る
+  const tail = el.querySelector('.flow') || el.querySelector('.review') || (camp && $('next'));
+  if (tail) tail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 let shareText = '';
