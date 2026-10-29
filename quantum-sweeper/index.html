@@ -163,8 +163,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <h1>量子自殺マインスイーパー</h1>
 <div id="entry">
   <div id="camp" role="group" aria-label="キャンペーン"></div>
-  <div id="grid" role="group" aria-label="検出器の組み合わせ"></div>
   <div id="gridrow"></div>
+  <div id="grid" role="group" aria-label="検出器の組み合わせ"></div>
   <button id="free">自由観測</button>
   <details id="records" hidden></details>
 </div>
@@ -1247,7 +1247,7 @@ function stageRow(i) {
   }).join('') + '</div>';
 }
 // 検出器の表。行と列に検出器を並べ、対角に単体、右上に2種の組み合わせを置く。
-// マスにはクリアした面の数を出し、全てクリアしたマスは金色にする。押すとそのシナリオの面が表の下に並ぶ
+// マスにはクリアした面の数を出し、全てクリアしたマスは金色にする。押すとそのシナリオの面が、表の上のシナリオの一覧の一番下の行に並ぶ
 function showGrid() {
   const at = new Map(SCEN.map((sc, i) => [sc.cell && sc.cell.join(), i]));
   const ts = [...new Set(SCEN.flatMap(sc => sc.cell || []))].sort((a, b) => a - b);
