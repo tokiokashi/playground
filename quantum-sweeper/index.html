@@ -84,6 +84,12 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .scen button.done{border-color:var(--gold);color:var(--gold)}
 .scen button b{display:block;font:800 15px/1.1 ui-monospace,Menlo,monospace}
 #entry{margin:8px 0 16px}
+#grid table{border-collapse:separate;border-spacing:3px;margin:10px auto 6px}
+#grid th{font:400 15px/1 ui-monospace,Menlo,monospace;color:var(--mute);padding:0 2px}
+#grid td{width:2.4em;height:2.4em;padding:0}
+#grid button{width:100%;height:100%;min-height:0;padding:0;font:700 13px ui-monospace,Menlo,monospace;color:var(--mute)}
+#grid button.done{border-color:var(--gold);color:var(--gold)}
+#grid button[aria-pressed="true"]{outline:2px solid var(--gold);outline-offset:1px}
 #free{margin-top:6px}
 #records{margin:12px 0 0;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:13px}
 #records summary{cursor:pointer;font-weight:700}
@@ -111,6 +117,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <h1>量子自殺マインスイーパー</h1>
 <div id="entry">
   <div id="camp" role="group" aria-label="キャンペーン"></div>
+  <div id="grid" role="group" aria-label="検出器の組み合わせ"></div>
+  <div id="gridrow"></div>
   <button id="free">自由観測</button>
   <details id="records" hidden></details>
 </div>
@@ -225,11 +233,13 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </details>
 </main>
 <script type="module">
-import { Game, MIXES, rank, rankCost } from './game.js';
+import { Game, MIXES, TYPES, rank, rankCost } from './game.js';
 import { DETECTORS } from './engine.js';
 
 const $ = id => document.getElementById(id);
 const board = $('board');
+// 入口の表の見出し。⇆⇅ は向きをマスごとに決める1種の検出器なので、2つの矢印を並べて1つにする
+const GRIDMARK = { range: '≈', pair: '|', parity: '◐', wide: '≋', cross: '✚', diag: '×', knight: '♞\uFE0E', cmp: '⇆⇅' };
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋', cross: '✚', diag: '×', knight: '♞\uFE0E', lr: '⇆', ud: '⇅' };
 // 開いたマスの表示。数える範囲が周りの8マスでない検出器は、数字だけでは見分けられないので開いた後も印を残す
 function openedCell(i, t) {
@@ -919,20 +929,57 @@ $('botrun').addEventListener('click', () => {
   botTimer = setInterval(botStep, 300);
 });
 
-// キャンペーン。手がかりの粗さごとにシナリオを分け、盤を広げつつ地雷の密度を上げる。
-// 地雷の数は、自動プレー（安全なマスを開け、無ければ一番安い賭け）で生き残る割合が、
-// 1面でおよそ7〜9割、最終面でおよそ5〜6割になるように選んだ。1面は 6×6 にする（5×5 では降り立った一手だけで
-// 配置が決まってクリアになる局が3〜8割あった）。1面は生き残る割合で合わせたので、密度が2面より高いことがある。前のシナリオを全てクリアすると次が開く。
-// after のあるシナリオは、粗視化の順とは別に、シナリオ after（番号か番号の並び）を全てクリアすると開く
+// キャンペーン。検出器の組み合わせごとにシナリオを分け、盤を広げつつ地雷の密度を上げる。
+// 地雷の数は、自動プレー（安全なマスを開け、無ければ一番安い賭け）で生き残る割合（2^−L の平均）が、
+// 1面でおよそ8〜9割、最終面でおよそ5〜6割になるように選んだ（面ごとに二分探索し、6×6〜12×12 は60局、14×14 と 16×16 は40局）。
+// 1面は、降り立った一手だけで配置が決まってクリアになる局が15%以下になる一番小さい盤にする。
+// 見る範囲の狭い検出器や曖昧な検出器では、地雷が少ないと連鎖で盤がすぐ埋まるので、1面が 7×7〜12×12 になる。
+// 1面は生き残る割合で合わせたので、密度が2面より高いことがある。面の数はシナリオごとに3〜5面。
+// シナリオはどれからでも始められ、シナリオの中では前の面をクリアすると次の面が開く。
+// fog のあるシナリオは MIXES の割合を、mix のあるシナリオはその割合（TYPES の順）を使う。
+// cell のあるシナリオは入口の表に置く。cell は TYPES の番号の組で、同じ番号なら単体、違えば2種を半々に混ぜる
 const SCEN = [
   { name: '非粗視化', fog: 0, stages: [[6, 6, 7], [7, 7, 9], [9, 9, 15], [12, 12, 28], [16, 16, 50]] },
   { name: '弱粗視化', fog: 1, stages: [[6, 6, 6], [7, 7, 8], [9, 9, 13], [12, 12, 22], [16, 16, 34]] },
   { name: '強粗視化', fog: 2, stages: [[6, 6, 5], [7, 7, 6], [9, 9, 10], [12, 12, 16], [16, 16, 26]] },
   { name: '全粗視化', fog: 3, stages: [[6, 6, 3], [7, 7, 4], [9, 9, 7], [12, 12, 10], [16, 16, 16]] },
-  { name: '変形', fog: 4, after: 0, stages: [[6, 6, 8], [7, 7, 8], [9, 9, 14], [12, 12, 26], [16, 16, 48]] },
-  { name: '差分', fog: 5, after: 0, stages: [[6, 6, 6], [7, 7, 6], [9, 9, 11], [12, 12, 20], [16, 16, 36]] },
-  { name: '混成', fog: 6, after: [4, 5], stages: [[6, 6, 5], [7, 7, 6], [9, 9, 9], [12, 12, 17], [16, 16, 30]] },
-  { name: '混沌', fog: 7, after: 6, stages: [[6, 6, 5], [7, 7, 6], [9, 9, 9], [12, 12, 14], [16, 16, 26]] },
+  { name: '変形', fog: 4, stages: [[6, 6, 8], [7, 7, 8], [9, 9, 14], [12, 12, 26], [16, 16, 48]] },
+  { name: '差分', fog: 5, stages: [[6, 6, 6], [7, 7, 6], [9, 9, 11], [12, 12, 20], [16, 16, 36]] },
+  { name: '混成', fog: 6, stages: [[6, 6, 5], [7, 7, 6], [9, 9, 9], [12, 12, 17], [16, 16, 30]] },
+  { name: '混沌', fog: 7, stages: [[6, 6, 5], [7, 7, 6], [9, 9, 9], [12, 12, 14], [16, 16, 26]] },
+  { name: '精密≈', mix: [50, 50, 0, 0, 0, 0, 0, 0, 0], stages: [[9, 9, 6], [12, 12, 14], [16, 16, 27]] },
+  { name: '精密|', mix: [50, 0, 50, 0, 0, 0, 0, 0, 0], stages: [[7, 7, 10], [9, 9, 14], [12, 12, 26], [16, 16, 48]] },
+  { name: '精密◐', mix: [50, 0, 0, 50, 0, 0, 0, 0, 0], stages: [[6, 6, 6], [7, 7, 9], [9, 9, 14], [12, 12, 25], [16, 16, 44]] },
+  { name: '精密✚', mix: [50, 0, 0, 0, 0, 50, 0, 0, 0], stages: [[7, 7, 10], [9, 9, 15], [12, 12, 27], [16, 16, 47]] },
+  { name: '≈|', cell: [1, 2], mix: [0, 50, 50, 0, 0, 0, 0, 0, 0], stages: [[7, 7, 4], [9, 9, 6], [12, 12, 13], [16, 16, 24]] },
+  { name: '≈◐', cell: [1, 3], mix: [0, 50, 0, 50, 0, 0, 0, 0, 0], stages: [[7, 7, 4], [9, 9, 6], [12, 12, 12], [16, 16, 22]] },
+  { name: '≈✚', cell: [1, 5], mix: [0, 50, 0, 0, 0, 50, 0, 0, 0], stages: [[9, 9, 6], [10, 10, 8], [12, 12, 12], [16, 16, 17]] },
+  { name: '≈×', cell: [1, 6], mix: [0, 50, 0, 0, 0, 0, 50, 0, 0], stages: [[12, 12, 11], [14, 14, 15], [16, 16, 16]] },
+  { name: '≈♞\uFE0E', cell: [1, 7], mix: [0, 50, 0, 0, 0, 0, 0, 50, 0], stages: [[12, 12, 22], [14, 14, 27], [16, 16, 41]] },
+  { name: '≈⇆⇅', cell: [1, 8], mix: [0, 50, 0, 0, 0, 0, 0, 0, 50], stages: [[7, 7, 3], [9, 9, 6], [12, 12, 11], [16, 16, 18]] },
+  { name: '|', cell: [2, 2], mix: [0, 0, 100, 0, 0, 0, 0, 0, 0], stages: [[6, 6, 6], [7, 7, 8], [9, 9, 13], [12, 12, 23], [16, 16, 41]] },
+  { name: '|◐', cell: [2, 3], mix: [0, 0, 50, 50, 0, 0, 0, 0, 0], stages: [[6, 6, 5], [7, 7, 7], [9, 9, 11], [12, 12, 21], [16, 16, 36]] },
+  { name: '|≋', cell: [2, 4], mix: [0, 0, 50, 0, 50, 0, 0, 0, 0], stages: [[9, 9, 4], [12, 12, 8], [16, 16, 15]] },
+  { name: '|✚', cell: [2, 5], mix: [0, 0, 50, 0, 0, 50, 0, 0, 0], stages: [[6, 6, 6], [7, 7, 7], [9, 9, 13], [12, 12, 22], [16, 16, 40]] },
+  { name: '|×', cell: [2, 6], mix: [0, 0, 50, 0, 0, 0, 50, 0, 0], stages: [[7, 7, 7], [9, 9, 12], [12, 12, 24], [16, 16, 43]] },
+  { name: '|♞\uFE0E', cell: [2, 7], mix: [0, 0, 50, 0, 0, 0, 0, 50, 0], stages: [[7, 7, 10], [8, 8, 15], [9, 9, 18], [12, 12, 32], [16, 16, 57]] },
+  { name: '|⇆⇅', cell: [2, 8], mix: [0, 0, 50, 0, 0, 0, 0, 0, 50], stages: [[6, 6, 5], [7, 7, 7], [9, 9, 11], [12, 12, 20], [16, 16, 34]] },
+  { name: '◐', cell: [3, 3], mix: [0, 0, 0, 100, 0, 0, 0, 0, 0], stages: [[6, 6, 4], [7, 7, 6], [9, 9, 10], [12, 12, 18], [16, 16, 33]] },
+  { name: '◐≋', cell: [3, 4], mix: [0, 0, 0, 50, 50, 0, 0, 0, 0], stages: [[6, 6, 2], [7, 7, 2], [9, 9, 5], [12, 12, 8], [16, 16, 14]] },
+  { name: '◐✚', cell: [3, 5], mix: [0, 0, 0, 50, 0, 50, 0, 0, 0], stages: [[6, 6, 5], [7, 7, 8], [9, 9, 11], [12, 12, 20], [16, 16, 34]] },
+  { name: '◐×', cell: [3, 6], mix: [0, 0, 0, 50, 0, 0, 50, 0, 0], stages: [[7, 7, 6], [9, 9, 12], [12, 12, 22], [16, 16, 38]] },
+  { name: '◐♞\uFE0E', cell: [3, 7], mix: [0, 0, 0, 50, 0, 0, 0, 50, 0], stages: [[7, 7, 9], [8, 8, 13], [9, 9, 15], [12, 12, 28], [16, 16, 51]] },
+  { name: '◐⇆⇅', cell: [3, 8], mix: [0, 0, 0, 50, 0, 0, 0, 0, 50], stages: [[6, 6, 4], [7, 7, 6], [9, 9, 10], [12, 12, 17], [16, 16, 31]] },
+  { name: '≋♞\uFE0E', cell: [4, 7], mix: [0, 0, 0, 0, 50, 0, 0, 50, 0], stages: [[10, 10, 11], [12, 12, 13], [16, 16, 26]] },
+  { name: '✚', cell: [5, 5], mix: [0, 0, 0, 0, 0, 100, 0, 0, 0], stages: [[7, 7, 10], [9, 9, 15], [12, 12, 27], [16, 16, 47]] },
+  { name: '✚♞\uFE0E', cell: [5, 7], mix: [0, 0, 0, 0, 0, 50, 0, 50, 0], stages: [[9, 9, 15], [12, 12, 31], [16, 16, 54]] },
+  { name: '✚⇆⇅', cell: [5, 8], mix: [0, 0, 0, 0, 0, 50, 0, 0, 50], stages: [[6, 6, 4], [7, 7, 4], [9, 9, 9], [12, 12, 17], [16, 16, 25]] },
+  { name: '×', cell: [6, 6], mix: [0, 0, 0, 0, 0, 0, 100, 0, 0], stages: [[10, 10, 11], [12, 12, 17], [16, 16, 33]] },
+  { name: '×♞\uFE0E', cell: [6, 7], mix: [0, 0, 0, 0, 0, 0, 50, 50, 0], stages: [[12, 12, 22], [14, 14, 28], [16, 16, 35]] },
+  { name: '×⇆⇅', cell: [6, 8], mix: [0, 0, 0, 0, 0, 0, 50, 0, 50], stages: [[7, 7, 5], [9, 9, 10], [12, 12, 18], [16, 16, 31]] },
+  { name: '♞\uFE0E', cell: [7, 7], mix: [0, 0, 0, 0, 0, 0, 0, 100, 0], stages: [[7, 7, 13], [8, 8, 17], [9, 9, 22], [12, 12, 41], [16, 16, 73]] },
+  { name: '♞\uFE0E⇆⇅', cell: [7, 8], mix: [0, 0, 0, 0, 0, 0, 0, 50, 50], stages: [[7, 7, 8], [8, 8, 12], [9, 9, 13], [12, 12, 22], [16, 16, 41]] },
+  { name: '⇆⇅', cell: [8, 8], mix: [0, 0, 0, 0, 0, 0, 0, 0, 100], stages: [[6, 6, 3], [7, 7, 5], [9, 9, 8], [12, 12, 15], [16, 16, 26]] },
 ];
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
@@ -961,21 +1008,49 @@ const recRank = v => (v && typeof v === 'object' ? v.r : v);
 const recL = v => (v && typeof v === 'object' && Number.isFinite(v.L) ? v.L : null);
 // 未クリアは -1、ランク無しのクリア（1）は 0 番目より下の -0.5
 const rankOrder = v => !v ? -1 : RANKS.includes(recRank(v)) ? RANKS.indexOf(recRank(v)) : -0.5;
-const scenOpen = i => i === 0 || [].concat('after' in SCEN[i] ? SCEN[i].after : i - 1).every(j => prog[j].every(Boolean));
+const scenMix = sc => sc.mix || MIXES[sc.fog];
+// 入口の表で選んでいるシナリオの番号（-1 なら選んでいない）。このブラウザにだけ残す
+let gridPick = -1;
+try { gridPick = +(localStorage.getItem('qs-grid') ?? -1); } catch { /* 保存できない環境 */ }
 
 function showEntry() {
   camp = null;
   stopBot();
   $('play').hidden = true;
   $('entry').hidden = false;
-  // まだ開いていないシナリオの名前と、まだ開いていない面の大きさは「？」で伏せる
-  $('camp').innerHTML = SCEN.map((sc, i) => `<div class="scen"><span>${scenOpen(i) ? sc.name : '？'}</span>` + sc.stages.map(([W, H, M], k) => {
-    const open = scenOpen(i) && (k === 0 || prog[i][k - 1]);
-    if (!open) return `<button disabled aria-label="シナリオ${i + 1} ${k + 1}面 未開放">？</button>`;
+  $('camp').innerHTML = SCEN.map((sc, i) => sc.cell ? '' : stageRow(i)).join('');
+  showGrid();
+  showRecords();
+}
+// シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
+function stageRow(i) {
+  const sc = SCEN[i];
+  return `<div class="scen"><span>${sc.name}</span>` + sc.stages.map(([W, H, M], k) => {
+    const open = k === 0 || prog[i][k - 1];
+    if (!open) return `<button disabled aria-label="${sc.name} ${k + 1}面 未開放">？</button>`;
     const rk = RANKS.includes(recRank(prog[i][k])) ? recRank(prog[i][k]) : '';
     return `<button data-s="${i}" data-k="${k}"${prog[i][k] ? ' class="done"' : ''} aria-label="${sc.name} ${k + 1} ${W}×${H} 地雷${M}${rk ? ' ランク' + rk : ''}">${W}×${H}${rk ? `<b>${rk}</b>` : ''}</button>`;
-  }).join('') + '</div>').join('');
-  showRecords();
+  }).join('') + '</div>';
+}
+// 検出器の表。行と列に検出器を並べ、対角に単体、右上に2種の組み合わせを置く。
+// マスにはクリアした面の数を出し、全てクリアしたマスは金色にする。押すとそのシナリオの面が表の下に並ぶ
+function showGrid() {
+  const at = new Map(SCEN.map((sc, i) => [sc.cell && sc.cell.join(), i]));
+  const ts = [...new Set(SCEN.flatMap(sc => sc.cell || []))].sort((a, b) => a - b);
+  const mark = t => GRIDMARK[TYPES[t]];
+  let html = '<table><tr><th></th>' + ts.map(t => `<th>${mark(t)}</th>`).join('') + '</tr>';
+  for (const r of ts) {
+    html += `<tr><th>${mark(r)}</th>`;
+    for (const c of ts) {
+      const i = c >= r ? at.get(`${r},${c}`) : undefined;
+      if (i === undefined) { html += '<td></td>'; continue; }
+      const n = prog[i].filter(Boolean).length, all = n === prog[i].length;
+      html += `<td><button data-g="${i}" aria-pressed="${i === gridPick}"${all ? ' class="done"' : ''} aria-label="${SCEN[i].name}">${n ? n : ''}</button></td>`;
+    }
+    html += '</tr>';
+  }
+  $('grid').innerHTML = html + '</table>';
+  $('gridrow').innerHTML = SCEN[gridPick] && SCEN[gridPick].cell ? stageRow(gridPick) : '';
 }
 // 入口の記録: クリアした面ごとの一番良い記録と、それらを通して生き残った割合
 function showRecords() {
@@ -1014,16 +1089,23 @@ function startStage(s, k) {
   if (!freeSet) freeSet = { size, mix, mode };
   camp = { s, k };
   size = SCEN[s].stages[k].slice();
-  mix = MIXES[SCEN[s].fog].slice();
+  mix = scenMix(SCEN[s]).slice();
   mode = 'safe';
   document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === 'safe'));
   $('autochord').hidden = false;
   enterPlay();
   newGame();
 }
-$('camp').addEventListener('click', e => {
+for (const id of ['camp', 'gridrow']) $(id).addEventListener('click', e => {
   const b = e.target.closest('button[data-s]');
   if (b && !b.disabled) startStage(+b.dataset.s, +b.dataset.k);
+});
+$('grid').addEventListener('click', e => {
+  const b = e.target.closest('button[data-g]');
+  if (!b) return;
+  gridPick = +b.dataset.g;
+  try { localStorage.setItem('qs-grid', gridPick); } catch { /* 保存できない環境 */ }
+  showGrid();
 });
 $('free').addEventListener('click', () => {
   camp = null;
