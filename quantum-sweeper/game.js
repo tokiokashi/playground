@@ -146,6 +146,9 @@ export class Game {
     const cost = p < 1e-9 ? 0 : -Math.log2(1 - p);
     this.L += cost;
     this.moves.push({ kind: 'open', c, p, cost, ...sit });
+    // 引いておいた世界で c に地雷があれば、その世界はもう残っていないので引き直す。
+    // c が空の世界なら、そのまま残った世界の中から等確率に引いたものになっている
+    if (this.world && this.world[c]) this.world = null;
     this.observe(c);
     return { p, cost, opened: [c] };
   }
@@ -200,7 +203,7 @@ export class Game {
 
   // c を開け、c の手がかりを出す。生き残った世界から1つを等確率に引いておき（this.world）、その世界での値を答える。
   // 続けて開けるマス（0 の連鎖など）も同じ世界から答えるので、1つずつ引き直すのと同じ分布になり、数え直しは1回で済む。
-  // 地雷に賭けた時や、地雷がありうるマスを開けた時は、生き残る世界が変わるので引き直す（world を null にする）
+  // 地雷に賭けた時や、引いた世界で地雷があるマスを開けた時は、その世界が残らないので引き直す（world を null にする）
   observe(c) {
     this.opened[c] = 1;
     this.dirty = true;
