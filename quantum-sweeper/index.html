@@ -119,6 +119,10 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-fog="2" aria-pressed="false">強粗視化</button>
     <button data-fog="3" aria-pressed="false">全粗視化</button>
   </span>
+  <span role="group" aria-label="検出器の範囲">
+    <button data-fog="4" aria-pressed="false">変形</button>
+    <button data-fog="5" aria-pressed="false">差分</button>
+  </span>
 </div>
 <div class="bar">
   <span role="group" aria-label="評価のモード" id="modegrp">
@@ -147,6 +151,10 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <label>|<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>◐<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>≋<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>✚<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>×<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>♞&#xFE0E;<input type="range" class="mix" min="0" max="100" step="5"></label>
+  <label>⇆<input type="range" class="mix" min="0" max="100" step="5"></label>
   <button id="botrun" aria-pressed="false" aria-label="自動で打ち続ける">▶</button>
   <button id="botstep" aria-label="自動で1手打つ">⏭</button>
 </div>
@@ -187,6 +195,15 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <li><span class="mono">◐</span>: 偶数か奇数かだけを答えます。</li>
 </ul>
 <p>≈・≋・| は、どこで区切るかがマスごとに違い、踏み込むまで分かりません。例えば ≈ では、周りの地雷が1個でも、「0-1」と出ることも「1-2」と出ることもあります。周りの地雷が0個と確定したマスが開くと、その周りのマスも続けて開きます。「0-1」や「偶」のように、0個の可能性があるだけでは開きません。</p>
+<h3>見る範囲の違う検出器</h3>
+<p>次の検出器は、周りの8マスとは違う範囲を見ます。開いた後も印が残ります。</p>
+<ul>
+<li><span class="mono">✚</span>: 上下左右の4マスの地雷を数えます。</li>
+<li><span class="mono">×</span>: 斜めの4マスの地雷を数えます。</li>
+<li><span class="mono">♞&#xFE0E;</span>: チェスのナイトが跳べる8マス（縦横に2マスと1マス離れたマス）の地雷を数えます。隣のマスは数えません。</li>
+<li><span class="mono">⇆</span>: 左の列の3マスと右の列の3マスの地雷を比べ、多い側を「←」「→」、同じなら「=」で答えます。<span class="mono">⇅</span> は上の行と下の行を比べ、「↑」「↓」「=」で答えます。</li>
+</ul>
+<p>✚・×・♞ は、範囲の地雷が0個と確定すると、その範囲のマスが続けて開きます。⇆・⇅ では続けて開きません。キャンペーンの「変形」と「差分」は、非粗視化をすべてクリアすると開きます。</p>
 <h3>L（Life）は命で払った運、I（Information）は数字から得た情報</h3>
 <p>外れうる賭けを生き延びるたびに、あなたのいない世界が増えます。L はその分を足し合わせた値で、生き延びた確率が、コイントスを何回続けて当てるのと同じかを表します。単位は bit です。50% の賭けを生き延びれば 1 bit、p = 10% のマスに踏み込んで無事なら 0.15 bit 増えます。1回の賭けで増える L を、その賭けのコストと呼びます。2<sup>−L</sup> は、最初にいたあなたのうち、今ここにいるあなたの割合です。</p>
 <p>I は、数字を見て世界が減った分を、同じ bit で数えた値です。降り立った直後の世界の数を Ω₀ とすると、Ω が 1 になった時、L と I の合計は log₂Ω₀（Ω₀ が 2 の何乗か）にちょうど一致します。世界を減らす方法は二つしかありません。命で払うか、根拠を持って絞るかです。</p>
@@ -207,10 +224,19 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </main>
 <script type="module">
 import { Game, MIXES, rank, rankCost } from './game.js';
+import { DETECTORS } from './engine.js';
 
 const $ = id => document.getElementById(id);
 const board = $('board');
-const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋' };
+const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋', cross: '✚', diag: '×', knight: '♞\uFE0E', lr: '⇆', ud: '⇅' };
+// 開いたマスの表示。数える範囲が周りの8マスでない検出器は、数字だけでは見分けられないので開いた後も印を残す
+function openedCell(i, t) {
+  let cls = '', html = t;
+  if (/^\d$/.test(t)) cls = ' n' + t;
+  else if (t) cls = ' nz fz';
+  if (DETECTORS[g.det[i]].show) html += `<span class="d">${MARK[g.det[i]]}</span>`;
+  return { cls, html };
+}
 let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, tap = 'open', showP = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 手ごとの L と I の推移。結果画面の流れ図に使う（m はその時点までの手の数）
@@ -307,11 +333,9 @@ function render() {
     const b = cells[i];
     let cls = 'c', html = '';
     if (g.opened[i]) {
-      cls += ' o';
-      const t = g.label[i];
-      html = t;
-      if (/^\d$/.test(t)) cls += ' n' + t;
-      else if (t) cls += ' nz fz';
+      const o = openedCell(i, g.label[i]);
+      cls += ' o' + o.cls;
+      html = o.html;
     } else {
       const p = g.prob(i);
       if (g.mines.has(i)) cls += ' k';
@@ -360,11 +384,9 @@ function renderReview(m) {
   for (let i = 0; i < W * H; i++) {
     let cls = 'c', html = '';
     if (s.opened[i]) {
-      cls += ' o';
-      const t = s.label[i];
-      html = t;
-      if (/^\d$/.test(t)) cls += ' n' + t;
-      else if (t) cls += ' nz fz';
+      const o = openedCell(i, s.label[i]);
+      cls += ' o' + o.cls;
+      html = o.html;
     } else if (s.mines.includes(i)) cls += ' k';
     else {
       const p = s.prob[i];
@@ -780,12 +802,15 @@ $('botrun').addEventListener('click', () => {
 
 // キャンペーン。手がかりの粗さごとにシナリオを分け、盤を広げつつ地雷の密度を上げる。
 // 地雷の数は、自動プレー（安全なマスを開け、無ければ一番安い賭け）で生き残る割合が、
-// 1面でおよそ7〜9割、最終面でおよそ5〜6割になるように選んだ。前のシナリオを全てクリアすると次が開く
+// 1面でおよそ7〜9割、最終面でおよそ5〜6割になるように選んだ。前のシナリオを全てクリアすると次が開く。
+// after のあるシナリオは、粗視化の順とは別に、シナリオ after を全てクリアすると開く
 const SCEN = [
   { name: '非粗視化', fog: 0, stages: [[5, 5, 4], [7, 7, 9], [9, 9, 15], [12, 12, 28], [16, 16, 50]] },
   { name: '弱粗視化', fog: 1, stages: [[5, 5, 3], [7, 7, 8], [9, 9, 13], [12, 12, 22], [16, 16, 34]] },
   { name: '強粗視化', fog: 2, stages: [[5, 5, 3], [7, 7, 6], [9, 9, 10], [12, 12, 16], [16, 16, 26]] },
   { name: '全粗視化', fog: 3, stages: [[5, 5, 2], [7, 7, 4], [9, 9, 7], [12, 12, 10], [16, 16, 16]] },
+  { name: '変形', fog: 4, after: 0, stages: [[5, 5, 5], [7, 7, 8], [9, 9, 14], [12, 12, 26], [16, 16, 48]] },
+  { name: '差分', fog: 5, after: 0, stages: [[5, 5, 4], [7, 7, 6], [9, 9, 11], [12, 12, 20], [16, 16, 36]] },
 ];
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
@@ -796,7 +821,9 @@ let prog = loadProg();
 function loadProg() {
   try {
     const p = JSON.parse(localStorage.getItem('qs-campaign'));
-    if (Array.isArray(p) && p.length === SCEN.length && p.every((r, i) => Array.isArray(r) && r.length === SCEN[i].stages.length)) return p;
+    // シナリオを後ろに足す前の記録は、足りない分を未クリアで埋める
+    if (Array.isArray(p) && p.length <= SCEN.length && p.every((r, i) => Array.isArray(r) && r.length === SCEN[i].stages.length))
+      return SCEN.map((sc, i) => p[i] || sc.stages.map(() => 0));
   } catch { /* 保存できない環境 */ }
   return SCEN.map(sc => sc.stages.map(() => 0));
 }
@@ -809,7 +836,7 @@ const recRank = v => (v && typeof v === 'object' ? v.r : v);
 const recL = v => (v && typeof v === 'object' && Number.isFinite(v.L) ? v.L : null);
 // 未クリアは -1、ランク無しのクリア（1）は 0 番目より下の -0.5
 const rankOrder = v => !v ? -1 : RANKS.includes(recRank(v)) ? RANKS.indexOf(recRank(v)) : -0.5;
-const scenOpen = i => i === 0 || prog[i - 1].every(Boolean);
+const scenOpen = i => i === 0 || prog['after' in SCEN[i] ? SCEN[i].after : i - 1].every(Boolean);
 
 function showEntry() {
   camp = null;
