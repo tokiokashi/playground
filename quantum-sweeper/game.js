@@ -133,8 +133,8 @@ export class Game {
     if (!this.landed) { const r = this.land(c); if (r) return r; }
     const p = this.an.prob[c];
     const sit = this.situation();
-    // 外れうる賭けと観測者消滅の手には、賭ける前の盤面を残す（終局後の振り返り用）
-    if (p > 0) sit.snap = this.snapshot();
+    // どの手にも、打つ前の盤面を残す（終局後の振り返り用）
+    sit.snap = this.snapshot();
     if (p > 1 - 1e-9) {
       this.state = 'dead';
       this.moves.push({ kind: 'open', c, p, cost: Infinity, ...sit });
@@ -154,6 +154,7 @@ export class Game {
     this.landed = true;
     const { W, H, M } = this;
     const before = this.an.omega, sit = this.situation();
+    sit.snap = this.snapshot();
     const area = [c, ...neighbors(c, W, H)].filter(d => this.free(d));
     for (const cells of [area, [c]]) {
       for (const d of cells) this.opened[d] = 1;
@@ -177,7 +178,7 @@ export class Game {
     if (this.state !== 'play') return null;
     const p = this.an.prob[c];
     const sit = this.situation();
-    if (p < 1) sit.snap = this.snapshot();
+    sit.snap = this.snapshot();
     if (p < 1e-9) {
       this.state = 'dead';
       this.moves.push({ kind: 'mine', c, p, cost: Infinity, ...sit });

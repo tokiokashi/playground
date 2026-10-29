@@ -231,7 +231,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <li>金色の実線の枠は、最後に押したマスです。</li>
 <li>金色の点線の枠は、まとめて開いたマスです。</li>
 <li>灰色の破線の枠と薄い ◇・◆ は、安全なマスが無い場面で、直前の賭けより安く済んだ賭けの場所です。</li>
-<li>終局後の結果にある ◀ ▶ で、外れうる賭けを打った時の盤面を順に見返せます。マスの数字はその時の p（%）、金色の実線の枠は選んだマス、灰色の破線の枠はもっと安く済んだ選択肢です。p = 0% か 100% のマスを押すと、そのマスを実線で囲み、そう決めていた手がかりを縁取ります（0% は緑、100% は赤）。推理ミスの手では、安全だったマスの1つを最初から示します。</li>
+<li>終局後の結果にある ◀ ▶ で、一手ずつ、その手を打つ直前の盤面を見返せます。|◀ ▶| は、外れうる賭けを打った手へ飛びます。マスの数字はその時の p（%）、金色の実線の枠は選んだマス、灰色の破線の枠は、賭けの手でもっと安く済んだ選択肢です。p = 0% か 100% のマスを押すと、そのマスを実線で囲み、そう決めていた手がかりを縁取ります（0% は緑、100% は赤）。推理ミスの手では、安全だったマスの1つを最初から示します。</li>
 </ul>
 </details>
 </main>
@@ -262,7 +262,7 @@ let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, 
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 手ごとの L と I の推移。結果画面の流れ図に使う（m はその時点までの手の数）
 let hist = [];
-// 終局後の振り返りで見ている賭け（盤面を残した手の番号）。-1 なら終局の盤
+// 終局後の振り返りで見ている手の番号。-1 なら終局の盤
 let review = -1;
 
 function fmtOmega(o) {
@@ -394,13 +394,15 @@ function renderStats(omega, L, I) {
   $('surv').textContent = s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
 }
 
-// 終局後の振り返り。外れうる賭けを打った時点の盤面に、各マスの地雷確率を重ねて出す。
-// 選んだマスを金の実線、その時もっと安く済んだ選択肢を灰色の破線で囲む
+// 終局後の振り返り。手を打つ直前の盤面に、各マスの地雷確率を重ねて出す。
+// 選んだマスを金の実線で囲む。外れうる賭けの手では、その時もっと安く済んだ選択肢を灰色の破線で囲む
 // （安全第一で安全なマスが残っていた時は p = 0% のマス、賭けるしかない時は一番安い賭けのマス）。
 // p = 0% か 100% のマスを押すと、そのマスを実線で囲み、そう決めていた手がかりのマスを縁取る（0% は緑、100% は赤）。
 // 推理ミスの手では、最初から安全なマスを1つ選んでおく。根拠が近く少ないマス（同じなら選んだマスに近いもの）を選ぶ。
 // ◆ と地雷の総数だけで決まるマスでは、縁取る手がかりは無い
 const reviewMoves = () => g.moves.filter(m => m.snap);
+// 外れうる賭けだった手（コストを払った手と、観測者消滅の手）
+const isBet = m => m.cost > 0;
 const isSure = (s, i) => !s.opened[i] && !s.mines.includes(i) && (s.prob[i] === 0 || s.prob[i] > 1 - 1e-9);
 function reasonOf(m, i) {
   m.why ??= new Map();
@@ -410,7 +412,7 @@ function reasonOf(m, i) {
 function pickDefault(m) {
   if (m.sel !== undefined) return;
   m.sel = -1;
-  if (!(m.safeExists && mode === 'safe')) return;
+  if (!(isBet(m) && m.safeExists && mode === 'safe')) return;
   const s = m.snap, { W } = g;
   const near = c => Math.max(Math.abs(c % W - m.c % W), Math.abs(((c / W) | 0) - ((m.c / W) | 0)));
   // 比べる順: 根拠の距離 R、根拠の手がかりの数、選んだマスからの距離
@@ -421,8 +423,8 @@ function renderReview(m) {
   const s = m.snap, { W, H } = g;
   stopCloud();
   board.classList.remove('won', 'lost');
-  const safeMiss = m.safeExists && mode === 'safe';
-  const cheaper = !m.safeExists && m.cost > m.best + 1e-9 ? m.bestCell : -1;
+  const safeMiss = isBet(m) && m.safeExists && mode === 'safe';
+  const cheaper = isBet(m) && !m.safeExists && m.cost > m.best + 1e-9 ? m.bestCell : -1;
   pickDefault(m);
   const selMine = m.sel >= 0 && s.prob[m.sel] > 1 - 1e-9;
   const reason = new Set(m.sel >= 0 ? reasonOf(m, m.sel).cells : []);
@@ -452,9 +454,10 @@ function renderReview(m) {
   renderMeter();
   markArea(areaOf);
 }
-// 振り返りの1行: 選んだ手の記号、p、コスト。推理ミスなら ✕、もっと安い賭けがあればその賭け
+// 振り返りの1行: 選んだ手の記号と p。賭けの手ではコストも出し、推理ミスなら ✕、もっと安い賭けがあればその賭け
 function reviewLine(m) {
   let t = `${m.kind === 'mine' ? '◆' : '◇'} p ${(m.p * 100).toFixed(1)}%`;
+  if (!isBet(m)) return t;
   if (isFinite(m.cost)) t += ` · <b>+${m.cost.toFixed(2)} bit</b>`;
   if (m.safeExists && mode === 'safe') t += ' · ✕';
   else if (!m.safeExists && m.cost > m.best + 1e-9) t += ` · 最安 ${m.bestKind === 'mine' ? '◆' : '◇'} ${(m.bestP * 100).toFixed(1)}%`;
@@ -469,6 +472,14 @@ function setReview(k) {
   $('rvpos').textContent = review < 0 ? '終局' : `${pos + 1} / ${n}`;
   $('rvprev').disabled = pos === 0;
   $('rvnext').disabled = review < 0;
+  $('rvprevb').disabled = betNear(-1) < 0;
+  $('rvnextb').disabled = betNear(1) < 0;
+}
+// 今見ている手から dir の向き（-1 で前、1 で後ろ）にある、一番近い賭けの手の番号。無ければ -1
+function betNear(dir) {
+  const ms = reviewMoves(), pos = review < 0 ? ms.length : review;
+  for (let k = pos + dir; k >= 0 && k < ms.length; k += dir) if (isBet(ms[k])) return k;
+  return -1;
 }
 
 // 世界線メーター: 生き残っている割合 2^−L をニキシー管風の数字で出す。
@@ -480,7 +491,7 @@ let showM = true, meterTimer = 0;
 let showDone = true;
 try { showDone = localStorage.getItem('qs-dim') !== '0'; } catch { /* 保存できない環境 */ }
 const meter = $('meter');
-// 振り返りでは、見ている賭けの直前の L と、その時に安全なマスがあったかで描く
+// 振り返りでは、見ている手の直前の L と、その時に安全なマスがあったかで描く
 function renderMeter() {
   clearInterval(meterTimer);
   meterTimer = 0;
@@ -731,16 +742,20 @@ function showResult(ok) {
     next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button>`;
   }
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
-  // 外れうる賭けを打っていれば、その時々の盤面を送って見られるようにする
+  // 一手ずつ、打つ前の盤面を送って見られるようにする。外側のボタンは賭けの手へ飛ぶ
   const nRev = reviewMoves().length;
-  const rev = nRev ? '<div class="review"><button id="rvprev" aria-label="前の賭け">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の賭け">▶</button></div>' : '';
+  const rev = nRev ? '<div class="review"><button id="rvprevb" aria-label="前の賭け">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の賭け">▶|</button></div>' : '';
   el.innerHTML = `${head}${next}<p class="story">${story.filter(Boolean).join('<br>')}</p>${rev}${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
   if (nRev) {
     $('rvprev').addEventListener('click', () => setReview(review < 0 ? nRev - 1 : review - 1));
     $('rvnext').addEventListener('click', () => setReview(review + 1));
+    $('rvprevb').addEventListener('click', () => setReview(betNear(-1)));
+    $('rvnextb').addEventListener('click', () => setReview(betNear(1)));
     $('rvpos').textContent = '終局';
     $('rvnext').disabled = true;
+    $('rvnextb').disabled = true;
+    $('rvprevb').disabled = betNear(-1) < 0;
   }
   if (camp) $('next').addEventListener('click', () => {
     if (!ok) newGame();
