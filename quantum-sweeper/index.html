@@ -147,6 +147,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   </span>
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
+  <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">◌</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
   <span id="left" class="left" aria-label="残りの地雷"></span>
@@ -224,7 +225,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <h3>盤の印</h3>
 <ul>
 <li>◇・◆ の行の右端にある ● の数は、地雷の総数から ◆ の数を引いた残りです。</li>
-<li>薄く表示された数字のマスは（キャンペーンの各シナリオの最終面では薄くなりません）、範囲のマスがすべて開いたか ◆ になった、または ◆ の数が手がかりにそろって残りが空と読めるマスです。もう新しい情報はありません。</li>
+<li>「◌」がオンの間（最初はオン）は、数字のマスが薄く表示されることがあります。薄いマスは、範囲のマスがすべて開いたか ◆ になった、または ◆ の数が手がかりにそろって残りが空と読めるマスです。もう新しい情報はありません。</li>
 <li>金色の実線の枠は、最後に押したマスです。</li>
 <li>金色の点線の枠は、まとめて開いたマスです。</li>
 <li>灰色の破線の枠と薄い ◇・◆ は、安全なマスが無い場面で、直前の賭けより安く済んだ賭けの場所です。</li>
@@ -353,8 +354,7 @@ function render() {
     if (g.opened[i]) {
       const o = openedCell(i, g.label[i]);
       cls += ' o' + o.cls;
-      // 埋まった手がかりを薄くするのは推理の手引きになるので、キャンペーンの各シナリオの最終面では出さない
-      if (g.done(i) && !(camp && camp.k === SCEN[camp.s].stages.length - 1)) cls += ' dn';
+      if (showDone && g.done(i)) cls += ' dn';
       html = o.html;
     } else {
       const p = g.prob(i);
@@ -474,6 +474,9 @@ function setReview(k) {
 // p = 100% のマスに ◆ を置いても世界は減らず、他のマスの p は変わらないので、そのマスが残っていても揺らす。
 // 判定は推理ミスと同じ situation().safeExists を使う。教えるのは安全なマスがあるかどうかだけで、場所は教えない
 let showM = true, meterTimer = 0;
+// 埋まった手がかりを薄くするか。どの盤でも共通の設定で、このブラウザに残す
+let showDone = true;
+try { showDone = localStorage.getItem('qs-dim') !== '0'; } catch { /* 保存できない環境 */ }
 const meter = $('meter');
 // 振り返りでは、見ている賭けの直前の L と、その時に安全なマスがあったかで描く
 function renderMeter() {
@@ -821,6 +824,13 @@ document.querySelectorAll('[data-tap]').forEach(btn => btn.addEventListener('cli
   tap = btn.dataset.tap;
 }));
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
+$('showd').setAttribute('aria-pressed', showDone);
+$('showd').addEventListener('click', e => {
+  showDone = !showDone;
+  e.currentTarget.setAttribute('aria-pressed', showDone);
+  try { localStorage.setItem('qs-dim', showDone ? '1' : '0'); } catch { /* 保存できない環境 */ }
+  render();
+});
 $('showm').addEventListener('click', e => { showM = !showM; e.currentTarget.setAttribute('aria-pressed', showM); renderMeter(); });
 $('reset').addEventListener('click', newGame);
 document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('click', () => {
