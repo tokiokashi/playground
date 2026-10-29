@@ -110,6 +110,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .scen{display:grid;grid-template-columns:4.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
 .scen span{font-weight:700;align-self:center}
 .scen span.hard{color:var(--risk)}
+.scen.slot span{color:var(--mute);text-align:center}
+.scen.slot i{min-height:3.4em;font-size:12px;padding:4px 0;border:1px dashed var(--line);border-radius:6px}
 .scen button{min-height:3.4em;padding:4px 0;font-size:12px;font-family:ui-monospace,Menlo,monospace}
 .scen button.done{border-color:var(--gold);color:var(--gold)}
 .scen button b{display:block;font:800 15px/1.1 ui-monospace,Menlo,monospace}
@@ -1266,7 +1268,9 @@ function showGrid() {
     html += '</tr>';
   }
   $('grid').innerHTML = html + '</table>';
-  $('gridrow').innerHTML = SCEN[gridPick] && SCEN[gridPick].cell ? stageRow(gridPick) : '';
+  // 選ぶ前も1行分の枠を置き、下の表から選ぶ行だと分かるようにする
+  $('gridrow').innerHTML = SCEN[gridPick] && SCEN[gridPick].cell ? stageRow(gridPick)
+    : '<div class="scen slot" aria-hidden="true"><span>↓</span>' + '<i></i>'.repeat(5) + '</div>';
 }
 // 入口の記録: クリアした面ごとの一番良い記録と、それらを通して生き残った割合
 function showRecords() {
