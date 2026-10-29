@@ -37,6 +37,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c .v{position:relative;z-index:1}
 .c.dn{opacity:.38}
 .c.ar{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
+/* マウスでは重ねるだけで調べられるので、調査のボタンはタッチの端末だけに出す */
+@media (hover:hover) and (pointer:fine){#probe{display:none}}
 .c .d{position:absolute;z-index:2;right:2px;top:1px;font-size:calc(100cqw/var(--w)*.26);color:var(--mute);font-weight:400}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk);position:relative;z-index:2}
@@ -191,6 +193,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
   <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">◌</button>
+  <button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
   <span id="left" class="left" aria-label="残りの地雷"></span>
@@ -242,7 +245,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <h3>L と ∿</h3>
 <p>L は、ここまでの分岐をすべて生き延びた確率を、コイントスを何回続けて当てる確率と同じかで表した数です。「∿」のメーターには、その確率が出ます。p = 0% のマスが一つも無く、分岐を選ぶしかない局面では、メーターの数字が揺らぎます。</p>
 <h3>粗視化した検出器</h3>
-<p>開けていないマスの右上の印は、そのマスの検出器の種類です。開いたマスの数字は周りの地雷の数を表し、数字のマスに触れると、数える範囲が青い枠で出ます。</p>
+<p>開けていないマスの右上の印は、そのマスの検出器の種類です。開いたマスの数字は周りの地雷の数を表し、数字のマスに触れると、数える範囲が青い枠で出ます。開けていないマスに触れると、そのマスを範囲に含む数字のマスが青い枠で出ます。スマホでは「調査」をオンにすると、タップでマスを開けずに枠だけを出せます。</p>
 <ul>
 <li><span class="mono">≈</span>: 「1-2」のように幅で答えます。</li>
 <li><span class="mono">≋</span>: 「1-3」のように、もっと広い幅で答えます。</li>
@@ -259,7 +262,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </ul>
 <p>範囲の地雷が0個と確定した数字が開くと、範囲のマスも続けて開きます。「0-1」や「偶」のように0個の可能性があるだけの数字と、⇆・⇅ では開きません。</p>
 <h3>モード</h3>
-<p>キャンペーンは安全第一で評価します。</p>
+<p>キャンペーンは安全第一で評価します。どちらのモードでも、分岐を一度も選ばずにクリアすると、S+ の上の SS になります。</p>
 <ul>
 <li><b>安全第一</b>: その場で一番リスクの少ない選択を評価し、それ以外の選択をした分を損失として数えます。常に最良の選択をすれば、損失は 0 になります。ランクは損失で決まります。</li>
 <li><b>最小コスト</b>: Ω を 1 にするまでに、L が一番小さく済むルートを考えるモードです。L が小さいほどランクが上がります。</li>
@@ -290,13 +293,30 @@ function openedCell(i, t) {
   if (DETECTORS[g.det[i]].show) html = `<span class="wm">${MARK[g.det[i]]}</span><span class="v">${t}</span>`;
   return { cls, html };
 }
-// 開いた手がかりのマスに触れている間、その検出器が見ている範囲のマスを枠で示す
-let areaOf = -1;
+// 開いた手がかりのマスに触れている間、その検出器が見ている範囲のマスを枠で示す。
+// 開いていないマスに触れている間は、そのマスを範囲に含む手がかりのマスを枠で示す。
+// 手がかりの全部を示し、そのマスを決めている手がかりだけに絞ることはしない（絞ると推理の答えになる）
+let areaOf = -1, marked = [];
+// 盤に開いて見えているマス。振り返りでは、見ている盤面の時点で開いていたマス
+const openedShown = () => review >= 0 ? reviewMoves()[review].snap.opened : g.opened;
 function markArea(i) {
-  if (areaOf >= 0) for (const d of g.areas[areaOf].cells) cells[d].classList.remove('ar');
-  areaOf = i >= 0 && g.opened[i] && g.clues.has(i) ? i : -1;
-  if (areaOf >= 0) for (const d of g.areas[areaOf].cells) cells[d].classList.add('ar');
+  for (const d of marked) cells[d].classList.remove('ar');
+  marked = [];
+  areaOf = -1;
+  if (i < 0 || !g) return;
+  const opened = openedShown();
+  if (opened[i]) {
+    if (g.clues.has(i)) marked = g.areas[i].cells.slice();
+  } else {
+    marked = [i];
+    for (const c of g.clues.keys()) if (opened[c] && g.areas[c].cells.includes(i)) marked.push(c);
+    if (marked.length === 1) marked = [];
+  }
+  if (marked.length) areaOf = i;
+  for (const d of marked) cells[d].classList.add('ar');
 }
+// 調査: オンの間は、タップでマスを開けずに、上の枠だけを出す（マウスなら重ねるだけで出る）
+let probe = false;
 let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 終局後の振り返りで見ている手の番号。-1 なら終局の盤
@@ -324,6 +344,7 @@ function newGame() {
   syncCustom();
   g.autoChord = mode === 'safe' && autoChord;
   last = hint = areaOf = -1;
+  marked = [];
   board.style.setProperty('--w', W);
   board.style.setProperty('--h', H);
   board.innerHTML = '';
@@ -909,7 +930,8 @@ function showResult(ok) {
     summary = '観測者消滅' + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(2 ** -g.L)}）を切り抜けた後` : '');
   } else {
     const ratio = g.L / g.H0, b = g.breakdown, loss = b.error + b.gap;
-    r = mode === 'safe' ? rank(loss) : rankCost(ratio);
+    // 外れうる分岐を一度も通らずにクリアした（L = 0）時は、S+ の上の SS にする
+    r = g.L < 1e-9 ? 'SS' : mode === 'safe' ? rank(loss) : rankCost(ratio);
     const surv = 2 ** -g.L;
     const rows = mode === 'safe'
       ? [['推理ミス', `${f(b.error)}（${b.errors}）`], ['選択の損', f(b.gap)], ['不可避', f(b.forced)]]
@@ -995,9 +1017,10 @@ board.addEventListener('pointerover', e => {
 board.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') markArea(-1); });
 board.addEventListener('pointerdown', e => {
   const b = e.target.closest('.c'); if (!b) return;
-  markArea(+b.dataset.i);
+  // タッチでは、開いていないマスの手がかりは調査の時だけ示す（ふだんのタップは開ける操作なので、枠を残さない）
+  if (probe || e.pointerType === 'mouse' || openedShown()[+b.dataset.i]) markArea(+b.dataset.i);
   longPressed = false;
-  if (e.pointerType !== 'mouse') pressTimer = setTimeout(() => { longPressed = true; quickMine(+b.dataset.i); }, 420);
+  if (e.pointerType !== 'mouse' && !probe) pressTimer = setTimeout(() => { longPressed = true; quickMine(+b.dataset.i); }, 420);
 });
 const cancel = () => clearTimeout(pressTimer);
 board.addEventListener('pointerup', cancel);
@@ -1006,11 +1029,13 @@ board.addEventListener('pointercancel', cancel);
 board.addEventListener('click', e => {
   const b = e.target.closest('.c'); if (!b) return;
   if (longPressed) { longPressed = false; return; }
+  if (probe) return;
   act(+b.dataset.i);
 });
 board.addEventListener('contextmenu', e => {
   const b = e.target.closest('.c'); if (!b) return;
   e.preventDefault();
+  if (probe) return;
   quickMine(+b.dataset.i);
 });
 
@@ -1048,6 +1073,7 @@ mixInputs.forEach(x => x.addEventListener('change', () => {
   newGame();
 }));
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
+$('probe').addEventListener('click', e => { probe = !probe; e.currentTarget.setAttribute('aria-pressed', probe); if (!probe) markArea(-1); });
 $('showd').setAttribute('aria-pressed', showDone);
 $('showd').addEventListener('click', e => {
   showDone = !showDone;
@@ -1167,7 +1193,7 @@ function loadProg() {
 function saveProg() {
   try { localStorage.setItem('qs-campaign', JSON.stringify({ v: 2, p: prog })); } catch { /* 保存できない環境 */ }
 }
-const RANKS = ['C', 'B', 'A', 'S', 'S+'];
+const RANKS = ['C', 'B', 'A', 'S', 'S+', 'SS'];
 // 面の記録は、未クリアの 0、ランク無しのクリアの 1、ランクの文字列、{ r: ランク, L } のどれか
 const recRank = v => (v && typeof v === 'object' ? v.r : v);
 const recL = v => (v && typeof v === 'object' && Number.isFinite(v.L) ? v.L : null);
