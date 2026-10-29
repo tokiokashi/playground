@@ -1071,7 +1071,8 @@ mixInputs.forEach(x => x.addEventListener('change', () => {
   newGame();
 }));
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
-$('probe').addEventListener('click', e => { probe = !probe; e.currentTarget.setAttribute('aria-pressed', probe); board.classList.toggle('probing', probe); markArea(-1); });
+// 調査を切り替えても、最後に調べた枠は残す。次にマスを開ける操作をした時に消える
+$('probe').addEventListener('click', e => { probe = !probe; e.currentTarget.setAttribute('aria-pressed', probe); board.classList.toggle('probing', probe); });
 $('showd').setAttribute('aria-pressed', showDone);
 $('showd').addEventListener('click', e => {
   showDone = !showDone;
