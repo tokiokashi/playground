@@ -562,10 +562,11 @@ function settleNow() {
   if (g.state === 'clear') showResult(true);
 }
 
-// 賭けの直後に出す数字: p とコスト。一番安い賭けより高かった時はその値も並べる
+// 賭けの直後に出す数字: p とコスト。一番安い賭けより高かった時はその値も並べる。
+// 外れようのない手（p = 0% を開ける、p = 100% に ◆）は p だけを出す
 function betLine(r, m) {
   hint = -1;
-  if (r.cost === 0) return '+0';
+  if (r.cost === 0) return `p ${(r.p * 100).toFixed(1)}%`;
   let t = `p ${(r.p * 100).toFixed(1)}% · <b>+${r.cost.toFixed(2)} bit</b>`;
   if (m.safeExists && mode === 'safe') t += ' · ✕';
   else if (!m.safeExists && m.cost > m.best + 1e-9) {
