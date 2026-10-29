@@ -93,7 +93,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .stagelabel{font-weight:700;color:var(--gold)}
 #result{display:none;margin:12px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:10px}
 #result h2{margin:0 0 6px;font-size:18px}
-#result .flow{display:block;width:100%;height:auto;margin:10px 0 0}
+#result .flow{display:block;width:100%;height:auto;margin:10px 0 0;cursor:pointer}
 #result .flowcap{margin:2px 0 0;font-size:12px;color:var(--mute)}
 #result dl{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;margin:8px 0 0;font-size:14px}
 #result dt{color:var(--mute)}
@@ -468,12 +468,35 @@ function setReview(k) {
   review = k >= 0 && k < n ? k : -1;
   if (review < 0) $('msg').innerHTML = '';
   render();
+  markFlow();
   const pos = review < 0 ? n : review;
   $('rvpos').textContent = review < 0 ? '終局' : `${pos + 1} / ${n}`;
   $('rvprev').disabled = pos === 0;
   $('rvnext').disabled = review < 0;
   $('rvprevb').disabled = betNear(-1) < 0;
   $('rvnextb').disabled = betNear(1) < 0;
+}
+// 流れ図に、振り返りで見ている手の位置を縦線で出す。運も根拠も動かなかった手は、次に動いた段の位置に出す
+function markFlow() {
+  const line = $('flowcur');
+  if (!line) return;
+  if (review < 0) { line.setAttribute('visibility', 'hidden'); return; }
+  const mi = g.moves.indexOf(reviewMoves()[review]);
+  const st = flowSteps.find(s => mi < s.to);
+  const x = st ? st.x : flowEnd;
+  line.setAttribute('x1', x);
+  line.setAttribute('x2', x);
+  line.setAttribute('visibility', 'visible');
+}
+// 流れ図を押すと、押した位置に一番近い段の、最初の手へ振り返りを移す
+function flowClick(e) {
+  const svg = e.currentTarget, box = svg.getBoundingClientRect(), vw = svg.viewBox.baseVal.width;
+  const x = (e.clientX - box.left) * vw / box.width;
+  if (!flowSteps.length) return;
+  const st = flowSteps.reduce((a, s) => (Math.abs(s.x - x) < Math.abs(a.x - x) ? s : a));
+  // 降り立った手の段のように、盤面を残した手が無い段では、その後の最初の手へ移す
+  const ms = reviewMoves(), k = ms.findIndex(m => g.moves.indexOf(m) >= st.from);
+  setReview(k >= 0 ? k : ms.length - 1);
 }
 // 今見ている手から dir の向き（-1 で前、1 で後ろ）にある、一番近い賭けの手の番号。無ければ -1
 function betNear(dir) {
@@ -608,6 +631,8 @@ function recordHist() {
   const h = hist[hist.length - 1];
   if (isFinite(g.L) && (g.L !== h.L || g.I !== h.I)) hist.push({ L: g.L, I: g.I, m: g.moves.length });
 }
+// 流れ図の段ごとの、手の範囲 [from, to) と、舌の根元の x。振り返りで見ている手の位置を図に示すのに使う
+let flowSteps = [], flowEnd = 0;
 function flowChart() {
   recordHist();
   const steps = [];
@@ -624,7 +649,7 @@ function flowChart() {
     const dL = b.L - a.L;
     // 手ごとの内訳の合計を、実際に増えた L に合わせる（まとめ開けなどで手の記録と増分がずれないように）
     const sum = need + extra, f = sum > 0 ? dL / sum : 0;
-    steps.push({ dI: b.I - a.I, need: need * f, extra: extra * f, miss });
+    steps.push({ dI: b.I - a.I, need: need * f, extra: extra * f, miss, from: a.m, to: b.m });
   }
   if (!steps.length) return '';
   const VW = 600, PAD = 40, BAND = 110, top0 = PAD, k = BAND / g.H0;
@@ -639,8 +664,10 @@ function flowChart() {
     const ro = r + t, end = yi + dir * (r + T);
     return `<path fill="${color}" d="M${x} ${yi} C${x + r * .55} ${yi} ${x + r} ${yi + dir * r * .45} ${x + r} ${yi + dir * r} L${x + r} ${end} L${x + ro} ${end} L${x + ro} ${yi + dir * r} C${x + ro} ${yo + dir * ro * .45} ${x + ro * .55} ${yo} ${x} ${yo} Z"/>`;
   };
+  flowSteps = [];
   for (const st of steps) {
     x += dx;
+    flowSteps.push({ from: st.from, to: st.to, x });
     const na = a + st.dI * k, nRed = (st.need + st.extra) * k, nb = b - nRed;
     parts.push(tongue(x, a, na, -1, '#6f9cff'));
     // 赤は曲がりの内側に不可避（暗い赤）、外側に余分（明るい赤）を並べる
@@ -653,6 +680,7 @@ function flowChart() {
     a = na; b = nb;
   }
   band += ` L${x + dx} ${a} L${x + dx} ${b} ${under.join(' ')} L10 ${top0 + BAND} Z`;
+  flowEnd = x + dx;
   // 下の帯: 太さは生き残ったあなたの割合（2^−L）。運で払った分だけ、上の図と同じ手の位置で細る
   const S = 70, y0 = top0 + BAND + PAD + 24;
   let sv = 1, sb = y0 + S, sx = 10, surv = `M10 ${y0}`, sunder = [];
@@ -674,7 +702,9 @@ function flowChart() {
     `<text x="10" y="${y0 - 6}" font-size="12" fill="var(--mute)">100%</text>` +
     `<text x="${VW - 4}" y="${y0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">${pct(sv)}</text>` +
     `<text x="10" y="${top0 + BAND + 16}" font-size="12" fill="var(--mute)">2^${g.H0.toFixed(1)}</text>` +
-    `<text x="${VW - 4}" y="${top0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">Ω = 1</text></svg>` +
+    `<text x="${VW - 4}" y="${top0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">Ω = 1</text>` +
+    // 振り返りで見ている手の位置。手を打つ前の盤なので、その手の舌の根元に縦線を引く
+    `<line id="flowcur" y1="${top0 - 20}" y2="${H - 6}" stroke="var(--gold)" stroke-width="2" stroke-dasharray="4 3" visibility="hidden"/></svg>` +
     '<p class="flowcap">上は世界の減り方です。青は根拠を持って絞った分、赤は運が良かっただけの分です。下は、運良く生き残ったあなたを表示します。' + (mode === 'safe' ? '暗い赤は、賭けるしかない場面での必要な犠牲でした。' : '') + '</p>';
 }
 
@@ -755,6 +785,8 @@ function showResult(ok) {
     $('rvprevb').addEventListener('click', () => setReview(betNear(-1)));
     $('rvnextb').addEventListener('click', () => setReview(betNear(1)));
     $('rvpos').textContent = '終局';
+    const flow = el.querySelector('.flow');
+    if (flow) flow.addEventListener('click', flowClick);
     $('rvnext').disabled = true;
     $('rvnextb').disabled = true;
     $('rvprevb').disabled = betNear(-1) < 0;
