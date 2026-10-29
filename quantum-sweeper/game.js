@@ -18,7 +18,8 @@ export const MIXES = [
 export const normMix = mix => pad(mix.slice(0, TYPES.length));
 
 export class Game {
-  constructor(W, H, M, mix = MIXES[1], rng = Math.random) {
+  // parts: 種類ごとの値の分け方を差し替える { 種類: 分け方の配列 }。シナリオが検出器の性質を変える時に使う
+  constructor(W, H, M, mix = MIXES[1], rng = Math.random, parts = {}) {
     Object.assign(this, { W, H, M, rng });
     const N = W * H;
     this.N = N;
@@ -36,7 +37,7 @@ export class Game {
     this.areas = this.det.map((t, c) => DETECTORS[t].area(c, W, H));
     this.area = c => this.areas[c];
     // 区切りの位置が何通りかある種類は、どれで分けるかもマスごとにくじで決めておく（開けるまで見えない）
-    this.classes = this.det.map(t => { const ps = DETECTORS[t].parts; return ps[Math.floor(rng() * ps.length)]; });
+    this.classes = this.det.map(t => { const ps = parts[t] || DETECTORS[t].parts; return ps[Math.floor(rng() * ps.length)]; });
     this.opened = new Uint8Array(N);
     this.clues = new Map();
     this.label = new Array(N).fill('');
