@@ -79,11 +79,14 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #meter.shaky span:nth-child(3n+1) .lit{animation-delay:-.17s}
 @keyframes nixie{50%{opacity:.55}}
 /* 新しく開いたマスは、押したマスから近い順に遅らせて開く。遅れている間は開く前の色のまま */
-.c.pop{animation:popbg .22s ease-out backwards;animation-delay:var(--d)}
-.c.pop>*{animation:popin .22s ease-out backwards;animation-delay:var(--d)}
+.c.pop{animation:popbg .32s ease-out backwards;animation-delay:var(--d)}
+.c.pop>*{animation:popin .32s ease-out backwards;animation-delay:var(--d)}
 @keyframes popbg{from{background:var(--cellhi)}}
 @keyframes popin{from{opacity:0;transform:scale(.5)}}
-@media (prefers-reduced-motion:reduce){.c.pop,.c.pop>*{animation:none}}
+/* 賭けで確率が 0 か 1 に決まったマスを、決まった順に一瞬光らせる。遅れている間と光り終わった後は何も重ねない */
+.c.clp::before{content:"";position:absolute;z-index:3;inset:0;border-radius:3px;pointer-events:none;opacity:0;animation:clp .7s ease-out;animation-delay:var(--cd)}
+@keyframes clp{0%{opacity:1;background:rgba(255,236,190,.55);box-shadow:0 0 0 2px #fff6dc inset,0 0 14px 4px rgba(242,198,107,.8)}100%{opacity:0;box-shadow:0 0 0 2px #fff6dc inset,0 0 22px 8px rgba(242,198,107,0)}}
+@media (prefers-reduced-motion:reduce){.c.pop,.c.pop>*,.c.clp::before{animation:none}}
 @media (prefers-reduced-motion:reduce){#meter.shaky .lit{animation:none;opacity:.6}}
 .c.auto{outline:2px dotted var(--gold);outline-offset:-2px}
 .c .pv{position:absolute;z-index:2;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(100cqw/var(--w)*.3);font-weight:400}
@@ -112,6 +115,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #result{display:none;margin:12px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--gold);border-radius:10px}
 #result h2{margin:0 0 6px;font-size:18px}
 #result .flow{display:block;width:100%;height:auto;margin:10px 0 0;cursor:pointer}
+/* 結果を出した時に、流れ図を左の最初の手から右の Ω = 1 へ順に描く */
+#result .flow.draw{animation:wipe var(--fd) ease-in-out .3s backwards}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@media (prefers-reduced-motion:reduce){#result .flow.draw{animation:none}}
 #result .flowcap{margin:2px 0 0;font-size:12px;color:var(--mute)}
 #result dl{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;margin:8px 0 0;font-size:14px}
 #result dt{color:var(--mute)}
@@ -284,6 +291,10 @@ let g, cells, last = -1, hint = -1, hintKind = 'open';
 let review = -1;
 // 盤に開いた姿で描いたマスと、直前の手で開いたマスごとの開く遅れ（ms）
 let shown = null, pops = new Map(), popEnd = 0;
+// 開く動きで、押したマスから1マス離れるごとの遅れ（ms）と、遅れの頭打ちの距離
+const POP_STEP = 80, POP_MAX = 12;
+// 直前の賭けで確率が 0 か 1 に決まったマスごとの、光る遅れ（ms）
+let clps = new Map(), clpEnd = 0;
 // 開く動きの起点。同時開けでは押した手がかりのマス。-1 なら最後に開けたマス
 let popFrom = -1;
 
@@ -315,6 +326,7 @@ function newGame() {
   review = -1;
   shown = new Uint8Array(W * H);
   pops = new Map();
+  clps = new Map();
   $('msg').innerHTML = '';
   $('result').style.display = 'none';
   $('revbar').hidden = true;
@@ -382,6 +394,7 @@ function render() {
   const fresh = [];
   for (let i = 0; i < W * H; i++) if (g.opened[i] && !shown[i]) fresh.push(i);
   if (performance.now() > popEnd) pops = new Map();
+  if (performance.now() > clpEnd) clps = new Map();
   if (fresh.length) {
     pops = new Map();
     const o = popFrom >= 0 ? popFrom : last >= 0 ? last : fresh[0];
@@ -389,9 +402,9 @@ function render() {
     for (const i of fresh) {
       shown[i] = 1;
       const d = Math.max(Math.abs(i % W - o % W), Math.abs(Math.floor(i / W) - Math.floor(o / W)));
-      pops.set(i, Math.min(d, 14) * 55);
+      pops.set(i, Math.min(d, POP_MAX) * POP_STEP);
     }
-    popEnd = performance.now() + Math.max(...pops.values()) + 250;
+    popEnd = performance.now() + Math.max(...pops.values()) + 350;
   }
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
@@ -420,6 +433,7 @@ function render() {
     // まとめて開けたマスと自動で開けたマス
     if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
     if (pops.has(i)) { cls += ' pop'; b.style.setProperty('--d', pops.get(i) + 'ms'); }
+    if (clps.has(i)) { cls += ' clp'; b.style.setProperty('--cd', clps.get(i) + 'ms'); }
     b.className = cls;
     // 中身が同じなら書き換えない。書き換えると、開いている途中のマスの動きが最初からやり直しになる
     if (b._h !== html) { b.innerHTML = html; b._h = html; }
@@ -468,6 +482,7 @@ function renderReview(m) {
   const s = m.snap, { W, H } = g;
   // 終局の盤へ戻った時に、最後に開いたマスの動きを繰り返さない
   pops = new Map();
+  clps = new Map();
   // 振り返りでは、その時の地雷の分布を雲で出す。p の数字は % のボタンで重ねる
   startCloud(s);
   board.classList.remove('won', 'lost');
@@ -652,6 +667,7 @@ function rollMeter(changed, digits, paint, rnd, settle) {
 
 // 開いた手がかりのマスを押すと、その手がかりと周りの ◆ で安全と決まるマスをまとめて開ける。コストは常に 0
 function chord(i) {
+  const before = probsNow();
   const targets = g.chordTargets(i);
   hint = -1;
   if (!targets.length) return;
@@ -671,7 +687,7 @@ function chord(i) {
   // まとめて開けたマスも、自動で開けたマスと同じ点線の枠で示す
   g.auto.cells.push(...chorded);
   $('msg').innerHTML = '+0';
-  if (g.state === 'clear') showResult(true);
+  if (g.state === 'clear') { collapse(i, before, false); showResult(true); }
   popFrom = i;
   render();
 }
@@ -712,7 +728,32 @@ function act(i) {
   betOpen(i);
 }
 
+// 賭ける前の各マスの確率。賭けの後に、確率が 0 か 1 に決まったマスを探すのに使う
+const probsNow = () => Array.from({ length: g.W * g.H }, (_, i) => g.free(i) ? g.prob(i) : -1);
+const unsure = p => p > 1e-9 && p < 1 - 1e-9;
+// 賭けで確率が 0 か 1 に決まったマスを、賭けたマスからの距離の順に光らせる（開く動きと同じ間隔）。
+// 光らせるのは、決まったことが盤に見えているマスだけにする: 賭けたマス、この手で開いたマス、
+// 終局後の全てのマス、|ψ|² で雲を出している時の開いていないマス。見えていないマスを光らせると、推理の答えが漏れる
+function collapse(c, before, withSelf) {
+  const { W } = g, over = g.state !== 'play';
+  const hit = [];
+  if (withSelf) hit.push(c);
+  before.forEach((p, i) => {
+    if (i === c || !unsure(p)) return;
+    const now = g.free(i) ? g.prob(i) : g.mines.has(i) ? 1 : 0;
+    if (unsure(now)) return;
+    if (g.opened[i] || over || showP) hit.push(i);
+  });
+  clps = new Map();
+  for (const i of hit) {
+    const d = Math.max(Math.abs(i % W - c % W), Math.abs(Math.floor(i / W) - Math.floor(c / W)));
+    clps.set(i, Math.min(d, POP_MAX) * POP_STEP);
+  }
+  clpEnd = hit.length ? performance.now() + Math.max(...clps.values()) + 800 : 0;
+}
+
 function betOpen(i) {
+  const before = g.landed ? probsNow() : null;
   const r = g.step(i);
   last = i;
   const m = g.moves[g.moves.length - 1];
@@ -721,14 +762,19 @@ function betOpen(i) {
     $('msg').innerHTML = betLine(r, m);
     if (g.state === 'clear') showResult(true);
   }
+  // 安全に賭けた手は、開く動きで見せる。光らせるのは、この手で全ての世界が1つに決まった時だけ
+  if (before && g.state === 'clear') collapse(i, before, false);
   render();
 }
 
 function betMine(i) {
   // 降り立つ前は ◆ を置けないので、どの操作でも降り立つ
   if (!g.landed) return betOpen(i);
+  const before = probsNow();
   const r = g.claim(i);
   if (!r) return;
+  // 外れうる ◆ だった時は、◆ のマスと、それで決まったマスを光らせる。外れようのない ◆ でも、続く自動開放で全てが決まれば光らせる
+  if (g.state !== 'dead' && (r.cost > 0 || g.state === 'clear')) collapse(i, before, r.cost > 0);
   last = i;
   const m = g.moves[g.moves.length - 1];
   if (g.state === 'dead') showResult(false);
@@ -900,7 +946,12 @@ function showResult(ok) {
   if (nRev) {
     setReview(-1);
     const flow = el.querySelector('.flow');
-    if (flow) flow.addEventListener('click', flowClick);
+    if (flow) {
+      flow.addEventListener('click', flowClick);
+      // 描く長さは手の数で伸ばし、0.8 秒から 2.4 秒の間に収める
+      flow.style.setProperty('--fd', Math.min(2.4, Math.max(0.8, 0.4 + 0.18 * flowSteps.length)) + 's');
+      flow.classList.add('draw');
+    }
   }
   if (camp) $('next').addEventListener('click', () => {
     if (!ok) newGame();
