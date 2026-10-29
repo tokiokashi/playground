@@ -289,13 +289,15 @@ function newGame() {
 // マスごとに区切らない。1マスを1画素とした小さな canvas に各マスの濃さを置き、盤の大きさへ拡大する。
 // 拡大の補間で隣のマスとの間が滑らかにつながり、境目が消える
 const cloud = $('cloud');
-let cloudFrame = 0, cloudSrc = null;
-function startCloud() {
+// cloudSnap: 振り返りで見ている盤面の写し。null なら今の盤から描く
+let cloudFrame = 0, cloudSrc = null, cloudSnap = null;
+function startCloud(snap = cloudSnap) {
   const { W, H } = g;
+  cloudSnap = snap;
   cloudSrc = [];
   for (let i = 0; i < W * H; i++) {
-    if (g.opened[i] || g.mines.has(i)) continue;
-    const p = g.prob(i);
+    if (snap ? snap.opened[i] || snap.mines.includes(i) : g.opened[i] || g.mines.has(i)) continue;
+    const p = snap ? snap.prob[i] : g.prob(i);
     // p = 1 のマスも同じ色で置く。確定したマスの背景と同じ色なので、補間で隣とつながっても色が途切れない
     if (p > 1e-9) cloudSrc.push({ i, p, ph: p < 1 - 1e-9 ? i * 2.39 : null });
   }
@@ -335,8 +337,8 @@ function render() {
   const over = g.state !== 'play';
   board.classList.toggle('won', g.state === 'clear');
   board.classList.toggle('lost', g.state === 'dead');
-  // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す
-  if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(); else stopCloud();
+  // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す（振り返りの盤では renderReview が出す）
+  if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(null); else stopCloud();
   recordHist();
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
@@ -409,7 +411,8 @@ function pickDefault(m) {
 }
 function renderReview(m) {
   const s = m.snap, { W, H } = g;
-  stopCloud();
+  // 振り返りでは、p の数字に重ねて、その時の地雷の分布を雲で出す
+  startCloud(s);
   board.classList.remove('won', 'lost');
   const safeMiss = isBet(m) && m.safeExists && mode === 'safe';
   const cheaper = isBet(m) && !m.safeExists && m.cost > m.best + 1e-9 ? m.bestCell : -1;
