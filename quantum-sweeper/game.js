@@ -66,7 +66,7 @@ export class Game {
   //   地雷に賭ける: 地雷が無かった世界が消える。コスト −log₂p。手がかりは出ない
   // どちらも全ての世界で外れるマス（開けるなら p = 1、地雷に賭けるなら p = 0）ではゲームオーバー
 
-  // 今の盤面の写し: 開いたマスと手がかり（表示と mask）、◆ のマス、各マスの地雷確率、Ω、それまでの L と I
+  // 今の盤面の写し: 開いたマスと手がかり（表示と mask）、● のマス、各マスの地雷確率、Ω、それまでの L と I
   snapshot() {
     return { opened: this.opened.slice(), label: this.label.slice(), clues: new Map(this.clues), mines: [...this.mines], prob: this.an.prob.slice(), omega: this.an.omega, L: this.L, I: this.I };
   }
@@ -75,7 +75,7 @@ export class Game {
   // そう決めている手がかりのマスを返す。
   // c に近い手がかりから範囲を広げ、c が逆（安全なら地雷、地雷なら空）の世界が無くなる最小の距離 R を探す。
   // その範囲の手がかりから、遠いものから順に、外しても c が安全なままなら外す（どれを外しても安全でなくなる組が残る）。
-  // ◆ のマス、開いたマス、地雷の総数はそのまま使う（それだけで決まる時、cells は空になる）。
+  // ● のマス、開いたマス、地雷の総数はそのまま使う（それだけで決まる時、cells は空になる）。
   // 戻り値: { R, cells }。R は c からの距離（チェビシェフ距離）
   explain(snap, c, mine = false) {
     const { W, H, M } = this;
@@ -179,7 +179,7 @@ export class Game {
 
   // マス c の地雷に賭ける。戻り値: { p, cost, opened }
   claim(c) {
-    // 降り立つ前は ◆ を置けない。最初の一歩は必ず ◇ で降り立つ場所を選ぶ
+    // 降り立つ前は ● を置けない。最初の一歩は必ず ○ で降り立つ場所を選ぶ
     if (this.state !== 'play' || !this.free(c) || !this.landed) return null;
     if (this.dirty) this.refresh();
     if (this.state !== 'play') return null;
@@ -235,7 +235,7 @@ export class Game {
     this.refresh();
   }
 
-  // 0 の連鎖、◆ で決まるマスの自動開放（有効な時）、クリア時の残りの開放をまとめて行う。
+  // 0 の連鎖、● で決まるマスの自動開放（有効な時）、クリア時の残りの開放をまとめて行う。
   // 自動で開けたマスの数とマスを this.auto に残す
   settle(opened = []) {
     this.auto = { count: 0, cells: [] };
@@ -267,8 +267,8 @@ export class Game {
     return opened;
   }
 
-  // 手がかり c が、◆ と開いたマスだけで埋まったか。範囲に賭けていないマスが残っていないか、
-  // 残りが同時開けで開けられる（◆ の数が手がかりの値にそろった）時に true。
+  // 手がかり c が、● と開いたマスだけで埋まったか。範囲に賭けていないマスが残っていないか、
+  // 残りが同時開けで開けられる（● の数が手がかりの値にそろった）時に true。
   // 地雷確率は使わないので、推理の答えは漏れない
   done(c) {
     if (!this.opened[c] || !this.clues.has(c)) return false;
@@ -277,7 +277,7 @@ export class Game {
   }
 
   // 開いた手がかりのマス c を押した時に開けるマス。普通のマインスイーパーの同時開けと同じく、数える検出器で、
-  // その手がかりと周りの ◆ だけで「残りは安全」と決まる時に限る。◆ のマスは生き残った全ての世界で地雷なので、
+  // その手がかりと周りの ● だけで「残りは安全」と決まる時に限る。● のマスは生き残った全ての世界で地雷なので、
   // ここで開けるマスは必ずコスト 0 になる
   chordTargets(c) {
     if (!this.opened[c] || !this.clues.has(c) || !DETECTORS[this.det[c]].count) return [];
@@ -289,13 +289,13 @@ export class Game {
       if (this.mines.has(d)) f++; else rest.push(d);
     }
     if (!rest.length) return [];
-    // ◆ の数 f から f + 残り の範囲で、手がかりが許す値が f だけなら残りは安全
+    // ● の数 f から f + 残り の範囲で、手がかりが許す値が f だけなら残りは安全
     const window = (mask >> f) & ((1 << (rest.length + 1)) - 1);
     return window === 1 ? rest : [];
   }
 
-  // 自動で打つ次の手。降り立った後は、p = 100% のマスがあれば ◆、無ければ全ての世界で安全なマスを開ける
-  // （手がかり1つと周りの ◆ だけで読めるマスを先に）、それも無ければ一番安い賭けを打つ。
+  // 自動で打つ次の手。降り立った後は、p = 100% のマスがあれば ●、無ければ全ての世界で安全なマスを開ける
+  // （手がかり1つと周りの ● だけで読めるマスを先に）、それも無ければ一番安い賭けを打つ。
   // 戻り値は { c: マス, kind: 'open' か 'mine' }。打てる手が無ければ null
   botMove() {
     if (this.state !== 'play') return null;
