@@ -133,8 +133,8 @@ export class Game {
     if (!this.landed) { const r = this.land(c); if (r) return r; }
     const p = this.an.prob[c];
     const sit = this.situation();
-    // 外れうる賭けと観測者消滅の手には、賭ける前の盤面を残す（終局後の振り返り用）
-    if (p > 0) sit.snap = this.snapshot();
+    // 降り立った後の手には、打つ前の盤面を残す（終局後の振り返り用）。自動で開けた手は、settle で外す
+    sit.snap = this.snapshot();
     if (p > 1 - 1e-9) {
       this.state = 'dead';
       this.moves.push({ kind: 'open', c, p, cost: Infinity, ...sit });
@@ -177,7 +177,7 @@ export class Game {
     if (this.state !== 'play') return null;
     const p = this.an.prob[c];
     const sit = this.situation();
-    if (p < 1) sit.snap = this.snapshot();
+    sit.snap = this.snapshot();
     if (p < 1e-9) {
       this.state = 'dead';
       this.moves.push({ kind: 'mine', c, p, cost: Infinity, ...sit });
@@ -244,6 +244,8 @@ export class Game {
           if (this.state !== 'play') break;
           const r = this.open(t);
           if (!r) continue;
+          // 自動で開けたマスは、きっかけになった手と一緒に振り返るので、盤面を残さない
+          delete this.moves[this.moves.length - 1].snap;
           this.auto.count++;
           this.auto.cells.push(t);
           opened.push(t);
