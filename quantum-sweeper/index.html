@@ -289,6 +289,8 @@ function newGame() {
 // マスごとに区切らない。1マスを1画素とした小さな canvas に各マスの濃さを置き、盤の大きさへ拡大する。
 // 拡大の補間で隣のマスとの間が滑らかにつながり、境目が消える
 const cloud = $('cloud');
+// 振り返りの盤に p の数字を出すか。最初は雲だけにし、プレー中の |ψ|² と同じく数字は自分で出す
+let showPv = false;
 // cloudSnap: 振り返りで見ている盤面の写し。null なら今の盤から描く
 let cloudFrame = 0, cloudSrc = null, cloudSnap = null;
 function startCloud(snap = cloudSnap) {
@@ -411,7 +413,7 @@ function pickDefault(m) {
 }
 function renderReview(m) {
   const s = m.snap, { W, H } = g;
-  // 振り返りでは、p の数字に重ねて、その時の地雷の分布を雲で出す
+  // 振り返りでは、その時の地雷の分布を雲で出す。p の数字は % のボタンで重ねる
   startCloud(s);
   board.classList.remove('won', 'lost');
   const safeMiss = isBet(m) && m.safeExists && mode === 'safe';
@@ -430,7 +432,7 @@ function renderReview(m) {
       const p = s.prob[i];
       // p = 0% は数字の 2 と同じ緑、p が大きいほど濃い赤
       const color = p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`;
-      html = `<span class="pv" style="color:${color}">${pct(p)}</span>`;
+      if (showPv) html = `<span class="pv" style="color:${color}">${pct(p)}</span>`;
       if (MARK[g.det[i]]) html += `<span class="d">${MARK[g.det[i]]}</span>`;
       if (i === m.sel) cls += selMine ? ' selm' : ' sel';
       else if (i === cheaper || (safeMiss && p === 0)) cls += ' hint';
@@ -768,7 +770,7 @@ function showResult(ok) {
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
   // 一手ずつ、打つ前の盤面を送って見られるようにする。外側のボタンは賭けの手へ飛ぶ
   const nRev = reviewMoves().length;
-  const rev = nRev ? '<div class="review"><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button></div>' : '';
+  const rev = nRev ? `<div class="review"><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvpv" aria-pressed="${showPv}" aria-label="各マスの p を数字で表示">%</button></div>` : '';
   // 盤のすぐ下に、ランクと次へ、振り返りの操作、流れ図を置く。スマホで盤と見比べながら操作できるようにし、文章と表はその後ろに回す
   el.innerHTML = `<div class="rhead">${head}${next}</div>${rev}${chart}<p class="story">${story.filter(Boolean).join('<br>')}</p>${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
@@ -777,6 +779,11 @@ function showResult(ok) {
     $('rvnext').addEventListener('click', () => setReview(review + 1));
     $('rvprevb').addEventListener('click', () => setReview(betNear(-1)));
     $('rvnextb').addEventListener('click', () => setReview(betNear(1)));
+    $('rvpv').addEventListener('click', e => {
+      showPv = !showPv;
+      e.currentTarget.setAttribute('aria-pressed', showPv);
+      if (review >= 0) render();
+    });
     $('rvpos').textContent = '終局';
     const flow = el.querySelector('.flow');
     if (flow) flow.addEventListener('click', flowClick);
