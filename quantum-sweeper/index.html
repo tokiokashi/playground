@@ -486,16 +486,18 @@ function render() {
   }
   // 残りの地雷: 地雷の総数から ◆ の数を引いたもの
   $('left').innerHTML = `<b>●</b>${g.M - g.mines.size}`;
-  renderStats(g.an.omega, g.L, g.I);
+  // 観測者消滅では、あなたのいる世界が残っていないので、L を ∞、2^−L を 0 として出す
+  renderStats(g.an.omega, liveL(), g.I);
   renderMeter();
   markArea(areaOf);
 }
+const liveL = () => g.state === 'dead' ? Infinity : g.L;
 function renderStats(omega, L, I) {
   $('omega').textContent = fmtOmega(omega);
-  $('Lv').textContent = L.toFixed(2);
+  $('Lv').textContent = isFinite(L) ? L.toFixed(2) : '∞';
   $('Iv').textContent = I.toFixed(2);
   const s = 2 ** -L;
-  $('surv').textContent = s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
+  $('surv').textContent = s === 0 ? '0%' : s >= 0.01 ? (s * 100).toFixed(1) + '%' : s.toExponential(1).replace('e', '×10^') + '%';
 }
 
 // 終局後の振り返り。手を打つ直前の盤面に、各マスの地雷確率を重ねて出す。
@@ -670,7 +672,7 @@ function renderMeter() {
   meter.hidden = !showM;
   if (!showM) return;
   const m = review >= 0 ? reviewMoves()[review] : null;
-  const digits = (2 ** -(m ? m.snap.L : g.L)).toFixed(6);
+  const digits = (2 ** -(m ? m.snap.L : liveL())).toFixed(6);
   const shaky = m ? !m.safeExists : g.state === 'play' && g.landed && !g.situation().safeExists;
   meter.classList.toggle('shaky', shaky);
   meter.setAttribute('aria-label', `2^−L ${digits}${shaky ? '、分岐を選ぶしかない局面' : ''}`);
