@@ -570,7 +570,7 @@ let showDone = true;
 try { showDone = localStorage.getItem('qs-dim') !== '0'; } catch { /* 保存できない環境 */ }
 const meter = $('meter');
 // ニキシー管の数字の電極。幅 40・高さ 64 の枠に、細い線で描く。
-// 実際の管（IN-14 など）にならい、5 は 2 の電極を上下逆さにして使い、9 も 6 を逆さにして使う
+// 実際の管（IN-14 など）にならい、5 は 2 の電極を上下に裏返して使い、9 は 6 を逆さに回して使う
 const TWO = 'M8 19C8 11 13 6 20.5 6 28 6 33 11 33 19 33 27 27 33 8 57H33';
 const SIX = 'M30 10C28 7 24 6 20 6 11 6 7 18 7 38 7 50 12 57 20 57S33 51 33 42 27 27 20 27 7 33 7 41';
 const NIXIE = [
@@ -579,7 +579,7 @@ const NIXIE = [
   `<path d="${TWO}"/>`,
   '<path d="M9 7H31L19 26C28 25 33 32 33 41S27 57 20 57 9 53 7 48"/>',
   '<path d="M27 57V7L7 42H34"/>',
-  `<path transform="rotate(180 20.5 31.5)" d="${TWO}"/>`,
+  `<path transform="matrix(1 0 0 -1 0 63)" d="${TWO}"/>`,
   `<path d="${SIX}"/>`,
   '<path d="M7 7H33L15 57"/>',
   '<circle cx="20" cy="18.5" r="11.5"/><circle cx="20" cy="43.5" r="13.5"/>',
