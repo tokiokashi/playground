@@ -140,7 +140,8 @@ export class Game {
       this.moves.push({ kind: 'open', c, p, cost: Infinity, ...sit });
       return { p, cost: Infinity, opened: [] };
     }
-    const cost = -Math.log2(1 - p);
+    // 外れようのない手は、浮動小数の誤差で p が 0・1 からわずかにずれても、コストを 0 にする
+    const cost = p < 1e-9 ? 0 : -Math.log2(1 - p);
     this.L += cost;
     this.moves.push({ kind: 'open', c, p, cost, ...sit });
     this.observe(c);
@@ -183,7 +184,7 @@ export class Game {
       this.moves.push({ kind: 'mine', c, p, cost: Infinity, ...sit });
       return { p, cost: Infinity, opened: [] };
     }
-    const cost = -Math.log2(p);
+    const cost = p > 1 - 1e-9 ? 0 : -Math.log2(p);
     this.L += cost;
     this.moves.push({ kind: 'mine', c, p, cost, ...sit });
     this.mines.add(c);
