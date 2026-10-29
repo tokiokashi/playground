@@ -70,8 +70,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #meter svg .off{stroke:#4a3020;stroke-width:1.3;opacity:.55}
 #meter svg .fr{stroke:#1e130b;stroke-width:1;opacity:.6}
 /* 光る電極は、針金のまわりにできるグローの膜で太く滲む。芯は明るく細く、外側に広い橙の滲みを重ねる */
-#meter svg .halo{stroke:#ff6a10;stroke-width:6;opacity:.45;filter:blur(1.6px)}
-#meter svg .on{stroke:#ffd49a;stroke-width:2.2;filter:drop-shadow(0 0 1px #ffa040) drop-shadow(0 0 3px #ff7a1a) drop-shadow(0 0 7px rgba(255,100,10,.7))}
+#meter svg .halo{stroke:#ff6a10;stroke-width:7.5;opacity:.45;filter:blur(1.6px)}
+#meter svg .on{stroke:#ffd49a;stroke-width:3;filter:drop-shadow(0 0 1px #ffa040) drop-shadow(0 0 3px #ff7a1a) drop-shadow(0 0 7px rgba(255,100,10,.7))}
 #meter span.dot{width:10px;background:none;border:0;overflow:visible}
 #meter span.dot::after{inset:auto 2px 7px;height:6px;border-radius:50%;background:#ffc070;box-shadow:0 0 3px #ff7a1a,0 0 7px rgba(255,110,20,.7)}
 #meter.shaky .lit{animation:nixie .26s steps(2) infinite}
@@ -284,6 +284,8 @@ let g, cells, last = -1, hint = -1, hintKind = 'open';
 let review = -1;
 // 盤に開いた姿で描いたマスと、直前の手で開いたマスごとの開く遅れ（ms）
 let shown = null, pops = new Map(), popEnd = 0;
+// 開く動きの起点。同時開けでは押した手がかりのマス。-1 なら最後に開けたマス
+let popFrom = -1;
 
 function fmtOmega(o) {
   if (o < 1e6) return Math.round(o).toLocaleString();
@@ -376,14 +378,14 @@ function render() {
   // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す（振り返りの盤では renderReview が出す）
   if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(null); else stopCloud();
   // 前に描いた時から新しく開いたマスがあれば、押したマスからの距離で開く時刻をずらす
-  // 動き終わった後の描き直し（◆ を置いた時や表示の切り替え）では、前の手の動きを繰り返さない。
-  // 動いている間の描き直し（終局の画面を出す時など）では消さない
+  // 動き終わった後の描き直し（◆ を置いた時や表示の切り替え）では、前の手の動きを繰り返さない
   const fresh = [];
   for (let i = 0; i < W * H; i++) if (g.opened[i] && !shown[i]) fresh.push(i);
   if (performance.now() > popEnd) pops = new Map();
   if (fresh.length) {
     pops = new Map();
-    const o = last >= 0 ? last : fresh[0];
+    const o = popFrom >= 0 ? popFrom : last >= 0 ? last : fresh[0];
+    popFrom = -1;
     for (const i of fresh) {
       shown[i] = 1;
       const d = Math.max(Math.abs(i % W - o % W), Math.abs(Math.floor(i / W) - Math.floor(o / W)));
@@ -419,7 +421,8 @@ function render() {
     if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
     if (pops.has(i)) { cls += ' pop'; b.style.setProperty('--d', pops.get(i) + 'ms'); }
     b.className = cls;
-    b.innerHTML = html;
+    // 中身が同じなら書き換えない。書き換えると、開いている途中のマスの動きが最初からやり直しになる
+    if (b._h !== html) { b.innerHTML = html; b._h = html; }
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷を観測したマス' : '未開放');
   }
   // 残りの地雷: 地雷の総数から ◆ の数を引いたもの
@@ -493,6 +496,7 @@ function renderReview(m) {
     if (i === m.c) cls += ' last pick';
     cells[i].className = cls;
     cells[i].innerHTML = html;
+    cells[i]._h = html;
   }
   $('msg').innerHTML = reviewLine(m);
   renderStats(s.omega, s.L, s.I);
@@ -668,6 +672,7 @@ function chord(i) {
   g.auto.cells.push(...chorded);
   $('msg').innerHTML = '+0';
   if (g.state === 'clear') showResult(true);
+  popFrom = i;
   render();
 }
 
