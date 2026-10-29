@@ -91,7 +91,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
    開く時は、マスの色がゆっくり暗くなり、数字がぼやけた状態から焦点が合うように現れる */
 .c.pop{animation:popbg .5s ease-in-out backwards;animation-delay:var(--d)}
 .c.pop>*{animation:popin .5s ease-out backwards;animation-delay:var(--d)}
-@keyframes popbg{from{background:var(--cell)}}
+@keyframes popbg{from{background:var(--cell);opacity:1}}
 @keyframes popin{from{opacity:0;filter:blur(6px);transform:scale(1.3)}}
 /* 賭けで確率が 0 か 1 に決まったマスを、決まった順に一瞬光らせる。遅れている間と光り終わった後は何も重ねない */
 .c.clp::before{content:"";position:absolute;z-index:3;inset:0;border-radius:3px;pointer-events:none;opacity:0;animation:clp .7s ease-out;animation-delay:var(--cd)}
