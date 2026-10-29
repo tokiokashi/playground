@@ -1,6 +1,7 @@
 // 各作品ディレクトリ(meta.json を持つもの)を dist/<名前>/ にまとめ、一覧ページを作る。
 // package.json があればビルドする。出力先は meta.json の "out"(既定 "dist")。
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -32,7 +33,23 @@ for (const ent of readdirSync(root, { withFileTypes: true })) {
     src = join(dir, meta.out || 'dist');
   }
   cpSync(src, join(dist, ent.name), { recursive: true, filter: p => !p.includes('node_modules') });
+  if (src === dir) versionImports(join(dist, ent.name));
   works.push({ slug: ent.name, ...meta });
+}
+
+// ビルドしない作品は、相対パスで import する .js に作品の中身から作った版（?v=）を付ける。
+// 配信のキャッシュで、新しいページが古いモジュールを読んで食い違うのを防ぐ
+function versionImports(out) {
+  const files = readdirSync(out, { recursive: true }).map(String).filter(f => /\.(html|js|mjs)$/.test(f)).sort();
+  const hash = createHash('sha256');
+  for (const f of files) hash.update(f).update(readFileSync(join(out, f)));
+  const v = hash.digest('hex').slice(0, 10);
+  const re = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|<script\b[^>]*\bsrc=)(['"])(\.{1,2}\/[^'"?#]+\.m?js)\2/g;
+  for (const f of files) {
+    const text = readFileSync(join(out, f), 'utf8');
+    const next = text.replace(re, (_, head, q, path) => `${head}${q}${path}?v=${v}${q}`);
+    if (next !== text) writeFileSync(join(out, f), next);
+  }
 }
 
 works.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
