@@ -872,7 +872,7 @@ $('botrun').addEventListener('click', () => {
 // キャンペーン。手がかりの粗さごとにシナリオを分け、盤を広げつつ地雷の密度を上げる。
 // 地雷の数は、自動プレー（安全なマスを開け、無ければ一番安い賭け）で生き残る割合が、
 // 1面でおよそ7〜9割、最終面でおよそ5〜6割になるように選んだ。1面は 6×6 にする（5×5 では降り立った一手だけで
-// 配置が決まってクリアになる局が4〜7割あった）。前のシナリオを全てクリアすると次が開く。
+// 配置が決まってクリアになる局が3〜8割あった）。1面は生き残る割合で合わせたので、密度が2面より高いことがある。前のシナリオを全てクリアすると次が開く。
 // after のあるシナリオは、粗視化の順とは別に、シナリオ after（番号か番号の並び）を全てクリアすると開く
 const SCEN = [
   { name: '非粗視化', fog: 0, stages: [[6, 6, 7], [7, 7, 9], [9, 9, 15], [12, 12, 28], [16, 16, 50]] },
@@ -890,9 +890,12 @@ let freeSet = null;
 // 進み具合（クリアした面に、その面で一番良かったランクとその時の L を `{ r, L }` で）はこのブラウザにだけ残す。古い記録の `1`（ランクを残す前のクリア）とランクの文字列もそのまま読む。保存できない環境では、開いている間だけ覚える。
 // ランクを残す前の形式の 1 は、ランク無しのクリアとして扱う
 let prog = loadProg();
+// 保存は { v: 2, p: 進み具合 }。v の無い配列は1面が 5×5 だった頃の記録なので、1面のクリアを
+// ランク無しのクリアに直す（5×5 のランクと L を 6×6 の記録として出さず、2面から先は開いたままにする）
 function loadProg() {
   try {
-    const p = JSON.parse(localStorage.getItem('qs-campaign'));
+    const raw = JSON.parse(localStorage.getItem('qs-campaign'));
+    const p = Array.isArray(raw) ? raw.map(r => Array.isArray(r) ? r.map((v, k) => k === 0 && v ? 1 : v) : r) : raw && raw.v === 2 ? raw.p : null;
     // シナリオを後ろに足す前の記録は、足りない分を未クリアで埋める
     if (Array.isArray(p) && p.length <= SCEN.length && p.every((r, i) => Array.isArray(r) && r.length === SCEN[i].stages.length))
       return SCEN.map((sc, i) => p[i] || sc.stages.map(() => 0));
@@ -900,7 +903,7 @@ function loadProg() {
   return SCEN.map(sc => sc.stages.map(() => 0));
 }
 function saveProg() {
-  try { localStorage.setItem('qs-campaign', JSON.stringify(prog)); } catch { /* 保存できない環境 */ }
+  try { localStorage.setItem('qs-campaign', JSON.stringify({ v: 2, p: prog })); } catch { /* 保存できない環境 */ }
 }
 const RANKS = ['C', 'B', 'A', 'S', 'S+'];
 // 面の記録は、未クリアの 0、ランク無しのクリアの 1、ランクの文字列、{ r: ランク, L } のどれか
