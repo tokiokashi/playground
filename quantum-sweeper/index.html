@@ -78,11 +78,12 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #meter.shaky span:nth-child(3n) .lit{animation-delay:-.09s}
 #meter.shaky span:nth-child(3n+1) .lit{animation-delay:-.17s}
 @keyframes nixie{50%{opacity:.55}}
-/* 新しく開いたマスは、押したマスから近い順に遅らせて開く。遅れている間は開く前の色のまま */
-.c.pop{animation:popbg .32s ease-out backwards;animation-delay:var(--d)}
-.c.pop>*{animation:popin .32s ease-out backwards;animation-delay:var(--d)}
-@keyframes popbg{from{background:var(--cellhi)}}
-@keyframes popin{from{opacity:0;transform:scale(.5)}}
+/* 新しく開いたマスは、押したマスから近い順に遅らせて開く。遅れている間は開く前の色のまま。
+   開く時は、マスの色がゆっくり暗くなり、数字がぼやけた状態から焦点が合うように現れる */
+.c.pop{animation:popbg .5s ease-in-out backwards;animation-delay:var(--d)}
+.c.pop>*{animation:popin .5s ease-out backwards;animation-delay:var(--d)}
+@keyframes popbg{from{background:var(--cell)}}
+@keyframes popin{from{opacity:0;filter:blur(6px);transform:scale(1.3)}}
 /* 賭けで確率が 0 か 1 に決まったマスを、決まった順に一瞬光らせる。遅れている間と光り終わった後は何も重ねない */
 .c.clp::before{content:"";position:absolute;z-index:3;inset:0;border-radius:3px;pointer-events:none;opacity:0;animation:clp .7s ease-out;animation-delay:var(--cd)}
 @keyframes clp{0%{opacity:1;background:rgba(255,236,190,.55);box-shadow:0 0 0 2px #fff6dc inset,0 0 14px 4px rgba(242,198,107,.8)}100%{opacity:0;box-shadow:0 0 0 2px #fff6dc inset,0 0 22px 8px rgba(242,198,107,0)}}
@@ -271,7 +272,8 @@ const board = $('board');
 const MARK = { exact: '', range: '≈', pair: '|', parity: '◐', wide: '≋', cross: '✚', diag: '×', knight: '♞\uFE0E', lr: '⇆', ud: '⇅' };
 // 開いたマスの表示。数える範囲が周りの8マスでない検出器は、数字だけでは見分けられないので開いた後も印を残す
 function openedCell(i, t) {
-  let cls = '', html = t;
+  // 開く動きは子要素にかけるので、数字も要素で包む
+  let cls = '', html = t ? `<span class="v">${t}</span>` : '';
   if (/^\d$/.test(t)) cls = ' n' + t;
   else if (t) cls = ' nz fz';
   // 範囲の違う検出器は、印を数字の背後に大きく敷く
@@ -404,7 +406,7 @@ function render() {
       const d = Math.max(Math.abs(i % W - o % W), Math.abs(Math.floor(i / W) - Math.floor(o / W)));
       pops.set(i, Math.min(d, POP_MAX) * POP_STEP);
     }
-    popEnd = performance.now() + Math.max(...pops.values()) + 350;
+    popEnd = performance.now() + Math.max(...pops.values()) + 550;
   }
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
