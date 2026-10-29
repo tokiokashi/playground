@@ -33,6 +33,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c:hover{background:var(--cellhi)}
 .c.o{background:var(--safe);cursor:default}
 .c.o.fz{font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.32)}
+.c .wm{position:absolute;z-index:0;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.78);font-weight:400;color:var(--mute);opacity:.28}
+.c .v{position:relative;z-index:1}
+.c.ar{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
 .c .d{position:absolute;z-index:2;right:2px;top:1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.26);color:var(--mute);font-weight:400}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk);position:relative;z-index:2}
@@ -196,12 +199,12 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </ul>
 <p>≈・≋・| は、どこで区切るかがマスごとに違い、踏み込むまで分かりません。例えば ≈ では、周りの地雷が1個でも、「0-1」と出ることも「1-2」と出ることもあります。周りの地雷が0個と確定したマスが開くと、その周りのマスも続けて開きます。「0-1」や「偶」のように、0個の可能性があるだけでは開きません。</p>
 <h3>見る範囲の違う検出器</h3>
-<p>次の検出器は、周りの8マスとは違う範囲を見ます。開いた後も印が残ります。</p>
+<p>次の検出器は、周りの8マスとは違う範囲を見ます。✚・×・♞&#xFE0E; は、開いた後も数字の背後に印が大きく残ります。開いた数字のマスに触れている間は、その検出器が見ている範囲が青い枠で示されます。</p>
 <ul>
 <li><span class="mono">✚</span>: 上下左右の4マスの地雷を数えます。</li>
 <li><span class="mono">×</span>: 斜めの4マスの地雷を数えます。</li>
 <li><span class="mono">♞&#xFE0E;</span>: チェスのナイトが跳べる8マス（縦横に2マスと1マス離れたマス）の地雷を数えます。隣のマスは数えません。</li>
-<li><span class="mono">⇆</span>: 左の列の3マスと右の列の3マスの地雷を比べ、多い側を「←」「→」、同じなら「=」で答えます。<span class="mono">⇅</span> は上の行と下の行を比べ、「↑」「↓」「=」で答えます。</li>
+<li><span class="mono">⇆</span>: 左の列の3マスと右の列の3マスの地雷を比べ、多い側を「←」「→」、同じなら「⇔」で答えます。<span class="mono">⇅</span> は上の行と下の行を比べ、「↑」「↓」「⇕」で答えます。</li>
 </ul>
 <p>✚・×・♞ は、範囲の地雷が0個と確定すると、その範囲のマスが続けて開きます。⇆・⇅ では続けて開きません。キャンペーンの「変形」と「差分」は、非粗視化をすべてクリアすると開きます。</p>
 <h3>L（Life）は命で払った運、I（Information）は数字から得た情報</h3>
@@ -234,8 +237,16 @@ function openedCell(i, t) {
   let cls = '', html = t;
   if (/^\d$/.test(t)) cls = ' n' + t;
   else if (t) cls = ' nz fz';
-  if (DETECTORS[g.det[i]].show) html += `<span class="d">${MARK[g.det[i]]}</span>`;
+  // 範囲の違う検出器は、印を数字の背後に大きく敷く
+  if (DETECTORS[g.det[i]].show) html = `<span class="wm">${MARK[g.det[i]]}</span><span class="v">${t}</span>`;
   return { cls, html };
+}
+// 開いた手がかりのマスに触れている間、その検出器が見ている範囲のマスを枠で示す
+let areaOf = -1;
+function markArea(i) {
+  if (areaOf >= 0) for (const d of g.areas[areaOf].cells) cells[d].classList.remove('ar');
+  areaOf = i >= 0 && g.opened[i] && g.clues.has(i) ? i : -1;
+  if (areaOf >= 0) for (const d of g.areas[areaOf].cells) cells[d].classList.add('ar');
 }
 let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, tap = 'open', showP = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
@@ -257,7 +268,7 @@ function newGame() {
   g = new Game(W, H, M, mix);
   syncCustom();
   g.autoChord = mode === 'safe' && autoChord;
-  last = hint = -1;
+  last = hint = areaOf = -1;
   board.style.setProperty('--w', W);
   board.innerHTML = '';
   cells = [];
@@ -362,6 +373,7 @@ function render() {
   $('left').innerHTML = `<b>●</b>${g.M - g.mines.size}`;
   renderStats(g.an.omega, g.L, g.I);
   renderMeter();
+  markArea(areaOf);
 }
 function renderStats(omega, L, I) {
   $('omega').textContent = fmtOmega(omega);
@@ -403,6 +415,7 @@ function renderReview(m) {
   $('msg').innerHTML = reviewLine(m);
   renderStats(s.omega, s.L, s.I);
   renderMeter();
+  markArea(areaOf);
 }
 // 振り返りの1行: 選んだ手の記号、p、コスト。推理ミスなら ✕、もっと安い賭けがあればその賭け
 function reviewLine(m) {
@@ -705,8 +718,14 @@ async function shareResult(e) {
 // タップは選んだ動作。長押しと右クリックは、選んだ動作によらず ◆
 const quickMine = i => { if (g.state === 'play' && g.free(i)) betMine(i); };
 let pressTimer = 0, longPressed = false;
+board.addEventListener('pointerover', e => {
+  const b = e.target.closest('.c');
+  if (b && e.pointerType === 'mouse') markArea(+b.dataset.i);
+});
+board.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') markArea(-1); });
 board.addEventListener('pointerdown', e => {
   const b = e.target.closest('.c'); if (!b) return;
+  markArea(+b.dataset.i);
   longPressed = false;
   if (e.pointerType !== 'mouse') pressTimer = setTimeout(() => { longPressed = true; quickMine(+b.dataset.i); }, 420);
 });
