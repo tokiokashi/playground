@@ -59,6 +59,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #result .story{margin:6px 0 0;font-size:14px;line-height:1.8}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
 #share{margin-top:10px}
+#next{display:block;margin:8px 0 2px;padding:8px 22px;font-size:16px;font-weight:bold;background:var(--gold);color:var(--bg);border-color:var(--gold)}
 #meter{display:flex;justify-content:center;gap:3px;margin:0 0 10px}
 #meter span{width:1.1em;padding:1px 0;text-align:center;font:400 26px/1.25 ui-monospace,Menlo,monospace;color:#ffb35c;background:radial-gradient(ellipse at 50% 40%,#2a1608,#0d0805);border:1px solid #3a2414;border-radius:40%/16%;text-shadow:0 0 4px #ff7a1a,0 0 10px rgba(255,122,26,.6)}
 #meter span.dot{width:.45em;background:none;border:0}
@@ -727,13 +728,13 @@ function showResult(ok) {
       saveProg();
       if (last) story.push(prog.every(row => row.every(Boolean)) ? 'すべての観測を終えました。' : 'このシナリオの観測を、すべて終えました。');
     }
-    next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button> `;
+    next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button>`;
   }
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
   // 外れうる賭けを打っていれば、その時々の盤面を送って見られるようにする
   const nRev = reviewMoves().length;
   const rev = nRev ? '<div class="review"><button id="rvprev" aria-label="前の賭け">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の賭け">▶</button></div>' : '';
-  el.innerHTML = `${head}<p class="story">${story.filter(Boolean).join('<br>')}</p>${rev}${table}${next}<button id="share">共有</button>`;
+  el.innerHTML = `${head}${next}<p class="story">${story.filter(Boolean).join('<br>')}</p>${rev}${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
   if (nRev) {
     $('rvprev').addEventListener('click', () => setReview(review < 0 ? nRev - 1 : review - 1));
@@ -747,6 +748,8 @@ function showResult(ok) {
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
+  // 結果は盤の下に出るので、次へのボタンが見える所まで送る
+  if (camp) $('next').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 let shareText = '';
