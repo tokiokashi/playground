@@ -66,16 +66,19 @@ export class Game {
     return { opened: this.opened.slice(), label: this.label.slice(), clues: new Map(this.clues), mines: [...this.mines], prob: this.an.prob.slice(), omega: this.an.omega, L: this.L, I: this.I };
   }
 
-  // 盤面の写し snap で全ての世界で安全なマス c について、安全だと決めている手がかりのマスを返す。
-  // c に近い手がかりから範囲を広げ、c に地雷がある世界が無くなる最小の距離 R を探す。
+  // 盤面の写し snap で全ての世界で安全なマス c（mine が true なら、全ての世界で地雷があるマス c）について、
+  // そう決めている手がかりのマスを返す。
+  // c に近い手がかりから範囲を広げ、c が逆（安全なら地雷、地雷なら空）の世界が無くなる最小の距離 R を探す。
   // その範囲の手がかりから、遠いものから順に、外しても c が安全なままなら外す（どれを外しても安全でなくなる組が残る）。
-  // ◆ のマス、開いたマス、地雷の総数はそのまま使う（総数だけで決まる時、cells は空になる）。
+  // ◆ のマス、開いたマス、地雷の総数はそのまま使う（それだけで決まる時、cells は空になる）。
   // 戻り値: { R, cells }。R は c からの距離（チェビシェフ距離）
-  explain(snap, c) {
+  explain(snap, c, mine = false) {
     const { W, H, M } = this;
     const dist = d => Math.max(Math.abs(d % W - c % W), Math.abs(((d / W) | 0) - ((c / W) | 0)));
-    const mines = new Set([...snap.mines, c]);
-    const safe = cells => analyze(W, H, M, snap.opened, new Map(cells.map(d => [d, snap.clues.get(d)])), false, mines, this.area).omega === 0;
+    // 逆の世界: 安全なマスなら c に地雷を置き、地雷のマスなら c を開いたこと（地雷が無い）にする
+    const mines = new Set(mine ? snap.mines : [...snap.mines, c]);
+    const opened = mine ? snap.opened.map((v, i) => i === c ? 1 : v) : snap.opened;
+    const safe = cells => analyze(W, H, M, opened, new Map(cells.map(d => [d, snap.clues.get(d)])), false, mines, this.area).omega === 0;
     const all = [...snap.clues.keys()].sort((a, b) => dist(b) - dist(a));
     const maxR = Math.max(W, H);
     let R = 0, keep = [], tried = -1;
