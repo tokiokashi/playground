@@ -61,9 +61,34 @@ export class Game {
   //   地雷に賭ける: 地雷が無かった世界が消える。コスト −log₂p。手がかりは出ない
   // どちらも全ての世界で外れるマス（開けるなら p = 1、地雷に賭けるなら p = 0）ではゲームオーバー
 
-  // 今の盤面の写し: 開いたマスと手がかりの表示、◆ のマス、各マスの地雷確率、Ω、それまでの L と I
+  // 今の盤面の写し: 開いたマスと手がかり（表示と mask）、◆ のマス、各マスの地雷確率、Ω、それまでの L と I
   snapshot() {
-    return { opened: this.opened.slice(), label: this.label.slice(), mines: [...this.mines], prob: this.an.prob.slice(), omega: this.an.omega, L: this.L, I: this.I };
+    return { opened: this.opened.slice(), label: this.label.slice(), clues: new Map(this.clues), mines: [...this.mines], prob: this.an.prob.slice(), omega: this.an.omega, L: this.L, I: this.I };
+  }
+
+  // 盤面の写し snap で全ての世界で安全なマス c について、安全だと決めている手がかりのマスを返す。
+  // c に近い手がかりから範囲を広げ、c に地雷がある世界が無くなる最小の距離 R を探す。
+  // その範囲の手がかりから、遠いものから順に、外しても c が安全なままなら外す（どれを外しても安全でなくなる組が残る）。
+  // ◆ のマスと開いたマスはそのまま使う。戻り値: { R, cells }。R は c からの距離（チェビシェフ距離）
+  explain(snap, c) {
+    const { W, H, M } = this;
+    const dist = d => Math.max(Math.abs(d % W - c % W), Math.abs(((d / W) | 0) - ((c / W) | 0)));
+    const mines = new Set([...snap.mines, c]);
+    const safe = cells => analyze(W, H, M, snap.opened, new Map(cells.map(d => [d, snap.clues.get(d)])), false, mines, this.area).omega === 0;
+    const all = [...snap.clues.keys()].sort((a, b) => dist(b) - dist(a));
+    const maxR = Math.max(W, H);
+    let R = 0, keep = [], tried = -1;
+    for (; R <= maxR; R++) {
+      keep = all.filter(d => dist(d) <= R);
+      if (keep.length === tried) continue;
+      tried = keep.length;
+      if (safe(keep)) break;
+    }
+    for (const d of keep.slice()) {
+      const rest = keep.filter(e => e !== d);
+      if (safe(rest)) keep = rest;
+    }
+    return { R, cells: keep };
   }
 
   // まだ賭けられるマス（開けていない、地雷に賭けていない）

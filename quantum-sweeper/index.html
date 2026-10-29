@@ -47,6 +47,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.k::after{content:"◆";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
 .c.hint{outline:2px dashed var(--mute);outline-offset:-2px}
+.c.sel{outline:2px solid #7fe0a0;outline-offset:-2px}
+.c.why{box-shadow:inset 0 0 0 2px #7fe0a0}
 .c .gh{position:absolute;z-index:2;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink);opacity:.45;font-weight:400}
 #result .story{margin:6px 0 0;font-size:14px;line-height:1.8}
 #result .story b{color:var(--gold);font-family:ui-monospace,Menlo,monospace}
@@ -218,7 +220,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <li>金色の実線の枠は、最後に押したマスです。</li>
 <li>金色の点線の枠は、まとめて開いたマスです。</li>
 <li>灰色の破線の枠と薄い ◇・◆ は、安全なマスが無い場面で、直前の賭けより安く済んだ賭けの場所です。</li>
-<li>終局後の結果にある ◀ ▶ で、外れうる賭けを打った時の盤面を順に見返せます。マスの数字はその時の p（%）、金色の実線の枠は選んだマス、灰色の破線の枠はもっと安く済んだ選択肢です。</li>
+<li>終局後の結果にある ◀ ▶ で、外れうる賭けを打った時の盤面を順に見返せます。マスの数字はその時の p（%）、金色の実線の枠は選んだマス、灰色の破線の枠はもっと安く済んだ選択肢です。推理ミスの手では、安全だったマスの1つを緑の実線で囲み、そのマスを安全と決めていた手がかりを緑で縁取ります。ほかの安全なマスを押すと、そのマスの根拠に切り替わります。</li>
 </ul>
 </details>
 </main>
@@ -373,14 +375,31 @@ function renderStats(omega, L, I) {
 
 // 終局後の振り返り。外れうる賭けを打った時点の盤面に、各マスの地雷確率を重ねて出す。
 // 選んだマスを金の実線、その時もっと安く済んだ選択肢を灰色の破線で囲む
-// （安全第一で安全なマスが残っていた時は p = 0% のマス、賭けるしかない時は一番安い賭けのマス）
+// （安全第一で安全なマスが残っていた時は p = 0% のマス、賭けるしかない時は一番安い賭けのマス）。
+// 推理ミスの手では、安全なマスのうち1つを緑の実線で囲み、それを安全と決めていた手がかりのマスを緑で縁取る。
+// 最初は一番近い手がかりで決まるマス（同じなら選んだマスに近いもの）を選び、別の安全なマスを押すと切り替わる
 const reviewMoves = () => g.moves.filter(m => m.snap);
+function whyOf(m) {
+  if (m.why) return m.why;
+  const s = m.snap, { W } = g;
+  const near = c => Math.max(Math.abs(c % W - m.c % W), Math.abs(((c / W) | 0) - ((m.c / W) | 0)));
+  m.why = new Map();
+  for (let i = 0; i < W * g.H; i++) if (!s.opened[i] && !s.mines.includes(i) && s.prob[i] === 0) m.why.set(i, g.explain(s, i));
+  // 比べる順: 根拠の距離 R、根拠の手がかりの数、選んだマスからの距離
+  const score = (c, r) => (r.R * 100 + r.cells.length) * 100 + near(c);
+  let best = -1;
+  for (const [c, r] of m.why) if (best < 0 || score(c, r) < score(best, m.why.get(best))) best = c;
+  m.sel = best;
+  return m.why;
+}
 function renderReview(m) {
   const s = m.snap, { W, H } = g;
   stopCloud();
   board.classList.remove('won', 'lost');
   const safeMiss = m.safeExists && mode === 'safe';
   const cheaper = !m.safeExists && m.cost > m.best + 1e-9 ? m.bestCell : -1;
+  const why = safeMiss ? whyOf(m) : null;
+  const reason = new Set(why && why.has(m.sel) ? why.get(m.sel).cells : []);
   for (let i = 0; i < W * H; i++) {
     let cls = 'c', html = '';
     if (s.opened[i]) {
@@ -394,8 +413,10 @@ function renderReview(m) {
       const color = p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`;
       html = `<span class="pv" style="color:${color}">${pct(p)}</span>`;
       if (MARK[g.det[i]]) html += `<span class="d">${MARK[g.det[i]]}</span>`;
-      if (i === cheaper || (safeMiss && p === 0)) cls += ' hint';
+      if (safeMiss && i === m.sel) cls += ' sel';
+      else if (i === cheaper || (safeMiss && p === 0)) cls += ' hint';
     }
+    if (reason.has(i)) cls += ' why';
     if (i === m.c) cls += ' last pick';
     cells[i].className = cls;
     cells[i].innerHTML = html;
@@ -498,6 +519,12 @@ function betLine(r, m) {
 }
 
 function act(i) {
+  // 振り返りで推理ミスの手を見ている時は、押した安全なマスの根拠に切り替える
+  if (review >= 0) {
+    const m = reviewMoves()[review];
+    if (m.why && m.why.has(i)) { m.sel = i; render(); }
+    return;
+  }
   if (g.state !== 'play') return;
   if (g.opened[i]) { chord(i); return; }
   if (g.mines.has(i)) return;
