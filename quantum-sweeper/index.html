@@ -525,6 +525,8 @@ function chord(i) {
     const r = g.open(t);
     // 直前のマスで世界が1つに決まっていると、開ける前にクリアになって null が返る
     if (!r) break;
+    // まとめて開けたマスは、振り返りでは1手として見せる（最初のマスの盤面だけを残す）
+    if (opened.length) delete g.moves[g.moves.length - 1].snap;
     last = t;
     opened.push(t);
   }
