@@ -35,6 +35,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.o.fz{font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.32)}
 .c .wm{position:absolute;z-index:0;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.78);font-weight:400;color:var(--mute);opacity:.28}
 .c .v{position:relative;z-index:1}
+.c.dn{opacity:.38}
 .c.ar{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
 .c .d{position:absolute;z-index:2;right:2px;top:1px;font-size:calc(min(100vw - 32px,var(--w)*38px)/var(--w)*.26);color:var(--mute);font-weight:400}
 .c.m{background:#5a2330}
@@ -222,6 +223,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <h3>盤の印</h3>
 <ul>
 <li>◇・◆ の行の右端にある ● の数は、地雷の総数から ◆ の数を引いた残りです。</li>
+<li>薄く表示された数字のマスは、範囲のマスがすべて開いたか ◆ になった、または ◆ の数が手がかりにそろって残りが空と読めるマスです。もう新しい情報はありません。</li>
 <li>金色の実線の枠は、最後に押したマスです。</li>
 <li>金色の点線の枠は、まとめて開いたマスです。</li>
 <li>灰色の破線の枠と薄い ◇・◆ は、安全なマスが無い場面で、直前の賭けより安く済んだ賭けの場所です。</li>
@@ -350,6 +352,7 @@ function render() {
     if (g.opened[i]) {
       const o = openedCell(i, g.label[i]);
       cls += ' o' + o.cls;
+      if (g.done(i)) cls += ' dn';
       html = o.html;
     } else {
       const p = g.prob(i);
