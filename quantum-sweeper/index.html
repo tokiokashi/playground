@@ -78,6 +78,12 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #meter.shaky span:nth-child(3n) .lit{animation-delay:-.09s}
 #meter.shaky span:nth-child(3n+1) .lit{animation-delay:-.17s}
 @keyframes nixie{50%{opacity:.55}}
+/* 新しく開いたマスは、押したマスから近い順に遅らせて開く。遅れている間は開く前の色のまま */
+.c.pop{animation:popbg .22s ease-out backwards;animation-delay:var(--d)}
+.c.pop>*{animation:popin .22s ease-out backwards;animation-delay:var(--d)}
+@keyframes popbg{from{background:var(--cellhi)}}
+@keyframes popin{from{opacity:0;transform:scale(.5)}}
+@media (prefers-reduced-motion:reduce){.c.pop,.c.pop>*{animation:none}}
 @media (prefers-reduced-motion:reduce){#meter.shaky .lit{animation:none;opacity:.6}}
 .c.auto{outline:2px dotted var(--gold);outline-offset:-2px}
 .c .pv{position:absolute;z-index:2;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(100cqw/var(--w)*.3);font-weight:400}
@@ -276,6 +282,8 @@ let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, 
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 終局後の振り返りで見ている手の番号。-1 なら終局の盤
 let review = -1;
+// 盤に開いた姿で描いたマスと、直前の手で開いたマスごとの開く遅れ（ms）
+let shown = null, pops = new Map();
 
 function fmtOmega(o) {
   if (o < 1e6) return Math.round(o).toLocaleString();
@@ -303,6 +311,8 @@ function newGame() {
     cells.push(b);
   }
   review = -1;
+  shown = new Uint8Array(W * H);
+  pops = new Map();
   $('msg').innerHTML = '';
   $('result').style.display = 'none';
   $('revbar').hidden = true;
@@ -365,6 +375,18 @@ function render() {
   board.classList.toggle('lost', g.state === 'dead');
   // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す（振り返りの盤では renderReview が出す）
   if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(null); else stopCloud();
+  // 前に描いた時から新しく開いたマスがあれば、押したマスからの距離で開く時刻をずらす
+  const fresh = [];
+  for (let i = 0; i < W * H; i++) if (g.opened[i] && !shown[i]) fresh.push(i);
+  if (fresh.length) {
+    pops = new Map();
+    const o = last >= 0 ? last : fresh[0];
+    for (const i of fresh) {
+      shown[i] = 1;
+      const d = Math.max(Math.abs(i % W - o % W), Math.abs(Math.floor(i / W) - Math.floor(o / W)));
+      pops.set(i, Math.min(d, 14) * 55);
+    }
+  }
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -391,6 +413,7 @@ function render() {
     }
     // まとめて開けたマスと自動で開けたマス
     if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
+    if (pops.has(i)) { cls += ' pop'; b.style.setProperty('--d', pops.get(i) + 'ms'); }
     b.className = cls;
     b.innerHTML = html;
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷を観測したマス' : '未開放');
@@ -436,6 +459,8 @@ function pickDefault(m) {
 }
 function renderReview(m) {
   const s = m.snap, { W, H } = g;
+  // 終局の盤へ戻った時に、最後に開いたマスの動きを繰り返さない
+  pops = new Map();
   // 振り返りでは、その時の地雷の分布を雲で出す。p の数字は % のボタンで重ねる
   startCloud(s);
   board.classList.remove('won', 'lost');
@@ -579,16 +604,41 @@ function renderMeter() {
   const shaky = m ? !m.safeExists : g.state === 'play' && g.landed && !g.situation().safeExists;
   meter.classList.toggle('shaky', shaky);
   meter.setAttribute('aria-label', `2^−L ${digits}${shaky ? '、分岐を選ぶしかない局面' : ''}`);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const paint = ch => { meter.innerHTML = ch.map(c => c === '.' ? '<span class="dot"></span>' : TUBE[c]).join(''); };
+  const rnd = () => String(Math.floor(Math.random() * 10));
   // n 個の桁を乱数の数字に置き換えて描く
   const draw = n => {
     const ch = [...digits];
-    for (let k = 0; k < n; k++) ch[2 + Math.floor(Math.random() * (ch.length - 2))] = String(Math.floor(Math.random() * 10));
-    meter.innerHTML = ch.map(c => c === '.' ? '<span class="dot"></span>' : TUBE[c]).join('');
+    for (let k = 0; k < n; k++) ch[2 + Math.floor(Math.random() * (ch.length - 2))] = rnd();
+    paint(ch);
   };
-  draw(0);
-  if (shaky && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    meterTimer = setInterval(() => draw(Math.random() < 0.4 ? 0 : 1 + Math.floor(Math.random() * 3)), 120);
+  const settle = () => {
+    meterRoll = '';
+    draw(0);
+    if (shaky && !still) meterTimer = setInterval(() => draw(Math.random() < 0.4 ? 0 : 1 + Math.floor(Math.random() * 3)), 120);
+  };
+  const from = meterShown;
+  meterShown = digits;
+  // 値が変わった時は、変わる桁の数字をしばらく回し、左の桁から順に止める
+  const changed = [...digits].map((c, k) => (c !== '.' && c !== from[k] ? k : -1)).filter(k => k >= 0);
+  if (still || !from || !changed.length) {
+    // 同じ値へ回している途中に描き直しが来た時は、回し続ける
+    if (meterRoll === digits && !still) return rollMeter(changed, digits, paint, rnd, settle);
+    return settle();
   }
+  meterRoll = digits;
+  rollMeter(changed, digits, paint, rnd, settle);
+}
+let meterShown = '', meterRoll = '', rollStart = 0, rollKeys = [];
+function rollMeter(changed, digits, paint, rnd, settle) {
+  if (changed.length) { rollStart = performance.now(); rollKeys = changed; }
+  meterTimer = setInterval(() => {
+    const t = performance.now() - rollStart, ch = [...digits];
+    rollKeys.forEach((k, j) => { if (t < 220 + j * 70) ch[k] = rnd(); });
+    paint(ch);
+    if (t >= 220 + rollKeys.length * 70) { clearInterval(meterTimer); meterTimer = 0; settle(); }
+  }, 45);
 }
 
 // 開いた手がかりのマスを押すと、その手がかりと周りの ◆ で安全と決まるマスをまとめて開ける。コストは常に 0
