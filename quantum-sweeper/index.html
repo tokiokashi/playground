@@ -143,10 +143,6 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <button id="autochord" aria-pressed="true" aria-label="◆ で決まるマスを自動で開ける">◆ 自動</button>
 </div>
 <div class="bar">
-  <span role="group" aria-label="タップの操作">
-    <button data-tap="open" aria-pressed="true" aria-label="安全に賭ける">◇</button>
-    <button data-tap="mine" aria-pressed="false" aria-label="地雷に賭ける">◆</button>
-  </span>
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
   <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">◌</button>
@@ -188,14 +184,14 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <p>最初の一歩では、降り立つ場所を ◇ で選びます。降り立った場所とその周りの 8 マスに、地雷はありません。</p>
 <p>マスごとの p は、残っている世界のうち、そのマスに地雷がある世界の割合です。「|ψ|²」を押すと、p の分布が赤い雲で盤に重なります。</p>
 <h3>どの世界へ進むかを決める</h3>
-<p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身どおりの世界だけが残ります。盤の上の ◇・◆ のボタンでどちらに決めるかを選んでから、マスを押します。目印だけを付ける手段はありません。</p>
+<p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身どおりの世界だけが残ります。目印だけを付ける手段はありません。</p>
 <ul>
-<li><b>◇ 開ける</b>: 「このマスは空だ」と決めて踏み込みます。地雷がある世界のあなたは、そこで終わります。生き残った世界では、足元の検出器が数字を返します。</li>
-<li><b>◆ 地雷に賭ける</b>: 「このマスに地雷がある」と観測します。地雷が無い世界では地雷を見つけられないので、その世界にあなたはもういません。どちらのボタンを選んでいても、長押しか右クリックで ◆ になります。</li>
+<li><b>◇ 踏み込む</b>（タップ・クリック）: 「このマスは空だ」と決めて踏み込みます。地雷がある世界のあなたは、そこで終わります。生き残った世界では、足元の検出器が数字を返します。</li>
+<li><b>◆ 地雷を観測する</b>（長押し・右クリック）: 「このマスに地雷がある」と観測します。地雷が無い世界では地雷を見つけられないので、その世界にあなたはもういません。</li>
 </ul>
-<p>p = 100% のマスに踏み込むか、p = 0% のマスに地雷があると決めると、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもないマスでの決定を「外れうる賭け」と呼びます。</p>
+<p>p = 100% のマスに踏み込むか、p = 0% のマスで地雷を観測すると、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもない、未確定のマスを選ぶ一手を「分岐」と呼びます。</p>
 <h3>L と ∿</h3>
-<p>L は、ここまでの外れうる賭けにすべて当たった確率を、コイントスを何回続けて当てる確率と同じかで表した数です。「∿」のメーターには、その確率が出ます。p = 0% のマスが一つも無く、外れうる賭けを打つしかない局面では、メーターの数字が揺らぎます。</p>
+<p>L は、ここまでの分岐をすべて生き延びた確率を、コイントスを何回続けて当てる確率と同じかで表した数です。「∿」のメーターには、その確率が出ます。p = 0% のマスが一つも無く、分岐を選ぶしかない局面では、メーターの数字が揺らぎます。</p>
 <h3>粗視化した検出器</h3>
 <p>開けていないマスの右上の印は、そのマスの検出器の種類です。開いたマスの数字は周りの地雷の数を表し、数字のマスに触れると、数える範囲が青い枠で出ます。</p>
 <ul>
@@ -222,7 +218,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <h3>盤の印</h3>
 <ul>
 <li>「◌」がオンの間は、使い終わった数字のマスが薄くなります。薄くなるのは、範囲のマスがすべて開いたか ◆ になった時と、範囲の ◆ の数が数字にそろって残りが空と読める時です。</li>
-<li>終局後の結果にある ◀ ▶ で、一手ずつ、その手を打つ直前の盤面を見返せます。|◀ ▶| は、外れうる賭けを打った手へ飛びます。マスの数字は、その時の p（%）です。金色の実線の枠は選んだマスです。p = 0% か 100% のマスを押すと、そのマスを実線で囲み、そう決めていた数字のマスを縁取ります（0% は緑、100% は赤）。損失があった手では、もっと良かった選択肢を最初から枠で示します。</li>
+<li>終局後の結果にある ◀ ▶ で、一手ずつ、その手を打つ直前の盤面を見返せます。|◀ ▶| は、分岐の手へ飛びます。マスの数字は、その時の p（%）です。金色の実線の枠は選んだマスです。p = 0% か 100% のマスを押すと、そのマスを実線で囲み、そう決めていた数字のマスを縁取ります（0% は緑、100% は赤）。損失があった手では、もっと良かった選択肢を最初から枠で示します。</li>
 </ul>
 </details>
 </main>
@@ -249,7 +245,7 @@ function markArea(i) {
   areaOf = i >= 0 && g.opened[i] && g.clues.has(i) ? i : -1;
   if (areaOf >= 0) for (const d of g.areas[areaOf].cells) cells[d].classList.add('ar');
 }
-let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, tap = 'open', showP = false;
+let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 手ごとの L と I の推移。結果画面の流れ図に使う（m はその時点までの手の数）
 let hist = [];
@@ -336,7 +332,6 @@ function render() {
   const { W, H } = g;
   const over = g.state !== 'play';
   board.classList.toggle('won', g.state === 'clear');
-  document.querySelector('[data-tap="mine"]').disabled = !g.landed;
   board.classList.toggle('lost', g.state === 'dead');
   // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す
   if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(); else stopCloud();
@@ -369,7 +364,7 @@ function render() {
     if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
     b.className = cls;
     b.innerHTML = html;
-    b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷に賭けたマス' : '未開放');
+    b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷を観測したマス' : '未開放');
   }
   // 残りの地雷: 地雷の総数から ◆ の数を引いたもの
   $('left').innerHTML = `<b>●</b>${g.M - g.mines.size}`;
@@ -515,7 +510,7 @@ function renderMeter() {
   const digits = (2 ** -(m ? m.snap.L : g.L)).toFixed(6);
   const shaky = m ? !m.safeExists : g.state === 'play' && g.landed && !g.situation().safeExists;
   meter.classList.toggle('shaky', shaky);
-  meter.setAttribute('aria-label', `2^−L ${digits}${shaky ? '、賭けるしかない局面' : ''}`);
+  meter.setAttribute('aria-label', `2^−L ${digits}${shaky ? '、分岐を選ぶしかない局面' : ''}`);
   // n 個の桁を乱数の数字に置き換えて描く
   const draw = n => {
     const ch = [...digits];
@@ -585,7 +580,7 @@ function act(i) {
   if (g.state !== 'play') return;
   if (g.opened[i]) { chord(i); return; }
   if (g.mines.has(i)) return;
-  if (tap === 'mine') betMine(i); else betOpen(i);
+  betOpen(i);
 }
 
 function betOpen(i) {
@@ -696,7 +691,7 @@ function flowChart() {
     `<text x="${VW - 4}" y="${top0 - 6}" font-size="12" fill="var(--mute)" text-anchor="end">Ω = 1</text>` +
     // 振り返りで見ている手の位置。手を打つ前の盤なので、その手の舌の根元に縦線を引く
     `<line id="flowcur" y1="${top0 - 20}" y2="${H - 6}" stroke="var(--gold)" stroke-width="2" stroke-dasharray="4 3" visibility="hidden"/></svg>` +
-    '<p class="flowcap">上は世界の減り方です。青は根拠を持って絞った分、赤は運が良かっただけの分です。下は、運良く生き残ったあなたを表示します。' + (mode === 'safe' ? '暗い赤は、賭けるしかない場面での必要な犠牲でした。' : '') + '</p>';
+    '<p class="flowcap">上は世界の減り方です。青は根拠を持って絞った分、赤は運が良かっただけの分です。下は、運良く生き残ったあなたを表示します。' + (mode === 'safe' ? '暗い赤は、分岐を選ぶしかない場面での必要な犠牲でした。' : '') + '</p>';
 }
 
 // 結果画面。ランクと内訳に加えて、どれだけの運で生き延びたかを短い文で出し、そのまま共有できるようにする
@@ -717,9 +712,9 @@ function showResult(ok) {
     const fatal = g.moves[g.moves.length - 1];
     head = '<h2>観測者消滅</h2>';
     story = [
-      lucky ? `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率（<b>${pctS(2 ** -g.L)}</b>）で、外れうる賭けを <b>${bets.length}</b> 回切り抜けました。`
-        : bets.length ? `外れうる賭けを <b>${bets.length}</b> 回切り抜けました。` : '',
-      fatal.kind === 'mine' ? '最後に、どの世界でも空だったマスに、地雷があると決めました。' : '最後に、どの世界でも地雷があるマスへ踏み込みました。',
+      lucky ? `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率（<b>${pctS(2 ** -g.L)}</b>）で、分岐を <b>${bets.length}</b> 回生き延びました。`
+        : bets.length ? `分岐を <b>${bets.length}</b> 回生き延びました。` : '',
+      fatal.kind === 'mine' ? '最後に、どの世界でも空だったマスで、地雷を観測しようとしました。' : '最後に、どの世界でも地雷があるマスへ踏み込みました。',
       'この先に、あなたのいる世界はありません。',
     ];
     summary = '観測者消滅' + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(2 ** -g.L)}）を切り抜けた後` : '');
@@ -728,7 +723,7 @@ function showResult(ok) {
     r = mode === 'safe' ? rank(loss) : rankCost(ratio);
     const surv = 2 ** -g.L;
     const rows = mode === 'safe'
-      ? [['推理ミス', `${f(b.error)}（${b.errors}）`], ['賭けの損', f(b.gap)], ['不可避', f(b.forced)]]
+      ? [['推理ミス', `${f(b.error)}（${b.errors}）`], ['選択の損', f(b.gap)], ['不可避', f(b.forced)]]
       : [];
     rows.push(['L', `${f(g.L)} / ${g.H0.toFixed(1)}（${(ratio * 100).toFixed(1)}%）`], ['◆', f(b.mineCost)]);
     head = `<h2><span class="rank">${r}</span>Ω = 1</h2>`;
@@ -737,15 +732,15 @@ function showResult(ok) {
         // 安全第一では、どう打っても払うしかなかった分を分けて書き、運の大きさが腕の差に見えないようにする
         + (mode === 'safe' && b.forced >= 0.05 ? `うち <b>${b.forced.toFixed(1)}</b> 回は、必要な犠牲でした。` : ''),
       `最初にいたあなたのうち、ここにいるのは <b>${pctS(surv)}</b> です。`,
-      !worst ? '外れうる賭けを一度もせずに、ここまで来ました。'
-        : `外れうる賭けは <b>${bets.length}</b> 回でした。最も危うかったのは、` + (worst.kind === 'mine'
-          ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスに、地雷があると決めた時です。`
+      !worst ? '一度も分岐を通らずに、ここまで来ました。'
+        : `分岐は <b>${bets.length}</b> 回でした。最も危うかったのは、` + (worst.kind === 'mine'
+          ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスで、地雷を観測した時です。`
           : `地雷がある確率 <b>${(risk * 100).toFixed(1)}%</b> のマスへ踏み込んだ時です。`),
       `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を、根拠を持って絞り込みました。`,
       '観測を終了します。',
     ];
     table = flowChart() + `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
-    summary = r + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(surv)}）` : '') + (worst ? `・最大の賭け ${(risk * 100).toFixed(1)}%` : '');
+    summary = r + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(surv)}）` : '') + (worst ? `・最も危うい分岐 ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
   let setting = `${g.W}×${g.H}・${g.M}個・${fog ? fog.textContent : '詳細設定'}・${mode === 'safe' ? '安全第一' : '最小コスト'}`;
@@ -767,7 +762,7 @@ function showResult(ok) {
   shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
   // 一手ずつ、打つ前の盤面を送って見られるようにする。外側のボタンは賭けの手へ飛ぶ
   const nRev = reviewMoves().length;
-  const rev = nRev ? '<div class="review"><button id="rvprevb" aria-label="前の賭け">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の賭け">▶|</button></div>' : '';
+  const rev = nRev ? '<div class="review"><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button></div>' : '';
   el.innerHTML = `${head}${next}<p class="story">${story.filter(Boolean).join('<br>')}</p>${rev}${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
   if (nRev) {
@@ -801,7 +796,7 @@ async function shareResult(e) {
   } catch { /* 共有を取り消した時など */ }
 }
 
-// タップは選んだ動作。長押しと右クリックは、選んだ動作によらず ◆
+// タップとクリックは ◇（空と決めて踏み込む）。長押しと右クリックは ◆（地雷を観測する）
 const quickMine = i => { if (g.state === 'play' && g.free(i)) betMine(i); };
 let pressTimer = 0, longPressed = false;
 board.addEventListener('pointerover', e => {
@@ -862,10 +857,6 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(+v) || lo));
 mixInputs.forEach(x => x.addEventListener('change', () => {
   mix = mixInputs.map(y => +y.value);
   newGame();
-}));
-document.querySelectorAll('[data-tap]').forEach(btn => btn.addEventListener('click', () => {
-  document.querySelectorAll('[data-tap]').forEach(x => x.setAttribute('aria-pressed', x === btn));
-  tap = btn.dataset.tap;
 }));
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
 $('showd').setAttribute('aria-pressed', showDone);
