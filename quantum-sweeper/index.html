@@ -37,8 +37,15 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c .v{position:relative;z-index:1}
 .c.dn{opacity:.38}
 .c.ar{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
+/* 調べているマス。範囲に含む手がかりのマス（.ar）より強い実線で囲む */
+.c.aq{outline:2px solid #7fb2ff;outline-offset:-2px}
+/* 調査のボタンは、よく使うので盤のすぐ下に大きく置く。オンの間は、ボタンと盤の外枠を枠と同じ青にして、開ける操作と区別する */
+#probebar{display:flex;justify-content:center;margin:10px 0 0}
+#probe{min-width:9em;padding:9px 18px;font-size:15px}
+#probe[aria-pressed="true"]{border-color:#7fb2ff;color:#fff;background:rgba(127,178,255,.35)}
+#board.probing{outline:2px dashed #7fb2ff;outline-offset:5px;border-radius:4px}
 /* マウスでは重ねるだけで調べられるので、調査のボタンはタッチの端末だけに出す */
-@media (hover:hover) and (pointer:fine){#probe{display:none}}
+@media (hover:hover) and (pointer:fine){#probebar{display:none}}
 .c .d{position:absolute;z-index:2;right:2px;top:1px;font-size:calc(100cqw/var(--w)*.26);color:var(--mute);font-weight:400}
 .c.m{background:#5a2330}
 .c.m::after{content:"●";color:var(--risk);position:relative;z-index:2}
@@ -185,7 +192,6 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
   <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">◌</button>
-  <button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
   <span id="left" class="left" aria-label="残りの地雷"></span>
@@ -216,6 +222,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </div>
 <div class="pboard">
 <div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas></div>
+<div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
 <div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="false" aria-label="各マスの p を数字で表示">%</button></div>
 <p id="msg" aria-live="polite"></p>
 </div>
@@ -290,7 +297,7 @@ let areaOf = -1, marked = [];
 // 盤に開いて見えているマス。振り返りでは、見ている盤面の時点で開いていたマス
 const openedShown = () => review >= 0 ? reviewMoves()[review].snap.opened : g.opened;
 function markArea(i) {
-  for (const d of marked) cells[d].classList.remove('ar');
+  for (const d of marked) cells[d].classList.remove('ar', 'aq');
   marked = [];
   areaOf = -1;
   if (i < 0 || !g) return;
@@ -303,7 +310,7 @@ function markArea(i) {
     if (marked.length === 1) marked = [];
   }
   if (marked.length) areaOf = i;
-  for (const d of marked) cells[d].classList.add('ar');
+  for (const d of marked) cells[d].classList.add(d === i && !opened[i] ? 'aq' : 'ar');
 }
 // 調査: オンの間は、タップでマスを開けずに、上の枠だけを出す（マウスなら重ねるだけで出る）
 let probe = false;
@@ -1008,7 +1015,8 @@ board.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mar
 board.addEventListener('pointerdown', e => {
   const b = e.target.closest('.c'); if (!b) return;
   // タッチでは、開いていないマスの手がかりは調査の時だけ示す（ふだんのタップは開ける操作なので、枠を残さない）
-  if (probe || e.pointerType === 'mouse' || openedShown()[+b.dataset.i]) markArea(+b.dataset.i);
+  // 開ける操作の時は、前に示した枠も消す（残っていると、調査中かどうか見分けにくい）
+  if (probe || e.pointerType === 'mouse' || openedShown()[+b.dataset.i]) markArea(+b.dataset.i); else markArea(-1);
   longPressed = false;
   if (e.pointerType !== 'mouse' && !probe) pressTimer = setTimeout(() => { longPressed = true; quickMine(+b.dataset.i); }, 420);
 });
@@ -1063,7 +1071,8 @@ mixInputs.forEach(x => x.addEventListener('change', () => {
   newGame();
 }));
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
-$('probe').addEventListener('click', e => { probe = !probe; e.currentTarget.setAttribute('aria-pressed', probe); if (!probe) markArea(-1); });
+// 調査を切り替えても、最後に調べた枠は残す。次にマスを開ける操作をした時に消える
+$('probe').addEventListener('click', e => { probe = !probe; e.currentTarget.setAttribute('aria-pressed', probe); board.classList.toggle('probing', probe); });
 $('showd').setAttribute('aria-pressed', showDone);
 $('showd').addEventListener('click', e => {
   showDone = !showDone;
