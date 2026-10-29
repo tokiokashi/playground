@@ -287,13 +287,14 @@ function openedCell(i, t) {
 // 開いていないマスに触れている間は、そのマスを範囲に含む手がかりのマスを枠で示す。
 // 手がかりの全部を示し、そのマスを決めている手がかりだけに絞ることはしない（絞ると推理の答えになる）
 let areaOf = -1, marked = [];
+// 盤に開いて見えているマス。振り返りでは、見ている盤面の時点で開いていたマス
+const openedShown = () => review >= 0 ? reviewMoves()[review].snap.opened : g.opened;
 function markArea(i) {
   for (const d of marked) cells[d].classList.remove('ar');
   marked = [];
   areaOf = -1;
   if (i < 0 || !g) return;
-  // 振り返りでは、見ている盤面の時点で開いていた手がかりだけを数える
-  const opened = review >= 0 ? reviewMoves()[review].snap.opened : g.opened;
+  const opened = openedShown();
   if (opened[i]) {
     if (g.clues.has(i)) marked = g.areas[i].cells.slice();
   } else {
@@ -1007,7 +1008,7 @@ board.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mar
 board.addEventListener('pointerdown', e => {
   const b = e.target.closest('.c'); if (!b) return;
   // タッチでは、開いていないマスの手がかりは調査の時だけ示す（ふだんのタップは開ける操作なので、枠を残さない）
-  if (probe || e.pointerType === 'mouse' || g.opened[+b.dataset.i]) markArea(+b.dataset.i);
+  if (probe || e.pointerType === 'mouse' || openedShown()[+b.dataset.i]) markArea(+b.dataset.i);
   longPressed = false;
   if (e.pointerType !== 'mouse' && !probe) pressTimer = setTimeout(() => { longPressed = true; quickMine(+b.dataset.i); }, 420);
 });
