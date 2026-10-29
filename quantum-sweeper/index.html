@@ -109,6 +109,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #msg b{color:var(--gold)}
 .scen{display:grid;grid-template-columns:4.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
 .scen span{font-weight:700;align-self:center}
+.scen span.hard{color:var(--risk)}
 .scen button{min-height:3.4em;padding:4px 0;font-size:12px;font-family:ui-monospace,Menlo,monospace}
 .scen button.done{border-color:var(--gold);color:var(--gold)}
 .scen button b{display:block;font:800 15px/1.1 ui-monospace,Menlo,monospace}
@@ -118,6 +119,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #grid td{width:2.4em;height:2.4em;padding:0}
 #grid button{width:100%;height:100%;min-height:0;padding:0;font:700 13px ui-monospace,Menlo,monospace;color:var(--mute)}
 #grid button.done{border-color:var(--gold);color:var(--gold)}
+#grid button.hard{border-color:var(--risk);color:var(--risk);background:color-mix(in srgb,var(--risk) 14%,transparent)}
+#grid button.hard.done{color:var(--gold)}
 #grid button[aria-pressed="true"]{outline:2px solid var(--gold);outline-offset:1px}
 #free{margin-top:6px}
 #records{margin:12px 0 0;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:13px}
@@ -1138,6 +1141,9 @@ $('botrun').addEventListener('click', () => {
 // シナリオはどれからでも始められ、シナリオの中では前の面をクリアすると次の面が開く。
 // fog のあるシナリオは MIXES の割合を、mix のあるシナリオはその割合（TYPES の順）を使う。
 // cell のあるシナリオは入口の表に置く。cell は TYPES の番号の組で、同じ番号なら単体、違えば2種を半々に混ぜる
+// hard のあるシナリオは、上の目標では地雷がほとんど置けない、または一手でクリアになる局が多すぎる組み合わせ。
+// 目標を下げ（6×6 60%、7×7 55%、8×8 50%、9×9 45%、10×10 42%、12×12 38%、14×14 34%、16×16 30%）、
+// 同じ並べ方で面を選び、隣り合う面の地雷の数が同じになる時は一手でクリアになる局が少ない方を残した。表では赤く示す。≋ 単体は 16×16 でも地雷 3 個にしかならないので置かない
 const SCEN = [
   { name: '非粗視化', fog: 0, stages: [[6, 6, 7], [7, 7, 9], [9, 9, 15], [12, 12, 28], [16, 16, 50]] },
   { name: '弱粗視化', fog: 1, stages: [[6, 6, 6], [7, 7, 8], [9, 9, 13], [12, 12, 22], [16, 16, 34]] },
@@ -1180,6 +1186,12 @@ const SCEN = [
   { name: '♞\uFE0E', cell: [7, 7], mix: [0, 0, 0, 0, 0, 0, 0, 100, 0], stages: [[7, 7, 14], [9, 9, 23], [12, 12, 41], [16, 16, 71]] },
   { name: '♞\uFE0E⇆⇅', cell: [7, 8], mix: [0, 0, 0, 0, 0, 0, 0, 50, 50], stages: [[7, 7, 8], [9, 9, 12], [12, 12, 26], [16, 16, 45]] },
   { name: '⇆⇅', cell: [8, 8], mix: [0, 0, 0, 0, 0, 0, 0, 0, 100], stages: [[6, 6, 3], [7, 7, 4], [9, 9, 8], [12, 12, 15], [16, 16, 24]] },
+  { name: '≈', cell: [1, 1], hard: true, mix: [0, 100, 0, 0, 0, 0, 0, 0, 0], stages: [[8, 8, 3], [12, 12, 6], [16, 16, 11]] },
+  { name: '≈≋', cell: [1, 4], hard: true, mix: [0, 50, 0, 0, 50, 0, 0, 0, 0], stages: [[8, 8, 2], [9, 9, 3], [12, 12, 4], [16, 16, 6]] },
+  { name: '≋✚', cell: [4, 5], hard: true, mix: [0, 0, 0, 0, 50, 50, 0, 0, 0], stages: [[7, 7, 4], [9, 9, 6], [12, 12, 10], [16, 16, 17]] },
+  { name: '≋×', cell: [4, 6], hard: true, mix: [0, 0, 0, 0, 50, 0, 50, 0, 0], stages: [[8, 8, 5], [12, 12, 8], [16, 16, 13]] },
+  { name: '≋⇆⇅', cell: [4, 8], hard: true, mix: [0, 0, 0, 0, 50, 0, 0, 0, 50], stages: [[6, 6, 3], [7, 7, 4], [9, 9, 6], [12, 12, 10], [16, 16, 18]] },
+  { name: '✚×', cell: [5, 6], hard: true, mix: [0, 0, 0, 0, 0, 50, 50, 0, 0], stages: [[6, 6, 6], [9, 9, 12], [12, 12, 18], [16, 16, 27]] },
 ];
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
@@ -1225,7 +1237,7 @@ function showEntry() {
 // シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
 function stageRow(i) {
   const sc = SCEN[i];
-  return `<div class="scen"><span>${sc.name}</span>` + sc.stages.map(([W, H, M], k) => {
+  return `<div class="scen"><span${sc.hard ? ' class="hard"' : ''}>${sc.name}</span>` + sc.stages.map(([W, H, M], k) => {
     const open = k === 0 || prog[i][k - 1];
     if (!open) return `<button disabled aria-label="${sc.name} ${k + 1}面 未開放">？</button>`;
     const rk = RANKS.includes(recRank(prog[i][k])) ? recRank(prog[i][k]) : '';
@@ -1245,7 +1257,8 @@ function showGrid() {
       const i = c >= r ? at.get(`${r},${c}`) : undefined;
       if (i === undefined) { html += '<td></td>'; continue; }
       const n = prog[i].filter(Boolean).length, all = n === prog[i].length;
-      html += `<td><button data-g="${i}" aria-pressed="${i === gridPick}"${all ? ' class="done"' : ''} aria-label="${SCEN[i].name}">${n ? n : ''}</button></td>`;
+      const cls = [all && 'done', SCEN[i].hard && 'hard'].filter(Boolean).join(' ');
+      html += `<td><button data-g="${i}" aria-pressed="${i === gridPick}"${cls ? ` class="${cls}"` : ''} aria-label="${SCEN[i].name}">${n ? n : ''}</button></td>`;
     }
     html += '</tr>';
   }
