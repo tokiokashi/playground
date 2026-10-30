@@ -1940,7 +1940,7 @@ const LORE = [
   ['cloud', '開ける場所によって、次の盤面に与える影響も変わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['盤が1つの世界に決まると、観測は終わります。', 'この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
-let lore = 0, loreK = 0, pulls = 0;
+let lore = 0, loreK = 0, pulls = 0, trigWait = false;
 function loreStart() {
   lore = 0;
   loreK = 0;
@@ -2142,6 +2142,8 @@ document.addEventListener('click', e => {
   if ($('lore').hidden || e.target.closest('#lback, #lskip, #entry, a')) return;
   // 引くたびに同じ文を1つ足す。3回引いたら次へ進むボタンを出す
   if (e.target.id === 'ltrig') {
+    // もう一度引くよう頼む文が出ている間は、文が出終わるまで次を受けない。3 回引いた後は続けて引ける
+    if (trigWait) return;
     pulls++;
     const m = document.createElement('span');
     m.textContent = '不発でした。';
@@ -2156,6 +2158,7 @@ document.addEventListener('click', e => {
     const again = ['もう一度、引いてください。', 'もう一度。'][pulls - 1];
     $('lagain').outerHTML = `<p id="lagain"${again ? '' : ' hidden'}>${again || ''}</p>`;
     if (pulls >= 3) $('lnext').hidden = false;
+    else { trigWait = true; setTimeout(() => { trigWait = false; }, 700); }
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
     return;
