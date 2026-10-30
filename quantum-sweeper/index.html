@@ -280,13 +280,13 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <details id="records" hidden></details>
 </div>
 <div id="lore" hidden>
-  <div class="whead"><button id="lback" aria-label="入口へ">←</button><b>観測記録 000</b><button id="lskip" hidden>スキップ</button></div>
+  <div class="whead"><button id="lback" aria-label="入口へ" title="入口へ">←</button><b>観測記録 000</b><button id="lskip" hidden>スキップ</button></div>
   <div id="lorebody"></div>
 </div>
 <div id="play" hidden>
 <div class="pside">
 <div class="bar">
-  <button id="toentry" aria-label="入口へ">←</button>
+  <button id="toentry" aria-label="入口へ" title="入口へ">←</button>
   <span id="stagelabel" class="stagelabel"></span>
   <button id="skip" hidden>スキップ</button>
 </div>
@@ -296,32 +296,32 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-size="16,16,40" aria-pressed="false">16×16</button>
   </span>
   <span role="group" aria-label="手がかりの粗さ">
-    <button data-fog="0" aria-pressed="false">非粗視化</button>
-    <button data-fog="1" aria-pressed="true">弱粗視化</button>
-    <button data-fog="2" aria-pressed="false">強粗視化</button>
-    <button data-fog="3" aria-pressed="false">全粗視化</button>
+    <button data-fog="0" title="すべてのマスが、周りの地雷の数をそのまま答えます" aria-pressed="false">非粗視化</button>
+    <button data-fog="1" title="6 割のマスが数をそのまま答え、残りは幅や偶奇などで答えます" aria-pressed="true">弱粗視化</button>
+    <button data-fog="2" title="数をそのまま答えるマスは 3 割ほどで、残りは幅や偶奇などで答えます" aria-pressed="false">強粗視化</button>
+    <button data-fog="3" title="すべてのマスが、幅や偶奇などで答えます" aria-pressed="false">全粗視化</button>
   </span>
   <span role="group" aria-label="検出器の範囲">
-    <button data-fog="4" aria-pressed="false">変形</button>
-    <button data-fog="5" aria-pressed="false">差分</button>
-    <button data-fog="6" aria-pressed="false">混成</button>
-    <button data-fog="7" aria-pressed="false">混沌</button>
+    <button data-fog="4" title="数える範囲の違うマス（✚ × ♞&#xFE0E;）が混ざります" aria-pressed="false">変形</button>
+    <button data-fog="5" title="左右や上下の地雷を比べて答えるマス（⇆ ⇅）が混ざります" aria-pressed="false">差分</button>
+    <button data-fog="6" title="すべての種類の検出器が混ざります" aria-pressed="false">混成</button>
+    <button data-fog="7" title="すべての種類の検出器が混ざり、数をそのまま答えるマスはありません" aria-pressed="false">混沌</button>
   </span>
 </div>
 <div class="bar" id="modebar">
   <span role="group" aria-label="評価のモード" id="modegrp">
-    <button data-mode="safe" aria-pressed="true">安全第一</button>
-    <button data-mode="cost" aria-pressed="false">最小コスト</button>
+    <button data-mode="safe" title="推理ミスと選択の損の合計でランクが決まります" aria-pressed="true">安全第一</button>
+    <button data-mode="cost" title="L が小さいほどランクが上がります" aria-pressed="false">最小コスト</button>
   </span>
 </div>
 <div class="bar">
-  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">○ 自動</button>
-  <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
-  <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示">p</button>
-  <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
-  <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">✓</button>
-  <button id="reset" aria-label="新しい盤">↻</button>
-  <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
+  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける" title="● で決まるマスを自動で開ける">○ 自動</button>
+  <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示" title="地雷の分布を雲で表示">|ψ|²</button>
+  <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示" title="地雷の確率を数字で表示">p</button>
+  <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示" title="世界線メーターを表示">∿</button>
+  <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示" title="埋まった手がかりを薄く表示">✓</button>
+  <button id="reset" aria-label="新しい盤" title="新しい盤">↻</button>
+  <button id="gear" aria-pressed="false" aria-label="詳細設定" title="詳細設定">⚙</button>
 </div>
 <div id="custom" hidden>
   <label>W<input type="number" id="cw" min="4" max="20"></label>
@@ -336,8 +336,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <label>×<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>♞&#xFE0E;<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>⇆<input type="range" class="mix" min="0" max="100" step="5"></label>
-  <button id="botrun" aria-pressed="false" aria-label="自動で打ち続ける">▶</button>
-  <button id="botstep" aria-label="自動で1手打つ">⏭</button>
+  <button id="botrun" aria-pressed="false" aria-label="自動で打ち続ける" title="自動で打ち続ける">▶</button>
+  <button id="botstep" aria-label="自動で1手打つ" title="自動で1手打つ">⏭</button>
 </div>
 <div class="stats">
   <div class="stat"><span class="k">Ω</span><span class="v" id="omega"></span></div>
@@ -350,8 +350,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div class="pboard">
 <div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas><div id="coach" hidden role="dialog" aria-live="polite"><div class="card"><p id="coachtext"></p><button id="coachok">OK</button></div></div></div>
 <p id="msg" aria-live="polite"></p>
-<div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
-<div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="true" aria-label="各マスの p を数字で表示">%</button></div>
+<div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない" title="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
+<div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手" title="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐" title="前の分岐">|◀</button><button id="rvprev" aria-label="前の手" title="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手" title="次の手">▶</button><button id="rvnextb" aria-label="次の分岐" title="次の分岐">▶|</button><button id="rvlast" aria-label="終局" title="終局">⇥</button><button id="rvpv" aria-pressed="true" aria-label="各マスの p を数字で表示" title="各マスの p を数字で表示">%</button></div>
 </div>
 <div id="result" aria-live="polite"></div>
 </div>
@@ -1631,7 +1631,7 @@ function showEntry() {
 }
 // チュートリアルの面のボタンを、シナリオの行と同じ形で1行目に並べる。どの面からでも始められる
 function introRow() {
-  return `<div class="scen"><span>${INTRO.name}</span><button class="wbtn" data-lore aria-label="観測記録 000">背景</button>` + INTRO.stages.map(([W, H], k) =>
+  return `<div class="scen"><span>${INTRO.name}</span><button class="wbtn" data-lore aria-label="観測記録 000" title="観測記録 000">背景</button>` + INTRO.stages.map(([W, H], k) =>
     `<button data-s="-1" data-k="${k}"${introClear.has(k) ? ' class="done"' : ''} aria-label="${INTRO.heads[k]}">${W}×${H}</button>`).join('') + '</div>';
 }
 // シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
