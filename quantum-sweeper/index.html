@@ -107,7 +107,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
-/* 初めて見る検出器の手がかりが開いた時の、一度だけの実演。手がかりのマスを脈打つ枠で囲み、見ている範囲を青く縁取って、読み方を1行で出す */
+/* 初めて見る検出器の手がかりが開いた時の、一度だけの実演。手がかりのマスを脈打つ枠で囲み、見ている範囲を青く縁取る（読み方は札で出す） */
 /* 盤の上に重ねる説明の札。閉じるまで盤を押せない。示しているマスと反対の側に寄せる */
 /* 札は盤からはみ出して盤の外（上か下）へ寄せ、盤の上の印と枠をなるべく隠さない */
 #coach{position:absolute;inset:-140px 0 0;z-index:5;display:flex;align-items:flex-start;justify-content:center;padding:0 4px;background:rgba(5,8,15,.18);cursor:pointer}
@@ -342,7 +342,7 @@ function openedCell(i, t) {
   return { cls, html };
 }
 // 検出器の種類ごとの実演。初めてその種類の手がかりが開いた時に一度だけ、手がかりのマスと見ている範囲を枠で示し、
-// 表示の読み方を1行で出す。次にマスを操作すると消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
+// 表示の読み方を札で出す。札を閉じると枠も消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
 let tipCell = -1, introSeen = new Set(), seen = new Set();
 try { seen = new Set(JSON.parse(localStorage.getItem('qs-seen')) || []); } catch { /* 保存できない環境 */ }
 const seenSet = () => camp && camp.s < 0 ? introSeen : seen;
