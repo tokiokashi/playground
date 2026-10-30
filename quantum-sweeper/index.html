@@ -166,6 +166,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lorebody p:has(.lgap){margin-top:1.6em}
 #lorebody .lseg{display:inline-block}
 #ltree{width:100%;max-width:360px;height:auto}
+#lboards{width:100%;max-width:360px;height:auto}
+#lboards .lcut{transition:opacity .8s}
+#lboards .lcut.on{opacity:.25}
+#lboards .lcut.on rect:first-child{stroke:var(--risk)}
 #ltrig{font-size:15px;padding:8px 22px;border-color:var(--risk);color:var(--risk)}
 #ltrig.flash{background:rgba(255,107,107,.25)}
 .lnav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
@@ -1913,8 +1917,8 @@ const LORE = [
   ['trigger'],
   ['tree', () => `生き残った確率は ${loreOdds()} でした。`, 'とても強い幸運の持ち主です。', '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
-  ['この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
-  ['あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
+  ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
+  ['row', 'あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', 'cut', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
   ['盤が1つの世界に決まると、観測は終わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
@@ -1937,6 +1941,14 @@ function loreStep() {
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`);
     loreTree();
     // 「生き残った確率」のボタンで来たので、確率の文は図と一緒に出す
+    loreStep();
+  } else if (item === 'stack' || item === 'row') {
+    // 盤の場面の図。stack は重なった世界、row は並べた世界の真ん中のマスに ○ を置いたところ。図と一緒に次の文を出す
+    body.insertAdjacentHTML('beforeend', loreBoards(item === 'row'));
+    loreStep();
+  } else if (item === 'cut') {
+    // ○ のマスに地雷がある世界を赤くして消す
+    document.querySelectorAll('#lboards .lcut').forEach(e => e.classList.add('on'));
     loreStep();
   } else if (item === 'end') {
     body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
@@ -1975,6 +1987,25 @@ function loreTree() {
   g = `<rect x="0" y="${y0}" width="${x0}" height="${T}" fill="var(--gold)"/>` + g
     + `<rect x="${xn}" y="${y0}" width="${Math.max(0, 320 - xn)}" height="${tn}" fill="var(--gold)" opacity=".35"/>`;
   if ($('ltree')) $('ltree').innerHTML = g;
+}
+// 3×3・地雷 2 個の世界を 6 つ描く。重ねる時は奥ほど薄く、並べる時は真ん中のマスに ○ を置き、そこに地雷がある世界に lcut を付ける
+const LBOARDS = [[0, 8], [4, 6], [1, 5], [2, 4], [3, 7], [0, 5]];
+function loreBoards(row) {
+  const cs = 11, gap = 2, pad = 3, bw = pad * 2 + cs * 3 + gap * 2;
+  const one = (w, x, y, op) => {
+    let g = `<rect x="${x}" y="${y}" width="${bw}" height="${bw}" rx="4" fill="var(--panel)" stroke="var(--line)"/>`;
+    for (let c = 0; c < 9; c++) {
+      const cx = x + pad + (c % 3) * (cs + gap), cy = y + pad + ((c / 3) | 0) * (cs + gap);
+      g += `<rect x="${cx}" y="${cy}" width="${cs}" height="${cs}" rx="1.5" fill="${w.includes(c) ? 'var(--gold)' : 'var(--cell)'}"/>`;
+      if (row && c === 4) g += `<circle cx="${cx + cs / 2}" cy="${cy + cs / 2}" r="3.6" fill="none" stroke="var(--ink)" stroke-width="1.6"/>`;
+    }
+    return `<g class="${row && w.includes(4) ? 'lcut' : ''}" opacity="${op}">${g}</g>`;
+  };
+  const n = LBOARDS.length;
+  const body = row
+    ? LBOARDS.map((w, i) => one(w, 10 + i * 51, 10, 1)).join('')
+    : LBOARDS.map((w, i) => [w, i]).reverse().map(([w, i]) => one(w, 85 + i * 18, 8 + (n - 1 - i) * 10, (1 - i * 0.13).toFixed(2))).join('');
+  return `<svg id="lboards" viewBox="0 0 320 ${row ? 64 : 106}" role="img" aria-label="${row ? '真ん中のマスに ○ を置いた世界' : '重なった世界'}">${body}</svg>`;
 }
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
