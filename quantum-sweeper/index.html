@@ -420,7 +420,7 @@ function coachTip() {
   if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。' };
   if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
     ? { key: 'pre', focus: step.cell, html: '光っているマスは、地雷の有無が確定していません。このゲームでは、有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。' }
-    : { key: 'pre', focus: -1, html: 'このゲームでは、有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。' };
+    : { key: 'pre', focus: -1, html: 'このゲームでは、地雷の有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。' };
   return null;
 }
 // 導入の1面で、降り立ってから初めて分岐するまで
