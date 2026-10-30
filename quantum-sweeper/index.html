@@ -156,7 +156,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lore,#worlds,button{touch-action:manipulation}
 #lorebody{min-height:300px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
 /* 引くたびに「不発でした。」を、この枠の中のばらばらの位置に重ねていく */
-#lmsg{position:relative;align-self:stretch;height:40vh;min-height:220px;overflow:hidden}
+#lmsg{position:relative;align-self:stretch;height:30vh;min-height:170px;overflow:hidden}
+#lagain{height:1.6em;line-height:1.6}
 #lmsg span{position:absolute;white-space:nowrap;animation:lorein .7s ease both}
 @media (prefers-reduced-motion:reduce){#lmsg span{animation:none}}
 #lorebody p{margin:0;max-width:30em;animation:lorein .7s ease both}
@@ -1966,7 +1967,7 @@ function loreStep() {
   const scene = LORE[lore], item = scene[loreK++];
   const body = $('lorebody');
   if (item === 'trigger') {
-    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><p id="lagain" hidden></p><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
+    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><p id="lagain"></p><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
   } else if (item === 'tree') {
     // 引いた回数だけ分かれた世界を、種明かしの後で見せる
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`);
@@ -2154,11 +2155,17 @@ document.addEventListener('click', e => {
     m.style.left = `calc((100% - 6.4em) * ${R()})`;
     m.style.top = `calc((100% - 5.5em) * ${R()} + 2em)`;
     $('lmsg').append(m);
-    // 3 回目までは、もう一度引くよう頼む文を出す。文は毎回作り直して、出る動きをやり直す
-    const again = ['もう一度、引いてください。', 'もう一度。'][pulls - 1];
-    $('lagain').outerHTML = `<p id="lagain"${again ? '' : ' hidden'}>${again || ''}</p>`;
-    if (pulls >= 3) $('lnext').hidden = false;
-    else { trigWait = true; setTimeout(() => { trigWait = false; }, 700); }
+    // 3 回目までは、不発の文の少し後に、もう一度引くよう頼む文を出す。文は毎回作り直して、出る動きをやり直す。
+    // 頼む文が出終わるまでは次を受けない。3 回引いた後は、頼む文を消して次へ進むボタンを出し、続けて引けるようにする
+    const again = ['もう一度、引いてください。', 'もう一度。'][pulls - 1] || '';
+    $('lagain').textContent = '';
+    if (again) trigWait = true;
+    setTimeout(() => {
+      if (!$('lagain')) return;
+      $('lagain').outerHTML = `<p id="lagain">${again}</p>`;
+      if (pulls >= 3) $('lnext').hidden = false;
+    }, 600);
+    if (again) setTimeout(() => { trigWait = false; }, 1300);
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
     return;
