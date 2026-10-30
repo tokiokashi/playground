@@ -380,8 +380,19 @@ function tipText(i) {
 // 安全なマスしか開けない人にも先に伝わるよう、降り立った後から初めて分岐するまでは分岐できることを出し、初めて分岐した直後は、何が起きたかを出す。
 // 見たかどうかは手がかりの種類と同じ集合に 'branch' として残す
 let branchTip = false;
-// チュートリアルで、どの世界でも失敗する手（cell と、● だったか）。先に札で知らせ、札を閉じたらその手を打って結末を見せる
-let fatalTip = null, fatalN = 0;
+// どの世界でも失敗する手（cell と、● だったか）。先に札で知らせ、札を閉じたらその手を打って結末を見せる。
+// チュートリアルでは毎回、その外では初めての時だけ知らせる
+let fatalTip = null, fatalN = 0, fatalShown = false;
+function warnFatal(i, mine) {
+  if (!inIntro() && seen.has('fatal')) return false;
+  fatalTip = { cell: i, mine };
+  fatalN++;
+  fatalShown = true;
+  seen.add('fatal');
+  try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
+  render();
+  return true;
+}
 // チュートリアル2面で ● を置いて自動で開けた後に、✓ と ● 自動 を説明する
 let autoTip = false;
 const inIntro = () => !!camp && camp.s < 0;
@@ -553,6 +564,7 @@ function newGame() {
   last = hint = areaOf = tipCell = -1;
   branchTip = false;
   fatalTip = null;
+  fatalShown = false;
   autoTip = false;
   coach = null;
   coachShown = new Set();
@@ -994,7 +1006,7 @@ function act(i) {
   branchTip = false;
   if (g.opened[i]) { chord(i); if (hadTip) render(); return; }
   if (g.mines.has(i)) return;
-  if (inIntro() && g.landed && g.prob(i) > 1 - 1e-9) { fatalTip = { cell: i, mine: false }; fatalN++; render(); return; }
+  if (g.landed && g.prob(i) > 1 - 1e-9 && warnFatal(i, false)) return;
   betOpen(i);
 }
 
@@ -1173,8 +1185,8 @@ function showResult(ok) {
         : bets.length ? `分岐を <b>${bets.length}</b> 回生き延びました。` : '',
       fatal.kind === 'mine' ? '最後に、どの世界でも地雷が無かったマスに ● を置きました。' : '最後に、どの世界でも地雷があるマスを開けました。',
       'この先に、あなたのいる世界はありません。',
-      // チュートリアルでは、振り返りの使い方をここで示す
-      camp && camp.s < 0 ? '盤の下の ◀ ▶ で、一手ずつ、その手を打つ直前の盤面を見返せます。' : '',
+      // 失敗が確定する手を札で知らせた時は、振り返りの使い方もここで示す
+      fatalShown ? '盤の下の ◀ ▶ で、一手ずつ、その手を打つ直前の盤面を見返せます。' : '',
     ];
     summary = '観測者消滅' + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(2 ** -g.L)}）を切り抜けた後` : '');
   } else {
@@ -1267,7 +1279,7 @@ const quickMine = i => {
   if (step && !(i === step.cell && (step.kind === 'mine' || (step.kind === 'open' && g.landed)))) return;
   tipCell = -1;
   branchTip = false;
-  if (inIntro() && g.landed && g.prob(i) < 1e-9) { fatalTip = { cell: i, mine: true }; fatalN++; render(); return; }
+  if (g.landed && g.prob(i) < 1e-9 && warnFatal(i, true)) return;
   const two = inIntro() && camp.k === 1 && !g.mines.size;
   betMine(i);
   if (two && g.state === 'play' && g.auto && g.auto.count > 0) { autoTip = true; render(); }
