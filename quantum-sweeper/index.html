@@ -1812,7 +1812,7 @@ function wRender() {
     const bg = v === '' && alive.length ? `style="background:color-mix(in srgb,var(--risk) ${Math.round(p * 70)}%,var(--cell))"` : '';
     return `<button data-c="${c}" class="${v === '●' ? 'm' : v !== '' ? 'o' : ''}" ${bg} aria-label="マス ${c + 1}${v ? ' ' + v : ''}">${v}</button>`;
   }).join('');
-  $('wmeter').innerHTML = `<b>${(ws.surv * 100).toFixed(ws.surv < 0.1 ? 1 : 0)}%</b>${alive.length} / 36`;
+  $('wmeter').innerHTML = `<b>${(ws.surv * 100).toFixed(1)}%</b>${alive.length} / 36`;
   $('wcap').innerHTML = ws.cap;
   $('wgrid').innerHTML = WORLDS.map((w, i) => `<div class="wm3 ${ws.st[i]}${alive.length === 1 && !ws.st[i] ? ' one' : ''}">` +
     Array.from({ length: WN }, (_, c) => `<i class="${w.includes(c) ? 'x' : ws.cell[c] !== '' && ws.cell[c] !== '●' ? 'o' : ''}"></i>`).join('') + '</div>').join('');
