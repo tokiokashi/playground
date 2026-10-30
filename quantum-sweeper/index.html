@@ -423,7 +423,7 @@ function coachTip() {
     : { key: 'pre', focus: -1, html: '地雷の有無が確定していないマスも、○ と ● で選べます。' };
   return null;
 }
-// 導入の1面で、降り立ってから初めて分岐するまでは、雲と確率の数字のボタンを光らせる（オンにしたボタンは光らせない）
+// 導入の1面で、降り立ってから初めて分岐するまで
 const introProbs = () => !!camp && camp.s < 0 && camp.k === 0 && g.state === 'play' && g.landed && !branchSeen();
 function renderCoach() {
   if (!coach) {
@@ -443,6 +443,10 @@ function renderCoach() {
   el.hidden = !coach;
   // 札が話している盤の外のもの（メーターや上のボタン）を、札を開いている間だけ金の枠で示す
   for (const id of ['meter', 'showm', 'showp', 'shown']) $(id).classList.toggle('hl', !!coach && !!coach.hl && coach.hl.includes(id));
+  // 雲と p の札を見た後、札を閉じている間は、オフのままのボタンを光らせ続ける
+  const lit = introProbs() && coachShown.has('cloud') && !coach;
+  $('showp').classList.toggle('go', lit && !showP);
+  $('shown').classList.toggle('go', lit && !showN);
   if (!coach) return;
   $('coachtext').innerHTML = coach.html;
   // 説明の札は、示しているマスと反対の側（マスが上半分なら下、下半分なら上）に寄せる
@@ -619,9 +623,6 @@ function render() {
   }
   const tipArea = tipCell >= 0 ? new Set(g.areas[tipCell].cells) : null;
   step = scriptStep();
-  const lit = introProbs();
-  $('showp').classList.toggle('go', lit && !showP);
-  $('shown').classList.toggle('go', lit && !showN);
   const guide = step ? step.cell : -1;
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
