@@ -118,9 +118,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #coach b.g{color:var(--gold)}
 #coachok{min-width:6em;padding:6px 18px}
 /* 導入で次に押すマス。金の枠を脈打たせる */
-.c.go{outline:2px solid var(--gold);outline-offset:-2px;animation:go 1.1s ease-in-out infinite}
+.c.go,.bar button.go{outline:2px solid var(--gold);outline-offset:-2px;animation:go 1.1s ease-in-out infinite}
 @keyframes go{50%{outline-color:rgba(242,198,107,.2)}}
-@media (prefers-reduced-motion:reduce){.c.go{animation:none}}
+@media (prefers-reduced-motion:reduce){.c.go,.bar button.go{animation:none}}
 .c.ta{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
 .c.tq{outline:2px solid #7fb2ff;outline-offset:-2px;animation:tq 1.2s ease-in-out infinite}
 @keyframes tq{50%{outline-color:rgba(127,178,255,.25)}}
@@ -184,7 +184,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 @media (max-width:600px){
   body{padding-top:12px}
   h1{font-size:20px;margin-bottom:8px}
-  .bar{margin-bottom:6px}
+  .bar{margin-bottom:6px;gap:4px}
+  .bar button{padding:4px 8px}
   .stats{grid-template-columns:1.25fr .9fr 1fr 1.35fr;gap:4px;margin-bottom:6px}
   .stat{display:flex;align-items:baseline;gap:4px;padding:3px 5px;min-width:0}
   .stat .k{font-size:11px;line-height:1.3}
@@ -239,6 +240,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div class="bar">
   <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">● 自動</button>
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
+  <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示">p</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
   <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">✓</button>
   <button id="reset" aria-label="新しい盤">↻</button>
@@ -273,7 +275,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas><div id="coach" hidden role="dialog" aria-live="polite"><div class="card"><p id="coachtext"></p><button id="coachok">OK</button></div></div></div>
 <p id="msg" aria-live="polite"></p>
 <div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
-<div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="false" aria-label="各マスの p を数字で表示">%</button></div>
+<div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="true" aria-label="各マスの p を数字で表示">%</button></div>
 </div>
 <div id="result" aria-live="polite"></div>
 </div>
@@ -411,11 +413,14 @@ function coachTip() {
   if (g.state !== 'play') return null;
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
+  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, html: '<b>|ψ|²</b>上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。' };
   if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
     ? { key: 'pre', focus: step.cell, html: '<b>○</b>光っているマスは、地雷の有無が確定していませんが、このゲームでは開けることができます。' }
     : { key: 'pre', focus: -1, html: '<b>∿</b>地雷の有無が確定していないマスも、○ と ● で選べます。' };
   return null;
 }
+// 導入の1面で、降り立ってから初めて分岐するまでは、雲と確率の数字のボタンを光らせる（オンにしたボタンは光らせない）
+const introProbs = () => !!camp && camp.s < 0 && camp.k === 0 && g.state === 'play' && g.landed && !branchSeen();
 function renderCoach() {
   if (!coach) {
     const t = coachTip();
@@ -435,7 +440,7 @@ function renderCoach() {
   if (!coach) return;
   $('coachtext').innerHTML = coach.html;
   // 説明の札は、示しているマスと反対の側（マスが上半分なら下、下半分なら上）に寄せる
-  el.classList.toggle('low', coach.focus >= 0 && ((coach.focus / g.W) | 0) < g.H / 2);
+  el.classList.toggle('low', !!coach.low || (coach.focus >= 0 && ((coach.focus / g.W) | 0) < g.H / 2));
 }
 function closeCoach() {
   if (!coach) return;
@@ -469,7 +474,7 @@ function markArea(i) {
 }
 // 調査: オンの間は、タップでマスを開けずに、上の枠だけを出す（マウスなら重ねるだけで出る）
 let probe = false;
-let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = false;
+let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = false, showN = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 終局後の振り返りで見ている手の番号。-1 なら終局の盤
 let review = -1;
@@ -535,7 +540,7 @@ function newGame() {
 // 拡大の補間で隣のマスとの間が滑らかにつながり、境目が消える
 const cloud = $('cloud');
 // 振り返りの盤に p の数字を出すか。最初は雲だけにし、プレー中の |ψ|² と同じく数字は自分で出す
-let showPv = false;
+let showPv = true;
 // cloudSnap: 振り返りで見ている盤面の写し。null なら今の盤から描く
 let cloudFrame = 0, cloudSrc = null, cloudSnap = null;
 function startCloud(snap = cloudSnap) {
@@ -606,6 +611,9 @@ function render() {
   }
   const tipArea = tipCell >= 0 ? new Set(g.areas[tipCell].cells) : null;
   step = scriptStep();
+  const lit = introProbs();
+  $('showp').classList.toggle('go', lit && !showP);
+  $('shown').classList.toggle('go', lit && !showN);
   const guide = step ? step.cell : -1;
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
@@ -623,12 +631,16 @@ function render() {
       // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（●）と、
       // 雲を表示している時の p = 1 のマス。雲を隠している時に p から消すと、答えが漏れる
       const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
+      // p ボタンがオンの間は、各マスの地雷の確率を数字で出す（色は振り返りの % と同じ）。10% 未満は、分岐の札の値と合うよう小数1桁まで出す
+      if (showN && !over && g.landed && !g.mines.has(i))
+        html += `<span class="pv" style="color:${p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`}">${p >= 0.005 && p < 0.095 ? (p * 100).toFixed(1) : pct(p)}</span>`;
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
     }
     if (i === last) cls += ' last';
     if (i === tipCell) cls += ' tq';
     else if (tipArea && tipArea.has(i)) cls += ' ta';
-    if (i === guide) { cls += ' go'; html += `<span class="gh">${step.kind === 'mine' ? '●' : '○'}</span>`; }
+    // 確率の数字を出している時は、印の ○ / ● を重ねない（金の枠だけで示す）
+    if (i === guide) { cls += ' go'; if (!html.includes('class="pv"')) html += `<span class="gh">${step.kind === 'mine' ? '●' : '○'}</span>`; }
     // 一番安かった賭けのマスには、その賭けの記号（○ 開ける / ● 地雷に賭ける）を薄く重ねる
     if (i === hint && !g.opened[i] && !g.mines.has(i)) {
       cls += ' hint';
@@ -1275,6 +1287,7 @@ mixInputs.forEach(x => x.addEventListener('change', () => {
   newGame();
 }));
 $('showp').addEventListener('click', e => { showP = !showP; e.currentTarget.setAttribute('aria-pressed', showP); render(); });
+$('shown').addEventListener('click', e => { showN = !showN; e.currentTarget.setAttribute('aria-pressed', showN); render(); });
 // 調査を切り替えても、最後に調べた枠は残す。次にマスを開ける操作をした時に消える
 $('probe').addEventListener('click', e => { probe = !probe; e.currentTarget.setAttribute('aria-pressed', probe); board.classList.toggle('probing', probe); });
 $('showd').setAttribute('aria-pressed', showDone);
