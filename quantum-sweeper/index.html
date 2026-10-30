@@ -1333,10 +1333,12 @@ function showResult(ok) {
   });
   el.style.display = 'block';
   // スマホでは結果が盤の下に出るので、振り返りの操作（無ければ結果）の上端を画面の上端に合わせる。
-  // 盤の横に結果が出る幅（PC）では送らない
+  // 最後の一手の盤を見せるため 0.5 秒待ってから送る。盤の横に結果が出る幅（PC）では送らない
   const top = nRev ? $('revbar') : el;
-  if (el.getBoundingClientRect().top > $('board').getBoundingClientRect().bottom)
-    window.scrollTo({ top: scrollY + top.getBoundingClientRect().top - 8, behavior: 'smooth' });
+  setTimeout(() => {
+    if (el.style.display === 'block' && el.getBoundingClientRect().top > $('board').getBoundingClientRect().bottom)
+      window.scrollTo({ top: scrollY + top.getBoundingClientRect().top - 8, behavior: 'smooth' });
+  }, 500);
 }
 
 let shareText = '';
