@@ -1932,8 +1932,7 @@ $('wagain').addEventListener('click', () => { wStart(); scrollTo({ top: 0, behav
 // 観測記録 000。何もない画面をタップするたびに1文ずつ出す。場面の文を出し切ったら、次のタップで画面を消して次の場面へ。
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
-  ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', 'この銃を自分に向けて、引き金を引いてください。'],
-  ['trigger'],
+  ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', '弾が出れば、あなたは死にます。', '運が良ければ、生き残れるでしょう。', 'この銃を自分に向けて、引き金を引いてください。', 'trigger'],
   ['tree', () => `生き残った確率は ${loreOdds()} でした。`, 'とても強い幸運の持ち主です。', '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
@@ -1941,7 +1940,7 @@ const LORE = [
   ['cloud', '開ける場所によって、次の盤面に与える影響も変わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['盤が1つの世界に決まると、観測は終わります。', 'この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
-let lore = 0, loreK = 0, pulls = 0;
+let lore = 0, loreK = 0, pulls = 0, trigWait = false;
 function loreStart() {
   lore = 0;
   loreK = 0;
@@ -1967,7 +1966,7 @@ function loreStep() {
   const scene = LORE[lore], item = scene[loreK++];
   const body = $('lorebody');
   if (item === 'trigger') {
-    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
+    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><p id="lagain" hidden></p><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
   } else if (item === 'tree') {
     // 引いた回数だけ分かれた世界を、種明かしの後で見せる
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`);
@@ -2003,7 +2002,11 @@ function loreStep() {
     loreStep();
   } else if (item === 'end') {
     body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
-  } else body.insertAdjacentHTML('beforeend', `<p>${loreWrap(typeof item === 'function' ? item() : item)}</p>`);
+  } else {
+    body.insertAdjacentHTML('beforeend', `<p>${loreWrap(typeof item === 'function' ? item() : item)}</p>`);
+    // 引き金を引くよう頼む文には、装置を続けて出す
+    if (scene[loreK] === 'trigger') loreStep();
+  }
 }
 // 句読点の後でだけ改行するよう、句読点までのまとまりを折り返さない塊にする（タグの中は分けない）
 const loreWrap = t => t.replace(/(<[^>]+>)|([^<、。]+[、。]?)/g, (m, tag, seg) => tag || `<span class="lseg">${seg}</span>`);
@@ -2017,8 +2020,8 @@ function loreNext() {
 }
 function loreTap() {
   const scene = LORE[lore];
-  // 装置の場面は、タップでは進めず「生き残った確率」のボタンで進む
-  if (scene[0] === 'trigger') return;
+  // 装置を出した後は、タップでは進めず「生き残った確率」のボタンで進む
+  if (scene.includes('trigger') && loreK > scene.indexOf('trigger')) return;
   // 盤の場面は、○ か ● を置くまで、置き方を示す文の先へ進まない
   if (scene[0] === 'place' && !lsel.done && scene[loreK] === 'cut') return;
   if (loreK < scene.length) return loreStep();
@@ -2139,6 +2142,8 @@ document.addEventListener('click', e => {
   if ($('lore').hidden || e.target.closest('#lback, #lskip, #entry, a')) return;
   // 引くたびに同じ文を1つ足す。3回引いたら次へ進むボタンを出す
   if (e.target.id === 'ltrig') {
+    // もう一度引くよう頼む文が出ている間は、文が出終わるまで次を受けない。3 回引いた後は続けて引ける
+    if (trigWait) return;
     pulls++;
     const m = document.createElement('span');
     m.textContent = '不発でした。';
@@ -2149,7 +2154,11 @@ document.addEventListener('click', e => {
     m.style.left = `calc((100% - 6.4em) * ${R()})`;
     m.style.top = `calc((100% - 5.5em) * ${R()} + 2em)`;
     $('lmsg').append(m);
+    // 3 回目までは、もう一度引くよう頼む文を出す。文は毎回作り直して、出る動きをやり直す
+    const again = ['もう一度、引いてください。', 'もう一度。'][pulls - 1];
+    $('lagain').outerHTML = `<p id="lagain"${again ? '' : ' hidden'}>${again || ''}</p>`;
     if (pulls >= 3) $('lnext').hidden = false;
+    else { trigWait = true; setTimeout(() => { trigWait = false; }, 700); }
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
     return;
