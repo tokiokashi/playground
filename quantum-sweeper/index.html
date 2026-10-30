@@ -107,9 +107,20 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
-/* 初めて見る検出器の手がかりが開いた時の、一度だけの実演。手がかりのマスを脈打つ枠で囲み、見ている範囲を青く縁取って、読み方を1行で出す */
-#tip{min-height:1.6em;text-align:center;margin:4px 0 0;font-size:14px;color:#cdd5e6}
-#tip b{color:#7fb2ff;font-family:ui-monospace,Menlo,monospace;margin-right:.6em}
+/* 初めて見る検出器の手がかりが開いた時の、一度だけの実演。手がかりのマスを脈打つ枠で囲み、見ている範囲を青く縁取る（読み方は札で出す） */
+/* 盤の上に重ねる説明の札。閉じるまで盤を押せない。示しているマスと反対の側に寄せる */
+/* 札は盤からはみ出して盤の外（上か下）へ寄せ、盤の上の印と枠をなるべく隠さない */
+#coach{position:absolute;inset:-140px 0 0;z-index:5;display:flex;align-items:flex-start;justify-content:center;padding:0 4px;background:rgba(5,8,15,.18);cursor:pointer}
+#coach.low{inset:0 0 -140px;align-items:flex-end}
+#coach .card{max-width:340px;background:var(--panel);border:1px solid #7fb2ff;border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.5);text-align:center}
+#coach p{margin:0 0 8px;font-size:15px;line-height:1.6;color:var(--ink)}
+#coach b{display:inline-block;color:#7fb2ff;font:700 17px/1.3 ui-monospace,Menlo,monospace;margin-right:.5em}
+#coach b.g{color:var(--gold)}
+#coachok{min-width:6em;padding:6px 18px}
+/* 導入で次に押すマス。金の枠を脈打たせる */
+.c.go{outline:2px solid var(--gold);outline-offset:-2px;animation:go 1.1s ease-in-out infinite}
+@keyframes go{50%{outline-color:rgba(242,198,107,.2)}}
+@media (prefers-reduced-motion:reduce){.c.go{animation:none}}
 .c.ta{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
 .c.tq{outline:2px solid #7fb2ff;outline-offset:-2px;animation:tq 1.2s ease-in-out infinite}
 @keyframes tq{50%{outline-color:rgba(127,178,255,.25)}}
@@ -259,9 +270,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div id="meter" role="img" hidden></div>
 </div>
 <div class="pboard">
-<div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas></div>
+<div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas><div id="coach" hidden role="dialog" aria-live="polite"><div class="card"><p id="coachtext"></p><button id="coachok">OK</button></div></div></div>
 <p id="msg" aria-live="polite"></p>
-<p id="tip" aria-live="polite"></p>
 <div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
 <div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="false" aria-label="各マスの p を数字で表示">%</button></div>
 </div>
@@ -332,7 +342,7 @@ function openedCell(i, t) {
   return { cls, html };
 }
 // 検出器の種類ごとの実演。初めてその種類の手がかりが開いた時に一度だけ、手がかりのマスと見ている範囲を枠で示し、
-// 表示の読み方を1行で出す。次にマスを操作すると消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
+// 表示の読み方を札で出す。札を閉じると枠も消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
 let tipCell = -1, introSeen = new Set(), seen = new Set();
 try { seen = new Set(JSON.parse(localStorage.getItem('qs-seen')) || []); } catch { /* 保存できない環境 */ }
 const seenSet = () => camp && camp.s < 0 ? introSeen : seen;
@@ -371,30 +381,70 @@ function noteBranch(r) {
   seen.add('branch');
   try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
 }
-// 導入の1面では、分岐する前に、未確定のマスを1つ ○ の印で示し、実際に押して分岐を見てもらう。
-// 示すのは地雷の確率が一番低い未確定のマス（開けても失敗しない。外れる世界が一番少ない）
-let shownGuide = -1;
-function branchGuide() {
-  if (!(camp && camp.s < 0 && camp.k === 0) || review >= 0 || g.state !== 'play' || !g.landed || branchSeen() || tipCell >= 0) return -1;
+// 導入の台本。導入の盤は種を固定した乱数で作るので、同じ操作には同じ盤と同じ手がかりが返る。
+// 決めた手を打つまでは、そのマスを ○ か ● の印で示し、他の操作を受け付けない
+//   全ての面: 決めた場所に降り立つ
+//   1面: 地雷の確率が一番低い、開いたマスに接した未確定のマスを開けて、分岐を見る
+//   2面: 開いたマスに接した、どの世界でも地雷があるマスに ● を置く
+function scriptStep() {
+  if (!(camp && camp.s < 0) || review >= 0 || g.state !== 'play') return null;
+  if (!g.landed) return { cell: INTRO.land[camp.k], kind: 'open' };
+  const edge = i => g.free(i) && g.areas[i].cells.some(d => g.opened[d]);
   let c = -1;
-  for (let i = 0; i < g.N; i++) {
-    const p = g.prob(i);
-    if (g.free(i) && p > 1e-9 && p < 1 - 1e-9 && (c < 0 || p < g.prob(c))) c = i;
+  if (camp.k === 0 && !branchSeen()) {
+    for (let i = 0; i < g.N; i++) { const p = g.prob(i); if (edge(i) && p > 1e-9 && p < 1 - 1e-9 && (c < 0 || p < g.prob(c))) c = i; }
+    return c < 0 ? null : { cell: c, kind: 'open' };
   }
-  return c;
+  if (camp.k === 1 && !g.mines.size) {
+    for (let i = 0; i < g.N && c < 0; i++) if (edge(i) && g.prob(i) > 1 - 1e-9) c = i;
+    return c < 0 ? null : { cell: c, kind: 'mine' };
+  }
+  return null;
 }
-// 導入の2面では、● を一度置くまで、● の操作を1行で出す（長押しと右クリックは見た目から分からないので）
+let step = null;
+// 盤の上に重ねる説明。閉じるまで盤を操作できない。同じ盤では同じ説明を二度出さない
 const fineMouse = matchMedia('(hover:hover) and (pointer:fine)');
-function renderTip() {
-  let t = '';
-  if (review >= 0) t = '';
-  else if (branchTip) t = '<b>分岐</b>地雷のある世界は消え、残った世界へ進んだ';
-  else if (tipCell >= 0) t = tipText(tipCell);
-  else if (camp && camp.s < 0 && camp.k === 1 && g.state === 'play' && g.landed && !g.mines.size)
-    t = `<b style="color:var(--gold)">●</b>${fineMouse.matches ? '右クリック' : '長押し'}で地雷を観測する`;
-  else if (g.state === 'play' && g.landed && !branchSeen())
-    t = '<b>∿</b>未確定のマスも選べる。地雷のある世界が消え、分岐して進む';
-  $('tip').innerHTML = t;
+let coach = null, coachShown = new Set();
+function coachTip() {
+  if (review >= 0) return null;
+  if (branchTip) return { key: 'after', focus: last, html: '<b>分岐</b>地雷のある世界のあなたは消え、残った世界のあなたが進んだ。∿ は、ここまで生き残っている割合' };
+  if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
+  if (g.state !== 'play') return null;
+  if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>印のマスに降り立つ。そのマスと周りの8マスに、地雷は無い' };
+  if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>印のマスは、どの世界でも地雷がある。${fineMouse.matches ? '右クリック' : '長押し'}で ● を置いて、地雷を観測する` };
+  if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
+    ? { key: 'pre', focus: step.cell, html: '<b>○</b>印のマスは未確定。それでも開けられる。地雷のある世界のあなたは消えるが、失敗にはならない' }
+    : { key: 'pre', focus: -1, html: '<b>∿</b>未確定のマスも選べる。地雷のある世界が消え、分岐して進む' };
+  return null;
+}
+function renderCoach() {
+  if (!coach) {
+    const t = coachTip();
+    if (t && !coachShown.has(t.key)) {
+      coachShown.add(t.key);
+      coach = t;
+      // 分岐する前の札は、どの盤でも一度だけ出す（手がかりや分岐の札と同じく、見たことを残す）
+      if (t.key === 'pre') {
+        seenSet().add('pre');
+        seen.add('pre');
+        try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
+      }
+    }
+  }
+  const el = $('coach');
+  el.hidden = !coach;
+  if (!coach) return;
+  $('coachtext').innerHTML = coach.html;
+  // 説明の札は、示しているマスと反対の側（マスが上半分なら下、下半分なら上）に寄せる
+  el.classList.toggle('low', coach.focus >= 0 && ((coach.focus / g.W) | 0) < g.H / 2);
+}
+function closeCoach() {
+  if (!coach) return;
+  // 手がかりの読み方と分岐の後の説明は、閉じた時に枠も消す
+  if (coach.key.startsWith('clue')) tipCell = -1;
+  if (coach.key === 'after') branchTip = false;
+  coach = null;
+  render();
 }
 // 開いた手がかりのマスに触れている間、その検出器が見ている範囲のマスを枠で示す。
 // 開いていないマスに触れている間は、そのマスを範囲に含む手がかりのマスを枠で示す。
@@ -440,14 +490,25 @@ function fmtOmega(o) {
 }
 const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' : (p * 100).toFixed(0);
 
+// 種を固定した乱数（mulberry32）。導入の盤を毎回同じにするのに使う
+function seeded(a) {
+  return () => {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
 function newGame() {
   stopBot();
   const [W, H, M] = size;
-  g = new Game(W, H, M, mix, Math.random, camp ? scenOf(camp).parts : undefined);
+  g = new Game(W, H, M, mix, camp && camp.s < 0 ? seeded(INTRO.seeds[camp.k]) : Math.random, camp ? scenOf(camp).parts : undefined);
   syncCustom();
   g.autoChord = mode === 'safe' && autoChord;
   last = hint = areaOf = tipCell = -1;
   branchTip = false;
+  coach = null;
+  coachShown = new Set();
   marked = [];
   board.style.setProperty('--w', W);
   board.style.setProperty('--h', H);
@@ -465,7 +526,6 @@ function newGame() {
   pops = new Map();
   clps = new Map();
   $('msg').innerHTML = '';
-  $('tip').innerHTML = '';
   $('result').style.display = 'none';
   $('revbar').hidden = true;
   render();
@@ -546,7 +606,8 @@ function render() {
     if (g.state === 'play' && !branchTip) pickTip(fresh);
   }
   const tipArea = tipCell >= 0 ? new Set(g.areas[tipCell].cells) : null;
-  const guide = shownGuide = branchGuide();
+  step = scriptStep();
+  const guide = step ? step.cell : -1;
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -568,7 +629,7 @@ function render() {
     if (i === last) cls += ' last';
     if (i === tipCell) cls += ' tq';
     else if (tipArea && tipArea.has(i)) cls += ' ta';
-    if (i === guide) { cls += ' hint'; html += '<span class="gh">○</span>'; }
+    if (i === guide) { cls += ' go'; html += `<span class="gh">${step.kind === 'mine' ? '●' : '○'}</span>`; }
     // 一番安かった賭けのマスには、その賭けの記号（○ 開ける / ● 地雷に賭ける）を薄く重ねる
     if (i === hint && !g.opened[i] && !g.mines.has(i)) {
       cls += ' hint';
@@ -589,7 +650,7 @@ function render() {
   renderStats(g.an.omega, liveL(), g.I);
   renderMeter();
   markArea(areaOf);
-  renderTip();
+  renderCoach();
 }
 const liveL = () => g.state === 'dead' ? Infinity : g.L;
 function renderStats(omega, L, I) {
@@ -665,7 +726,7 @@ function renderReview(m) {
   renderStats(s.omega, s.L, s.I);
   renderMeter();
   markArea(areaOf);
-  renderTip();
+  renderCoach();
 }
 // 振り返りの1行: 選んだ手の記号と p。賭けの手ではコストも出し、推理ミスなら ✕、もっと安い賭けがあればその賭け
 function reviewLine(m) {
@@ -873,8 +934,10 @@ function act(i) {
     if (isSure(m.snap, i)) { m.sel = m.sel === i ? -1 : i; render(); }
     return;
   }
-  if (g.state !== 'play') return;
-  // 1行の表示は、次にマスを操作した時に消す。何も開かない操作でも描き直して消す
+  if (g.state !== 'play' || coach) return;
+  // 導入の台本の手がある間は、そのマスを開ける操作だけを受け付ける
+  if (step && !(step.kind === 'open' && i === step.cell)) return;
+  // 説明の枠は、次にマスを操作した時に消す。何も開かない操作でも描き直して消す
   const hadTip = tipCell >= 0 || branchTip;
   tipCell = -1;
   branchTip = false;
@@ -909,7 +972,7 @@ function collapse(c, before, withSelf) {
 
 function betOpen(i) {
   const before = g.landed ? probsNow() : null;
-  const guided = i === shownGuide;
+  const guided = !!step && step.kind === 'open' && i === step.cell && g.landed;
   const r = g.step(i);
   noteBranch(r);
   last = i;
@@ -1138,8 +1201,16 @@ async function shareResult(e) {
   } catch { /* 共有を取り消した時など */ }
 }
 
+// 説明の札は、札でも周りでも、押せば閉じる
+$('coach').addEventListener('click', closeCoach);
 // タップとクリックは ○（空と決めて踏み込む）。長押しと右クリックは ●（地雷を観測する）
-const quickMine = i => { if (g.state === 'play' && g.free(i)) { tipCell = -1; branchTip = false; betMine(i); } };
+const quickMine = i => {
+  if (g.state !== 'play' || !g.free(i) || coach) return;
+  if (step && !(step.kind === 'mine' && i === step.cell)) return;
+  tipCell = -1;
+  branchTip = false;
+  betMine(i);
+};
 let pressTimer = 0, longPressed = false;
 board.addEventListener('pointerover', e => {
   const b = e.target.closest('.c');
@@ -1325,6 +1396,10 @@ const INTRO = {
   heads: ['観測記録 001', '観測記録 002', '観測記録 003'],
   stages: [[6, 6, 7], [7, 7, 9], [8, 8, 6]],
   mixes: [MIXES[0], MIXES[0], [50, 50, 0, 0, 0, 0, 0, 0, 0]],
+  // 盤を作る乱数の種と、降り立つ場所。1面は、降りた後に開いたマスに接した未確定のマスがあり、そこを開けても続けられる盤、
+  // 2面は、降りた後に ● を置けるマス（どの世界でも地雷があるマス）が開いたマスに接している盤、3面は、降りた後に ≈ の幅の手がかりが開く盤を選んだ
+  seeds: [5, 2, 6],
+  land: [20, 24, 35],
 };
 const scenOf = c => c.s < 0 ? INTRO : SCEN[c.s];
 function introDone() {
