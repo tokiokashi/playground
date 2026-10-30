@@ -972,7 +972,7 @@ function act(i) {
     return;
   }
   if (g.state !== 'play' || coach) return;
-  // 導入の台本の手がある間は、そのマスを開ける操作だけを受け付ける
+  // 導入の台本の手がある間は、そのマスへの操作だけを受け付ける
   if (step && !(step.kind === 'open' && i === step.cell)) return;
   // 説明の枠は、次にマスを操作した時に消す。何も開かない操作でも描き直して消す
   const hadTip = tipCell >= 0 || branchTip;
@@ -1030,6 +1030,7 @@ function betMine(i) {
   // 降り立つ前は ● を置けないので、どの操作でも降り立つ
   if (!g.landed) return betOpen(i);
   const before = probsNow();
+  const guided = !!step && step.kind === 'open' && i === step.cell;
   const r = g.claim(i);
   if (!r) return;
   noteBranch(r, true);
@@ -1037,6 +1038,7 @@ function betMine(i) {
   if (g.state !== 'dead' && (r.cost > 0 || g.state === 'clear')) collapse(i, before, r.cost > 0);
   last = i;
   const m = g.moves[g.moves.length - 1];
+  if (guided) m.guided = true;
   if (g.state === 'dead') showResult(false);
   else {
     $('msg').innerHTML = betLine(r, m);
@@ -1244,7 +1246,8 @@ $('coach').addEventListener('click', closeCoach);
 // タップとクリックは ○（地雷が無いと決めて開ける）。長押しと右クリックは ●（地雷を観測する）
 const quickMine = i => {
   if (g.state !== 'play' || !g.free(i) || coach) return;
-  if (step && !(step.kind === 'mine' && i === step.cell)) return;
+  // 導入で開けてもらうマスには、● を置くことも許す（○ と ● のどちらを選んでも分岐を見せられる）
+  if (step && !(i === step.cell && (step.kind === 'mine' || (step.kind === 'open' && g.landed)))) return;
   tipCell = -1;
   branchTip = false;
   betMine(i);
