@@ -129,7 +129,6 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 @keyframes tq{50%{outline-color:rgba(127,178,255,.25)}}
 @media (prefers-reduced-motion:reduce){.c.tq{animation:none}}
 .bar #skip{margin-left:auto}
-#intro{margin:0}
 .scen{display:grid;grid-template-columns:4.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
 .scen span{font-weight:700;align-self:center}
 .scen span.hard{color:var(--risk)}
@@ -139,7 +138,6 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .scen button.done{border-color:var(--gold);color:var(--gold)}
 .scen button b{display:block;font:800 15px/1.1 ui-monospace,Menlo,monospace}
 #entry{margin:8px 0 16px}
-.ehead{display:flex;justify-content:flex-end;margin-bottom:8px}
 #grid table{border-collapse:separate;border-spacing:3px;margin:10px auto 6px}
 #grid th{font:400 15px/1 ui-monospace,Menlo,monospace;color:var(--mute);padding:0 2px}
 #grid td{width:2.4em;height:2.4em;padding:0}
@@ -212,7 +210,6 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <a class="back" href="../">← 作品一覧</a>
 <h1>量子自●マインスイーパー</h1>
 <div id="entry">
-  <div class="ehead"><button id="intro" aria-label="チュートリアルを最初から">チュートリアル</button></div>
   <div id="camp" role="group" aria-label="キャンペーン"></div>
   <div id="gridrow"></div>
   <div id="grid" role="group" aria-label="検出器の組み合わせ"></div>
@@ -1527,9 +1524,14 @@ function showEntry() {
   stopBot();
   $('play').hidden = true;
   $('entry').hidden = false;
-  $('camp').innerHTML = SCEN.map((sc, i) => sc.cell ? '' : stageRow(i)).join('');
+  $('camp').innerHTML = introRow() + SCEN.map((sc, i) => sc.cell ? '' : stageRow(i)).join('');
   showGrid();
   showRecords();
+}
+// チュートリアルの面のボタンを、シナリオの行と同じ形で1行目に並べる。どの面からでも始められる
+function introRow() {
+  return `<div class="scen"><span>${INTRO.name}</span>` + INTRO.stages.map(([W, H], k) =>
+    `<button data-s="-1" data-k="${k}" aria-label="${INTRO.heads[k]}">${W}×${H}</button>`).join('') + '</div>';
 }
 // シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
 function stageRow(i) {
@@ -1639,7 +1641,6 @@ $('free').addEventListener('click', () => {
 });
 $('toentry').addEventListener('click', () => { if (camp && camp.s < 0) introDone(); showEntry(); });
 $('skip').addEventListener('click', () => { introDone(); showEntry(); });
-$('intro').addEventListener('click', () => startStage(-1, 0));
 
 newGame();
 // 初めて開いた時は、入口の表を出さずに導入の1面から始める。キャンペーンの記録がある時は、導入を終えた人として扱う
