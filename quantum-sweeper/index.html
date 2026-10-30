@@ -46,6 +46,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.aq{outline:2px solid #7fb2ff;outline-offset:-2px}
 /* 調査のボタンは、よく使うので盤のすぐ下に大きく置く。オンの間は、ボタンと盤の外枠を枠と同じ青にして、開ける操作と区別する */
 #probebar{display:flex;justify-content:center;margin:10px 0 0}
+#probebar[hidden]{display:none}
 #probe{min-width:9em;padding:9px 18px;font-size:15px}
 #probe[aria-pressed="true"]{border-color:#7fb2ff;color:#fff;background:rgba(127,178,255,.35)}
 #board.probing{outline:2px dashed #7fb2ff;outline-offset:5px;border-radius:4px}
@@ -654,6 +655,7 @@ function newGame() {
   $('msg').innerHTML = '';
   $('result').style.display = 'none';
   $('revbar').hidden = true;
+  $('probebar').hidden = false;
   render();
 }
 
@@ -1311,6 +1313,9 @@ function showResult(ok) {
   $('share').addEventListener('click', shareResult);
   const nRev = reviewMoves().length;
   $('revbar').hidden = !nRev;
+  // 終局後は調査を使わないので、オフにして隠す
+  if (probe) $('probe').click();
+  $('probebar').hidden = true;
   if (nRev) {
     setReview(-1);
     const flow = el.querySelector('.flow');
@@ -1327,11 +1332,11 @@ function showResult(ok) {
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
-  // スマホでは結果が盤の下に出るので、盤の上端を画面の上端に合わせる。盤、振り返りの操作、ランクの順に見える。
+  // スマホでは結果が盤の下に出るので、振り返りの操作（無ければ結果）の上端を画面の上端に合わせる。
   // 盤の横に結果が出る幅（PC）では送らない
-  const top = $('board').getBoundingClientRect().top;
+  const top = nRev ? $('revbar') : el;
   if (el.getBoundingClientRect().top > $('board').getBoundingClientRect().bottom)
-    window.scrollTo({ top: scrollY + top - 8, behavior: 'smooth' });
+    window.scrollTo({ top: scrollY + top.getBoundingClientRect().top - 8, behavior: 'smooth' });
 }
 
 let shareText = '';
