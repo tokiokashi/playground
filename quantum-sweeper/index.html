@@ -368,9 +368,10 @@ function tipText(i) {
 // 見たかどうかは手がかりの種類と同じ集合に 'branch' として残す
 let branchTip = false;
 const branchSeen = () => seenSet().has('branch');
-function noteBranch(r) {
+// 札で示す、外れた世界の割合（risk）と、その手が ● だったか
+function noteBranch(r, mine) {
   if (!(r.cost > 0) || g.state === 'dead' || branchSeen()) return;
-  branchTip = true;
+  branchTip = { risk: 1 - 2 ** -r.cost, mine };
   seenSet().add('branch');
   seen.add('branch');
   try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
@@ -401,7 +402,11 @@ const fineMouse = matchMedia('(hover:hover) and (pointer:fine)');
 let coach = null, coachShown = new Set();
 function coachTip() {
   if (review >= 0) return null;
-  if (branchTip) return { key: 'after', focus: last, html: '<b>分岐</b>地雷があった世界のあなたは、ここで終わりました。地雷が無かった世界のあなたが続きます。∿ は、生き残っている世界の割合です。' };
+  if (branchTip) {
+    const pct = x => (x * 100).toFixed(1) + '%';
+    const { risk, mine } = branchTip;
+    return { key: 'after', focus: last, html: `<b>分岐</b>このマスに地雷が${mine ? '無い' : 'ある'}確率は ${pct(risk)} でした。その ${pct(risk)} の世界のあなたは、ここで終わりました。残りの ${pct(1 - risk)} の世界のあなたが続きます。∿ は、生き残っている世界の割合です。` };
+  }
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (g.state !== 'play') return null;
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
@@ -989,7 +994,7 @@ function betMine(i) {
   const before = probsNow();
   const r = g.claim(i);
   if (!r) return;
-  noteBranch(r);
+  noteBranch(r, true);
   // 外れうる ● だった時は、● のマスと、それで決まったマスを光らせる。外れようのない ● でも、続く自動開放で全てが決まれば光らせる
   if (g.state !== 'dead' && (r.cost > 0 || g.state === 'clear')) collapse(i, before, r.cost > 0);
   last = i;
