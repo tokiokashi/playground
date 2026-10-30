@@ -10,7 +10,7 @@
    fonts/ の woff2 は、作品で使う字だけに絞ったもの（作り方は fonts/README.md）。○ ● などの記号は入れず、本文の書体で出す */
 @font-face{font-family:"New Tegomin";src:url(fonts/NewTegomin-subset.woff2) format("woff2");font-display:swap}
 :root{--voice:"New Tegomin","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
-#lore .whead b,#lorebody p,#lmsg span,#worlds .whead b,#wcap,.stagelabel,#coach p,#result h2,#result .story{font-family:var(--voice)}
+#lore .whead b,#lorebody p,#lmsg span,#worlds .whead b,#wcap,#wend p,.stagelabel,#coach p,#result h2,#result .story{font-family:var(--voice)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px 16px 40px}
 main{max-width:680px;margin:0 auto}
 a.back{display:inline-block;margin:0 0 6px;font-size:13px;color:var(--mute);text-decoration:none}
@@ -46,7 +46,6 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .c.aq{outline:2px solid #7fb2ff;outline-offset:-2px}
 /* 調査のボタンは、よく使うので盤のすぐ下に大きく置く。オンの間は、ボタンと盤の外枠を枠と同じ青にして、開ける操作と区別する */
 #probebar{display:flex;justify-content:center;margin:10px 0 0}
-#probebar[hidden]{display:none}
 #probe{min-width:9em;padding:9px 18px;font-size:15px}
 #probe[aria-pressed="true"]{border-color:#7fb2ff;color:#fff;background:rgba(127,178,255,.35)}
 #board.probing{outline:2px dashed #7fb2ff;outline-offset:5px;border-radius:4px}
@@ -185,6 +184,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #wcap{min-height:5.8em;margin:0 0 8px;font-size:13px;line-height:1.45;text-align:center}
 #wcap .l{color:var(--risk)}
 #wcap .i{color:#7fb2ff}
+#wend{margin:14px auto 0;max-width:420px;text-align:center}
+#wend p{margin:0 0 12px;font-size:13px;line-height:1.55;text-align:left}
+#wend b{color:var(--gold)}
+#wagain{padding:8px 22px;font-size:16px;font-weight:bold;background:var(--gold);color:var(--bg);border-color:var(--gold)}
 /* 盤・説明・36 の世界が、スマホの表示領域の高さに収まるよう、36 の世界の幅を画面の高さから決める */
 #wgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-width:clamp(240px,calc(100svh - 350px),420px);margin:0 auto}
 .wm3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;padding:3px;border-radius:5px;background:var(--panel);border:1px solid var(--line);transition:opacity .6s,background .6s,border-color .6s}
@@ -281,6 +284,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <div class="wtop"><div id="wboard"></div><div class="wmeter" id="wmeter"></div></div>
   <p id="wcap"></p>
   <div id="wgrid" role="img" aria-label="地雷 2 個の置き方 36 通り"></div>
+  <div id="wend" hidden><p id="wendtext"></p><button id="wagain">もう一度</button></div>
 </div>
 <div id="play" hidden>
 <div class="pside">
@@ -1737,10 +1741,48 @@ const WN = 9, WORLDS = [];
 for (let a = 0; a < WN; a++) for (let b = a + 1; b < WN; b++) WORLDS.push([a, b]);
 const wNear = (c, d) => c !== d && Math.abs(c % 3 - d % 3) <= 1 && Math.abs(((c / 3) | 0) - ((d / 3) | 0)) <= 1;
 const wCount = (w, c) => w.filter(d => wNear(c, d)).length;
+// 最も良い開け方で生き残れる世界の数。alive は生き残った世界の添字、op は開けたマスと ● にしたマス
+const wMemo = new Map();
+function wBest(alive, op) {
+  if (alive.length <= 1) return alive.length;
+  const key = alive.join() + '|' + op;
+  if (!wMemo.has(key)) {
+    let best = 0;
+    for (let c = 0; c < WN; c++) if (!(op >> c & 1)) best = Math.max(best, wValue(alive, op, c, true), wValue(alive, op, c, false));
+    wMemo.set(key, best);
+  }
+  return wMemo.get(key);
+}
+// マス c に ●（mine）か ○ を打った後、最も良く続けて生き残れる世界の数。○ では数字ごとに世界が分かれる
+function wValue(alive, op, c, mine) {
+  const keep = alive.filter(i => WORLDS[i].includes(c) === mine), next = op | 1 << c;
+  if (mine) return keep.length ? wBest(keep, next) : 0;
+  const by = new Map();
+  for (const i of keep) { const n = wCount(WORLDS[i], c); by.set(n, [...(by.get(n) || []), i]); }
+  return [...by.values()].reduce((t, g) => t + wBest(g, next), 0);
+}
+const wAll = WORLDS.map((w, i) => i);
 let ws;
 function wStart() {
-  ws = { st: WORLDS.map(() => ''), cell: Array(WN).fill(''), surv: 1, cap: '地雷 2 個の置き方は 36 通りあります。あなたがどの世界にいるかは、まだ決まっていません。', busy: false };
+  ws = { st: WORLDS.map(() => ''), cell: Array(WN).fill(''), surv: 1, cap: '地雷 2 個の置き方は 36 通りあります。あなたがどの世界にいるかは、まだ決まっていません。', busy: false, best: true };
+  $('wend').hidden = true;
+  $('wreset').hidden = false;
   wRender();
+}
+// 世界が 1 つ（か 0）になったら、最も良い開け方との比べと、もう一度のボタンを盤の下に出す
+function wFinish() {
+  const all = wBest(wAll, 0), top = WORLDS.length - WORLDS.filter(w => w.includes(0)).length;
+  const pct = n => (n / WORLDS.length * 100).toFixed(1) + '%';
+  $('wendtext').innerHTML = `最も良い開け方をすれば、生き残る確率は <b>${pct(all)}</b> です。数字の出方が良ければ、<b>${pct(top)}</b> のまま終えられます。<br>`
+    + (ws.best
+      ? 'あなたは最も良い開け方をしました。開けるマスによって、後で出る数字から絞れる世界の数が変わり、生き残る確率も変わります。結果の表の「選択の損」は、その一手で終わる世界の割合だけを比べるので、この違いを数えていません。'
+      : 'もっと良い開け方があります。');
+  $('wend').hidden = false;
+  $('wreset').hidden = true;
+  setTimeout(() => {
+    if (!$('wend').hidden && $('wend').getBoundingClientRect().bottom > innerHeight)
+      $('wend').scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, 500);
 }
 const wAlive = () => WORLDS.map((w, i) => i).filter(i => !ws.st[i]);
 function wRender() {
@@ -1760,6 +1802,8 @@ function wAct(c, mine) {
   if (ws.busy || ws.cell[c] !== '') return;
   const alive = wAlive();
   if (alive.length <= 1) return;
+  const op = ws.cell.reduce((m, v, d) => v === '' ? m : m | 1 << d, 0);
+  if (wValue(alive, op, c, mine) < wBest(alive, op)) ws.best = false;
   // 赤: この手と合わない世界のあなたは終わる
   const dead = alive.filter(i => WORLDS[i].includes(c) !== mine);
   dead.forEach(i => { ws.st[i] = 'l'; });
@@ -1768,7 +1812,8 @@ function wAct(c, mine) {
   if (!left) {
     ws.cap = `どの世界でも、このマスに地雷が${mine ? '無かった' : 'あった'}ので、<span class="l">すべての世界のあなたが終わりました</span>。`;
     ws.cell[c] = mine ? '●' : '✕';
-    return wRender();
+    wRender();
+    return wFinish();
   }
   const lost = dead.length
     ? `このマスに地雷が${mine ? '無かった' : 'あった'} <span class="l">${dead.length} の世界のあなたは、ここで終わりました</span>。`
@@ -1776,7 +1821,9 @@ function wAct(c, mine) {
   if (mine) {
     ws.cell[c] = '●';
     ws.cap = lost + (left === 1 ? '<br>残った世界は 1 つです。' : '');
-    return wRender();
+    wRender();
+    if (left === 1) wFinish();
+    return;
   }
   // 青: 開けたマスの数字を、生き残った世界から選ぶ。数字と合わない世界は、あなたのいる世界ではなくなる
   const live = wAlive();
@@ -1794,6 +1841,7 @@ function wAct(c, mine) {
       + (rest === 1 ? '<br>残った世界は 1 つです。' : '');
     ws.busy = false;
     wRender();
+    if (rest === 1) wFinish();
   }, 700);
 }
 let wPress = 0, wLong = false;
@@ -1820,6 +1868,7 @@ $('camp').addEventListener('click', e => {
 });
 $('wback').addEventListener('click', () => { $('worlds').hidden = true; showEntry(); });
 $('wreset').addEventListener('click', wStart);
+$('wagain').addEventListener('click', () => { wStart(); scrollTo({ top: 0, behavior: 'smooth' }); });
 
 // 観測記録 000。何もない画面をタップするたびに1文ずつ出す。場面の文を出し切ったら、次のタップで画面を消して次の場面へ。
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
