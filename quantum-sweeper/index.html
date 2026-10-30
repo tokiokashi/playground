@@ -1592,6 +1592,8 @@ function startStage(s, k) {
   mix = (sc.mixes ? sc.mixes[k] : scenMix(sc)).slice();
   // 導入を始める時は、導入に出る検出器の実演をもう一度見せる
   if (s < 0 && k === 0) introSeen = new Set();
+  // 確率の数字は1面で見せるためのもの。2面からは自分で推理するよう、オフに戻す
+  if (s < 0 && k > 0) { showN = false; $('shown').setAttribute('aria-pressed', 'false'); }
   mode = 'safe';
   document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === 'safe'));
   $('autochord').hidden = false;
