@@ -149,7 +149,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 /* 続けてタップする画面とボタンでは、ダブルタップの拡大を止める */
 #lore,#worlds,button{touch-action:manipulation}
 #lorebody{min-height:300px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
-#lmsg{min-height:1.6em}
+/* 引くたびに「銃は不発でした。」を、この枠の中のばらばらの位置に重ねていく */
+#lmsg{position:relative;align-self:stretch;height:40vh;min-height:220px;overflow:hidden}
+#lmsg span{position:absolute;white-space:nowrap;animation:lorein .7s ease both}
+@media (prefers-reduced-motion:reduce){#lmsg span{animation:none}}
 #lorebody p{margin:0;max-width:30em;animation:lorein .7s ease both}
 @keyframes lorein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#lorebody p{animation:none}}
@@ -1827,7 +1830,7 @@ function loreStep() {
   const scene = LORE[lore], item = scene[loreK++];
   const body = $('lorebody');
   if (item === 'trigger') {
-    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><p id="lmsg"></p><button id="lnext" hidden>生き残った確率</button>`);
+    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
   } else if (item === 'tree') {
     // 引いた回数だけ分かれた世界を、種明かしの後で見せる
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`
@@ -1873,13 +1876,14 @@ function loreTree() {
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
   if ($('lore').hidden || e.target.closest('#lback, #lskip, #entry, a')) return;
-  // 引くたびに同じ文を出し直す。3回引いたら次へ進むボタンを出す
+  // 引くたびに同じ文を1つ足す。3回引いたら次へ進むボタンを出す
   if (e.target.id === 'ltrig') {
     pulls++;
-    // 要素を差し替えて、出てくる動きを毎回やり直す
-    const msg = $('lmsg').cloneNode();
-    msg.innerHTML = loreWrap('銃は不発でした。');
-    $('lmsg').replaceWith(msg);
+    const m = document.createElement('span');
+    m.textContent = '銃は不発でした。';
+    m.style.left = `calc((100% - 9em) * ${Math.random().toFixed(3)})`;
+    m.style.top = `calc((100% - 1.6em) * ${Math.random().toFixed(3)})`;
+    $('lmsg').append(m);
     if (pulls >= 3) $('lnext').hidden = false;
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
