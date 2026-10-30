@@ -439,7 +439,7 @@ function coachTip() {
   if (fatalTip) return { key: 'fatal' + fatalN, focus: fatalTip.cell, html: fatalTip.mine
     ? 'このマスには、どの世界でも地雷がありません。● を置くと、すべての世界のあなたが終わります。'
     : 'このマスには、どの世界でも地雷があります。開けると、すべての世界のあなたが終わります。' };
-  if (autoTip) return { key: 'auto', focus: last, hl: ['autochord', 'showd'], html: `● を置いたことで、周りの地雷がすべて分かった数字があります。その数字の周りの残りのマスは、自動で開けました。${$('autochord').textContent} で、自動で開けるかどうかを切り替えられます。周りの地雷がすべて分かった数字は、薄く表示します。✓ で、表示を切り替えられます。` };
+  if (autoTip) return { key: 'auto', focus: last, hl: ['autochord', 'showd'], html: `● を置いたことで、周りの地雷がすべて分かった数字があります。その数字の周りの残りのマスは、自動で開けました。点線の枠のマスが、自動で開けたマスです。${$('autochord').textContent} で、自動で開けるかどうかを切り替えられます。周りの地雷がすべて分かった数字は、薄く表示します。✓ で、表示を切り替えられます。` };
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
