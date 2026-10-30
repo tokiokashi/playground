@@ -405,14 +405,15 @@ let coach = null, coachShown = new Set();
 function coachTip() {
   if (review >= 0) return null;
   if (branchTip) {
-    const pct = x => (x * 100).toFixed(1) + '%';
+    const pct = x => pctN(x) + '%';
     const { risk, mine } = branchTip;
-    return { key: 'after', focus: last, html: `<b>分岐</b>このマスに地雷が${mine ? '無い' : 'ある'}確率は ${pct(risk)} でした。その ${pct(risk)} の世界のあなたは、ここで終わりました。残りの ${pct(1 - risk)} の世界のあなたが続きます。∿ は、生き残っている世界の割合です。` };
+    return { key: 'after', focus: last, html: `<b>分岐</b>このマスに地雷が${mine ? '無い' : 'ある'}確率は ${pct(risk)} でした。その ${pct(risk)} の世界のあなたは、ここで終わりました。残りの ${pct(1 - risk)} の世界のあなたが続きます。上の数字も、この割合まで下がりました。` };
   }
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (g.state !== 'play') return null;
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
+  if (introProbs() && showM && !g.situation().safeExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, html: '<b>∿</b>上の数字は、生き残っている世界の割合です。今は、地雷が無いと確定したマスがありません。そういう時、数字が揺れます。' };
   if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, html: '<b>|ψ|²</b>上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。' };
   if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
     ? { key: 'pre', focus: step.cell, html: '<b>○</b>光っているマスは、地雷の有無が確定していませんが、このゲームでは開けることができます。' }
@@ -493,6 +494,8 @@ function fmtOmega(o) {
   return `${(o / 10 ** e).toFixed(2)}e${e}`;
 }
 const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' : (p * 100).toFixed(0);
+// プレー中のマスの数字と分岐の札で使う形。10% 未満は小数1桁まで出す
+const pctN = p => p >= 0.005 && p < 0.095 ? (p * 100).toFixed(1) : pct(p);
 
 // 種を固定した乱数（mulberry32）。導入の盤を毎回同じにするのに使う
 function seeded(a) {
@@ -631,9 +634,9 @@ function render() {
       // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（●）と、
       // 雲を表示している時の p = 1 のマス。雲を隠している時に p から消すと、答えが漏れる
       const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
-      // p ボタンがオンの間は、各マスの地雷の確率を数字で出す（色は振り返りの % と同じ）。10% 未満は、分岐の札の値と合うよう小数1桁まで出す
+      // p ボタンがオンの間は、各マスの地雷の確率を数字で出す（色は振り返りの % と同じ。数字は分岐の札と同じ形）
       if (showN && !over && g.landed && !g.mines.has(i))
-        html += `<span class="pv" style="color:${p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`}">${p >= 0.005 && p < 0.095 ? (p * 100).toFixed(1) : pct(p)}</span>`;
+        html += `<span class="pv" style="color:${p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`}">${pctN(p)}</span>`;
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
     }
     if (i === last) cls += ' last';
@@ -1408,9 +1411,10 @@ const INTRO = {
   heads: ['観測記録 001', '観測記録 002', '観測記録 003'],
   stages: [[6, 6, 7], [7, 7, 9], [8, 8, 6]],
   mixes: [MIXES[0], MIXES[0], [50, 50, 0, 0, 0, 0, 0, 0, 0]],
-  // 盤を作る乱数の種と、降り立つ場所。1面は、降りた後に開いたマスに接した未確定のマスがあり、そこを開けても続けられる盤、
+  // 盤を作る乱数の種と、降り立つ場所。1面は、降りた後に地雷が無いと確定したマスが1つも無く（メーターが揺れる）、
+  // 開いたマスに接した未確定のマスを開けると、確定したマスが現れて続けられる盤、
   // 2面は、降りた後に ● を置けるマス（どの世界でも地雷があるマス）が開いたマスに接している盤、3面は、降りた後に ≈ の幅の手がかりが開く盤を選んだ
-  seeds: [5, 2, 6],
+  seeds: [29, 2, 6],
   land: [20, 24, 35],
 };
 const scenOf = c => c.s < 0 ? INTRO : SCEN[c.s];
