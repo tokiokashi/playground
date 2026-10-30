@@ -168,6 +168,12 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #ltree{width:100%;max-width:360px;height:auto}
 #lboards{width:100%;max-width:360px;height:auto}
 #lboards .lcut{transition:opacity .8s}
+#lcloud{width:100%;max-width:360px;height:auto}
+#lcloud circle{transition:opacity 1.2s ease}
+#lcloud .lco{transition:fill .4s}
+#lcloud.on .lco{fill:var(--safe)}
+#lcloud .lcn{font:700 18px ui-monospace,Menlo,monospace;fill:var(--ink);opacity:0;transition:opacity .4s}
+#lcloud.on .lcn{opacity:1}
 #lboards .lcut.on{opacity:.25}
 #lboards .lcut.on rect:first-child{stroke:var(--risk)}
 #ltrig{font-size:15px;padding:8px 22px;border-color:var(--risk);color:var(--risk)}
@@ -1919,7 +1925,7 @@ const LORE = [
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
   ['row', 'あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', 'cut', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
-  ['盤が1つの世界に決まると、観測は終わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
+  ['盤が1つの世界に決まると、観測は終わります。', 'cloud', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
 let lore = 0, loreK = 0, pulls = 0;
@@ -1945,6 +1951,16 @@ function loreStep() {
   } else if (item === 'stack' || item === 'row') {
     // 盤の場面の図。stack は重なった世界、row は並べた世界の真ん中のマスに ○ を置いたところ。図と一緒に次の文を出す
     body.insertAdjacentHTML('beforeend', loreBoards(item === 'row'));
+    loreStep();
+  } else if (item === 'cloud') {
+    // 開ける前の一様な雲を出し、少し置いてからマスを開けて、雲が数字に合う形へ移るところを見せる
+    body.insertAdjacentHTML('beforeend', loreCloud());
+    setTimeout(() => {
+      const svg = $('lcloud');
+      if (!svg) return;
+      svg.classList.add('on');
+      svg.querySelectorAll('[data-p]').forEach(e => { e.style.opacity = Math.min(1, +e.dataset.p * 2); });
+    }, 700);
     loreStep();
   } else if (item === 'cut') {
     // ○ のマスに地雷がある世界を赤くして消す
@@ -2006,6 +2022,23 @@ function loreBoards(row) {
     ? LBOARDS.map((w, i) => one(w, 10 + i * 51, 10, 1)).join('')
     : LBOARDS.map((w, i) => [w, i]).reverse().map(([w, i]) => one(w, 85 + i * 18, 8 + (n - 1 - i) * 10, (1 - i * 0.13).toFixed(2))).join('');
   return `<svg id="lboards" viewBox="0 0 320 ${row ? 64 : 106}" role="img" aria-label="${row ? '真ん中のマスに ○ を置いた世界' : '重なった世界'}">${body}</svg>`;
+}
+// 3×3・地雷 2 個の盤の上辺の真ん中を開けると 2 が出る。地雷は周りの 5 マスのどれか 2 つなので、下の段は p = 0 になる。
+// 雲の濃さは、開ける前は全マス 2/9、開けた後は 36 の世界のうち数字に合う世界から数えた p
+function loreCloud() {
+  const cs = 30, gap = 3, x0 = 160 - (cs * 3 + gap * 2) / 2, y0 = 8, open = 1;
+  const worlds = WORLDS.filter(w => !w.includes(open) && w.filter(d => wNear(open, d)).length === 2);
+  let g = '<defs><filter id="lcblur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>';
+  let cloud = '';
+  for (let c = 0; c < 9; c++) {
+    const x = x0 + (c % 3) * (cs + gap), y = y0 + ((c / 3) | 0) * (cs + gap);
+    g += `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="3" fill="var(--cell)"${c === open ? ' class="lco"' : ''}/>`;
+    const p = c === open ? 0 : worlds.filter(w => w.includes(c)).length / worlds.length;
+    cloud += `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="${cs * 0.55}" fill="var(--risk)" data-p="${p}" style="opacity:${(2 / 9) * 2}"/>`;
+  }
+  const ox = x0 + cs + gap + cs / 2, oy = y0 + cs / 2;
+  g += `<g filter="url(#lcblur)">${cloud}</g><text x="${ox}" y="${oy + 6}" text-anchor="middle" class="lcn">2</text>`;
+  return `<svg id="lcloud" viewBox="0 0 320 ${y0 * 2 + cs * 3 + gap * 2}" role="img" aria-label="開けたマスの数字で、地雷の雲が寄る">${g}</svg>`;
 }
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
