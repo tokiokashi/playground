@@ -1327,9 +1327,11 @@ function showResult(ok) {
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
-  // スマホでは結果が盤の下に出るので、振り返りの操作と流れ図が見える所まで送る
-  const tail = el.querySelector('.flow') || (nRev && $('revbar')) || (camp && $('next'));
-  if (tail) tail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // スマホでは結果が盤の下に出るので、盤の上端を画面の上端に合わせる。盤、振り返りの操作、ランクの順に見える。
+  // 盤の横に結果が出る幅（PC）では送らない
+  const top = $('board').getBoundingClientRect().top;
+  if (el.getBoundingClientRect().top > $('board').getBoundingClientRect().bottom)
+    window.scrollTo({ top: scrollY + top - 8, behavior: 'smooth' });
 }
 
 let shareText = '';
