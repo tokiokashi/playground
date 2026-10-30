@@ -7,10 +7,10 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 /* 施設が語る文だけ New Tegomin にする。ボタンや数字などの操作の部品は本文の書体のまま。
-   fonts/ の woff2 は、作品で使う字だけに絞ったもの（作り方は fonts/README.md） */
+   fonts/ の woff2 は、作品で使う字だけに絞ったもの（作り方は fonts/README.md）。○ ● などの記号は入れず、本文の書体で出す */
 @font-face{font-family:"New Tegomin";src:url(fonts/NewTegomin-subset.woff2) format("woff2");font-display:swap}
-:root{--voice:"New Tegomin","Hiragino Mincho ProN","Yu Mincho",serif}
-#lore .whead b,#lorebody p,#lmsg span,#worlds .whead b,#wcap,.stagelabel,#coach p,#result h2,#result .story{font-family:var(--voice)}
+:root{--voice:"New Tegomin","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
+#lore .whead b,#lorebody p,#lmsg span,#worlds .whead b,#wcap,#wend p,.stagelabel,#coach p,#result h2,#result .story{font-family:var(--voice)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px 16px 40px}
 main{max-width:680px;margin:0 auto}
 a.back{display:inline-block;margin:0 0 6px;font-size:13px;color:var(--mute);text-decoration:none}
@@ -125,6 +125,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .hl{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px;animation:go 1.1s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.hl{animation:none}}
 #coachok{min-width:6em;padding:6px 18px}
+#coachok:disabled{opacity:.35;cursor:default}
 /* 導入で次に押すマス。金の枠を脈打たせる */
 .c.go,.bar button.go{outline:2px solid var(--gold);outline-offset:-2px;animation:go 1.1s ease-in-out infinite}
 @keyframes go{50%{outline-color:rgba(242,198,107,.2)}}
@@ -183,6 +184,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #wcap{min-height:5.8em;margin:0 0 8px;font-size:13px;line-height:1.45;text-align:center}
 #wcap .l{color:var(--risk)}
 #wcap .i{color:#7fb2ff}
+#wend{margin:14px auto 0;max-width:420px;text-align:center}
+#wend p{margin:0 0 12px;font-size:13px;line-height:1.55;text-align:left}
+#wend b{color:var(--gold)}
+#wagain{padding:8px 22px;font-size:16px;font-weight:bold;background:var(--gold);color:var(--bg);border-color:var(--gold)}
 /* 盤・説明・36 の世界が、スマホの表示領域の高さに収まるよう、36 の世界の幅を画面の高さから決める */
 #wgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-width:clamp(240px,calc(100svh - 350px),420px);margin:0 auto}
 .wm3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;padding:3px;border-radius:5px;background:var(--panel);border:1px solid var(--line);transition:opacity .6s,background .6s,border-color .6s}
@@ -279,6 +284,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <div class="wtop"><div id="wboard"></div><div class="wmeter" id="wmeter"></div></div>
   <p id="wcap"></p>
   <div id="wgrid" role="img" aria-label="地雷 2 個の置き方 36 通り"></div>
+  <div id="wend" hidden><p id="wendtext"></p><button id="wagain">もう一度</button></div>
 </div>
 <div id="play" hidden>
 <div class="pside">
@@ -548,12 +554,15 @@ function renderCoach() {
   $('showp').classList.toggle('go', lit && !showP);
   $('shown').classList.toggle('go', lit && !showN);
   if (!coach) return;
+  $('coachok').disabled = coachLocked();
   $('coachtext').innerHTML = coach.html;
   // 説明の札は、示しているマスと反対の側（マスが上半分なら下、下半分なら上）に寄せる
   el.classList.toggle('low', !!coach.low || (coach.focus >= 0 && ((coach.focus / g.W) | 0) < g.H / 2));
 }
+// 雲と p の札は、両方をオンにするまで閉じられない
+const coachLocked = () => !!coach && coach.key === 'cloud' && (!showP || !showN);
 function closeCoach() {
-  if (!coach) return;
+  if (!coach || coachLocked()) return;
   // 手がかりの読み方と分岐の後の説明は、閉じた時に枠も消す
   if (coach.key.startsWith('clue')) tipCell = -1;
   if (coach.key === 'after') branchTip = false;
@@ -650,6 +659,7 @@ function newGame() {
   $('msg').innerHTML = '';
   $('result').style.display = 'none';
   $('revbar').hidden = true;
+  $('probebar').hidden = false;
   render();
 }
 
@@ -1307,6 +1317,9 @@ function showResult(ok) {
   $('share').addEventListener('click', shareResult);
   const nRev = reviewMoves().length;
   $('revbar').hidden = !nRev;
+  // 終局後は調査を使わないので、オフにして隠す
+  if (probe) $('probe').click();
+  $('probebar').hidden = true;
   if (nRev) {
     setReview(-1);
     const flow = el.querySelector('.flow');
@@ -1323,9 +1336,13 @@ function showResult(ok) {
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
-  // スマホでは結果が盤の下に出るので、振り返りの操作と流れ図が見える所まで送る
-  const tail = el.querySelector('.flow') || (nRev && $('revbar')) || (camp && $('next'));
-  if (tail) tail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // スマホでは結果が盤の下に出るので、振り返りの操作（無ければ結果）の上端を画面の上端に合わせる。
+  // 最後の一手の盤を見せるため 0.5 秒待ってから送る。盤の横に結果が出る幅（PC）では送らない
+  const top = nRev ? $('revbar') : el;
+  setTimeout(() => {
+    if (el.style.display === 'block' && el.getBoundingClientRect().top > $('board').getBoundingClientRect().bottom)
+      window.scrollTo({ top: scrollY + top.getBoundingClientRect().top - 8, behavior: 'smooth' });
+  }, 500);
 }
 
 let shareText = '';
@@ -1724,10 +1741,67 @@ const WN = 9, WORLDS = [];
 for (let a = 0; a < WN; a++) for (let b = a + 1; b < WN; b++) WORLDS.push([a, b]);
 const wNear = (c, d) => c !== d && Math.abs(c % 3 - d % 3) <= 1 && Math.abs(((c / 3) | 0) - ((d / 3) | 0)) <= 1;
 const wCount = (w, c) => w.filter(d => wNear(c, d)).length;
+// 最も良い開け方で [生き残れる世界の数, そのうちここから先は世界を失わずに終われる数]。前者が多い手を選び、
+// 同じなら後者が多い手を選ぶ。alive は生き残った世界の添字、op は開けたマスと ● にしたマス
+const wMemo = new Map();
+const wMore = (a, b) => a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]);
+function wBest(alive, op) {
+  if (alive.length <= 1) return [alive.length, alive.length];
+  const key = alive.join() + '|' + op;
+  if (!wMemo.has(key)) {
+    let best = [0, 0];
+    for (let c = 0; c < WN; c++) if (!(op >> c & 1)) for (const mine of [true, false]) {
+      const v = wValue(alive, op, c, mine);
+      if (wMore(v, best)) best = v;
+    }
+    wMemo.set(key, best);
+  }
+  return wMemo.get(key);
+}
+// マス c に ●（mine）か ○ を打った後の、wBest と同じ組。○ では数字ごとに世界が分かれる。
+// この手で世界を失えば後者は 0。keepLoss を立てると、この手で失う分は数えない
+function wValue(alive, op, c, mine, keepLoss = false) {
+  const keep = alive.filter(i => WORLDS[i].includes(c) === mine), next = op | 1 << c;
+  if (!keep.length) return [0, 0];
+  let v;
+  if (mine) v = wBest(keep, next);
+  else {
+    const by = new Map();
+    for (const i of keep) { const n = wCount(WORLDS[i], c); by.set(n, [...(by.get(n) || []), i]); }
+    v = [...by.values()].map(g => wBest(g, next)).reduce((t, x) => [t[0] + x[0], t[1] + x[1]], [0, 0]);
+  }
+  return keep.length < alive.length && !keepLoss ? [v[0], 0] : v;
+}
+const wAll = WORLDS.map((w, i) => i);
 let ws;
 function wStart() {
-  ws = { st: WORLDS.map(() => ''), cell: Array(WN).fill(''), surv: 1, cap: '地雷 2 個の置き方は 36 通りあります。あなたがどの世界にいるかは、まだ決まっていません。', busy: false };
+  ws = { st: WORLDS.map(() => ''), cell: Array(WN).fill(''), surv: 1, cap: '地雷 2 個の置き方は 36 通りあります。あなたがどの世界にいるかは、まだ決まっていません。', busy: false, best: true };
+  $('wend').hidden = true;
+  $('wreset').hidden = false;
   wRender();
+}
+// 世界が 1 つ（か 0）になったら、最も良い開け方との比べと、もう一度のボタンを盤の下に出す
+function wFinish() {
+  // 最初の一手はどこでも 8 つの世界を失うので、運が良い時の上限は最初の一手の後のメーター。
+  // その上限で終われる確率は、最初の一手で失う分を除いて数える
+  let first = [0, 0];
+  for (let c = 0; c < WN; c++) for (const mine of [true, false]) {
+    const v = wValue(wAll, 0, c, mine, true);
+    if (wMore(v, first)) first = v;
+  }
+  const top = WORLDS.length - WORLDS.filter(w => w.includes(0)).length;
+  const pct = n => (n / WORLDS.length * 100).toFixed(1) + '%';
+  $('wendtext').innerHTML = `最も良い開け方をすれば、生き残る確率は <b>${pct(first[0])}</b> です。`
+    + `最初の一手の後は一度も世界を失わずに、<b>${pct(top)}</b> のまま終えられる確率は <b>${pct(first[1])}</b> です。<br>`
+    + (ws.best
+      ? 'あなたは最も良い開け方をしました。開けるマスによって、後で出る数字から絞れる世界の数が変わり、生き残る確率も変わります。結果の表の「選択の損」は、各場面で生き残る確率だけを比べています。その選択がその後の世界線に与える影響は考慮していません。'
+      : 'もっと良い開け方があります。');
+  $('wend').hidden = false;
+  $('wreset').hidden = true;
+  setTimeout(() => {
+    if (!$('wend').hidden && $('wend').getBoundingClientRect().bottom > innerHeight)
+      $('wend').scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, 500);
 }
 const wAlive = () => WORLDS.map((w, i) => i).filter(i => !ws.st[i]);
 function wRender() {
@@ -1738,7 +1812,7 @@ function wRender() {
     const bg = v === '' && alive.length ? `style="background:color-mix(in srgb,var(--risk) ${Math.round(p * 70)}%,var(--cell))"` : '';
     return `<button data-c="${c}" class="${v === '●' ? 'm' : v !== '' ? 'o' : ''}" ${bg} aria-label="マス ${c + 1}${v ? ' ' + v : ''}">${v}</button>`;
   }).join('');
-  $('wmeter').innerHTML = `<b>${(ws.surv * 100).toFixed(ws.surv < 0.1 ? 1 : 0)}%</b>${alive.length} / 36`;
+  $('wmeter').innerHTML = `<b>${(ws.surv * 100).toFixed(1)}%</b>${alive.length} / 36`;
   $('wcap').innerHTML = ws.cap;
   $('wgrid').innerHTML = WORLDS.map((w, i) => `<div class="wm3 ${ws.st[i]}${alive.length === 1 && !ws.st[i] ? ' one' : ''}">` +
     Array.from({ length: WN }, (_, c) => `<i class="${w.includes(c) ? 'x' : ws.cell[c] !== '' && ws.cell[c] !== '●' ? 'o' : ''}"></i>`).join('') + '</div>').join('');
@@ -1747,6 +1821,8 @@ function wAct(c, mine) {
   if (ws.busy || ws.cell[c] !== '') return;
   const alive = wAlive();
   if (alive.length <= 1) return;
+  const op = ws.cell.reduce((m, v, d) => v === '' ? m : m | 1 << d, 0);
+  if (wValue(alive, op, c, mine)[0] < wBest(alive, op)[0]) ws.best = false;
   // 赤: この手と合わない世界のあなたは終わる
   const dead = alive.filter(i => WORLDS[i].includes(c) !== mine);
   dead.forEach(i => { ws.st[i] = 'l'; });
@@ -1755,7 +1831,8 @@ function wAct(c, mine) {
   if (!left) {
     ws.cap = `どの世界でも、このマスに地雷が${mine ? '無かった' : 'あった'}ので、<span class="l">すべての世界のあなたが終わりました</span>。`;
     ws.cell[c] = mine ? '●' : '✕';
-    return wRender();
+    wRender();
+    return wFinish();
   }
   const lost = dead.length
     ? `このマスに地雷が${mine ? '無かった' : 'あった'} <span class="l">${dead.length} の世界のあなたは、ここで終わりました</span>。`
@@ -1763,7 +1840,9 @@ function wAct(c, mine) {
   if (mine) {
     ws.cell[c] = '●';
     ws.cap = lost + (left === 1 ? '<br>残った世界は 1 つです。' : '');
-    return wRender();
+    wRender();
+    if (left === 1) wFinish();
+    return;
   }
   // 青: 開けたマスの数字を、生き残った世界から選ぶ。数字と合わない世界は、あなたのいる世界ではなくなる
   const live = wAlive();
@@ -1781,6 +1860,7 @@ function wAct(c, mine) {
       + (rest === 1 ? '<br>残った世界は 1 つです。' : '');
     ws.busy = false;
     wRender();
+    if (rest === 1) wFinish();
   }, 700);
 }
 let wPress = 0, wLong = false;
@@ -1807,6 +1887,7 @@ $('camp').addEventListener('click', e => {
 });
 $('wback').addEventListener('click', () => { $('worlds').hidden = true; showEntry(); });
 $('wreset').addEventListener('click', wStart);
+$('wagain').addEventListener('click', () => { wStart(); scrollTo({ top: 0, behavior: 'smooth' }); });
 
 // 観測記録 000。何もない画面をタップするたびに1文ずつ出す。場面の文を出し切ったら、次のタップで画面を消して次の場面へ。
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
@@ -1814,8 +1895,8 @@ const LORE = [
   ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', 'この銃を自分に向けて、引き金を引いてください。'],
   ['trigger'],
   ['tree', () => `生き残った確率は ${loreOdds()} でした。`, 'とても強い幸運の持ち主です。', '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
-  ['本来、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
-  ['この施設では、銃の代わりに地雷の盤を使います。', '地雷の置き方はまだ決まっていません。', '置き方の数だけ、別々の世界が重なっています。'],
+  ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
+  ['この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
   ['あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
   ['盤が1つの世界に決まると、観測は終わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
