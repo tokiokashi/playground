@@ -371,8 +371,9 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <li><b>●</b>（長押し・右クリック）: このマスに地雷があると考える時に選びます。マスに ● を置きます。地雷が無い世界のあなたは、そこで終わります。</li>
 </ul>
 <p>p = 100% のマスに ○ を、p = 0% のマスに ● を選ぶと、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもない、未確定のマスを選ぶ一手を「分岐」と呼びます。</p>
-<h3>L と ∿</h3>
-<p>L は、ここまでの分岐をすべて生き延びた確率を、コイントスを何回続けて当てる確率と同じかで表した数です。「∿」のメーターには、その確率が出ます。p = 0% のマスが一つも無く、分岐を選ぶしかない局面では、メーターの数字が揺らぎます。</p>
+<h3>生き残った確率</h3>
+<p>分岐を選ぶたびに、あなたが生き残っている確率は下がります。「∿」のメーターは、ここまでの分岐をすべて生き延びた確率を表します。中身が確定しているマスが一つも無い局面では、メーターの数字が揺らぎます。</p>
+<p>L は、同じ確率をコイントスの回数で表した数です。L = 3 なら、コイントスを 3 回続けて当てるのと同じ確率です。</p>
 <h3>粗視化した検出器</h3>
 <p>開けていないマスの右上の印は、そのマスの検出器の種類です。開いたマスの数字は周りの地雷の数を表し、数字のマスに触れると、数える範囲が青い枠で出ます。開けていないマスに触れると、そのマスを範囲に含む数字のマスが青い枠で出ます。スマホでは「調査」をオンにすると、タップでマスを開けずに枠だけを出せます。</p>
 <ul>
@@ -515,7 +516,7 @@ function coachTip() {
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
-  if (introProbs() && showM && !g.situation().safeExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, hl: ['meter', 'showm'], html: '上の数字は、あなたが生き残れた確率です。今は、地雷が無いと確定したマスがありません。そういう時、数字が揺れます。∿ で、表示を切り替えられます。' };
+  if (introProbs() && showM && !g.situation().sureExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, hl: ['meter', 'showm'], html: '上の数字は、あなたが生き残れた確率です。今は、中身が確定したマスがありません。そういう時、数字が揺れます。∿ で、表示を切り替えられます。' };
   if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。両方を押してみてください。' };
   if (g.landed && !branchSeen() && !seenSet().has('pre') && !(step && step.kind === 'probs')) {
     // ○ と ● を初めて名前で呼ぶ札なので、意味と操作をここで示す
@@ -931,9 +932,9 @@ function betNear(dir) {
 }
 
 // 世界線メーター: 生き残っている割合 2^−L をニキシー管風の数字で出す。
-// 全ての世界で安全なマス（p = 0%）が一つも無く、外れうる賭けを打つしかない局面では、数字を揺らす。
-// p = 100% のマスに ● を置いても世界は減らず、他のマスの p は変わらないので、そのマスが残っていても揺らす。
-// 判定は推理ミスと同じ situation().safeExists を使う。教えるのは安全なマスがあるかどうかだけで、場所は教えない
+// 中身が確定したマス（p = 0% か 100%）が一つも残っておらず、分岐を選ぶしかない局面では、数字を揺らす。
+// p = 100% のマスが残っている間は、● を置く手がまだ残っているので揺らさない。
+// 判定は situation().sureExists を使う。教えるのは確定したマスがあるかどうかだけで、場所は教えない
 let showM = true, meterTimer = 0;
 // 埋まった手がかりを薄くするか。どの盤でも共通の設定で、このブラウザに残す
 let showDone = true;
@@ -972,7 +973,7 @@ function renderMeter() {
   if (!showM) return;
   const m = review >= 0 ? reviewMoves()[review] : null;
   const digits = (2 ** -(m ? m.snap.L : liveL())).toFixed(6);
-  const shaky = m ? !m.safeExists : g.state === 'play' && g.landed && !g.situation().safeExists;
+  const shaky = m ? !m.sureExists : g.state === 'play' && g.landed && !g.situation().sureExists;
   meter.classList.toggle('shaky', shaky);
   meter.setAttribute('aria-label', `2^−L ${digits}${shaky ? '、分岐を選ぶしかない局面' : ''}`);
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
