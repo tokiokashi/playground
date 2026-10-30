@@ -2006,22 +2006,27 @@ function loreTree() {
 }
 // 3×3・地雷 2 個の世界を 6 つ描く。重ねる時は奥ほど薄く、並べる時は真ん中のマスに ○ を置き、そこに地雷がある世界に lcut を付ける
 const LBOARDS = [[0, 8], [4, 6], [1, 5], [2, 4], [3, 7], [0, 5]];
+// row の時は 2 段に並べる。上の段は真ん中に ○、下の段は ● を置き、選択と合わない世界（○ なら真ん中に地雷がある世界、
+// ● なら無い世界）に lcut を付ける。2 段で消える世界がちょうど入れ替わる
 function loreBoards(row) {
   const cs = 11, gap = 2, pad = 3, bw = pad * 2 + cs * 3 + gap * 2;
-  const one = (w, x, y, op) => {
+  const one = (w, x, y, op, mark) => {
     let g = `<rect x="${x}" y="${y}" width="${bw}" height="${bw}" rx="4" fill="var(--panel)" stroke="var(--line)"/>`;
     for (let c = 0; c < 9; c++) {
       const cx = x + pad + (c % 3) * (cs + gap), cy = y + pad + ((c / 3) | 0) * (cs + gap);
       g += `<rect x="${cx}" y="${cy}" width="${cs}" height="${cs}" rx="1.5" fill="${w.includes(c) ? 'var(--gold)' : 'var(--cell)'}"/>`;
-      if (row && c === 4) g += `<circle cx="${cx + cs / 2}" cy="${cy + cs / 2}" r="3.6" fill="none" stroke="var(--ink)" stroke-width="1.6"/>`;
+      if (mark && c === 4) g += mark === 'open'
+        ? `<circle cx="${cx + cs / 2}" cy="${cy + cs / 2}" r="3.6" fill="none" stroke="var(--ink)" stroke-width="1.6"/>`
+        : `<circle cx="${cx + cs / 2}" cy="${cy + cs / 2}" r="4.2" fill="var(--ink)"/>`;
     }
-    return `<g class="${row && w.includes(4) ? 'lcut' : ''}" opacity="${op}">${g}</g>`;
+    const cut = mark && w.includes(4) === (mark === 'open');
+    return `<g class="${cut ? 'lcut' : ''}" opacity="${op}">${g}</g>`;
   };
   const n = LBOARDS.length;
   const body = row
-    ? LBOARDS.map((w, i) => one(w, 10 + i * 51, 10, 1)).join('')
+    ? ['open', 'mine'].map((m, r) => LBOARDS.map((w, i) => one(w, 10 + i * 51, 10 + r * (bw + 12), 1, m)).join('')).join('')
     : LBOARDS.map((w, i) => [w, i]).reverse().map(([w, i]) => one(w, 85 + i * 18, 8 + (n - 1 - i) * 10, (1 - i * 0.13).toFixed(2))).join('');
-  return `<svg id="lboards" viewBox="0 0 320 ${row ? 64 : 106}" role="img" aria-label="${row ? '真ん中のマスに ○ を置いた世界' : '重なった世界'}">${body}</svg>`;
+  return `<svg id="lboards" viewBox="0 0 320 ${row ? 20 + bw * 2 + 12 : 106}" role="img" aria-label="${row ? '真ん中のマスに ○ を置いた世界と ● を置いた世界' : '重なった世界'}">${body}</svg>`;
 }
 // 3×3・地雷 2 個の盤の上辺の真ん中を開けると 2 が出る。地雷は周りの 5 マスのどれか 2 つなので、下の段は p = 0 になる。
 // 雲の濃さは、開ける前は全マス 2/9、開けた後は 36 の世界のうち数字に合う世界から数えた p
