@@ -144,6 +144,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lore{margin:8px 0 16px}
 #lore .whead{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 #lore .whead b{font-size:15px}
+#lore{min-height:calc(100vh - 140px);cursor:pointer}
 #lorebody{min-height:300px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
 #lorebody p{margin:0;max-width:30em;animation:lorein .7s ease both}
 @keyframes lorein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -1793,60 +1794,78 @@ $('camp').addEventListener('click', e => {
 $('wback').addEventListener('click', () => { $('worlds').hidden = true; showEntry(); });
 $('wreset').addEventListener('click', wStart);
 
-// 観測記録 000。量子自殺の思考実験を、引き金を引ける装置で見せてから、この施設の観測につなぐ
+// 観測記録 000。何もない画面をタップするたびに1文ずつ出す。場面の文を出し切ったら、次のタップで画面を消して次の場面へ。
+// 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
-  '量子自殺という思考実験があります。<br>量子の測定で、弾が出るかどうかが半々で決まる銃を、自分に向けて引き続けます。',
-  'trigger',
-  '外から見ている人には、あなたは高い確率で撃たれています。<br><span class="l">生き残ったことを確かめられるのは、生き残ったあなただけです。</span>',
-  'この施設では、銃の代わりに地雷の盤を使います。<br>地雷の置き方はまだ決まっていません。置き方の数だけ、別々の世界が重なっています。',
-  'あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。<br>選択と合わない世界のあなたは、そこで終わります。残った世界のあなたが、次のマスを選びます。',
-  '盤が1つの世界に決まると、観測は終わります。<br>周りの数字から推理すれば、運に頼る分を減らせます。どれだけの世界のあなたを残せたかが、記録になります。',
-  'この施設が何を確かめたいのかは、あなたには知らされていません。<br>ここにある記録は、すべて生き残ったあなたのものです。観測者が消滅した世界から、記録は届きません。',
+  ['量子自殺という思考実験があります。', '量子の測定で、弾が出るかどうかが半々で決まる銃を、自分に向けて引き続けます。'],
+  ['trigger', '弾が出た世界のあなたは、もう何も見ません。', '結果を見るのは、弾が出なかった世界のあなただけです。', 'だから、あなたから見ると、何度引いても弾は出ません。'],
+  ['外から見ている人には、あなたは高い確率で撃たれています。', '<span class="l">生き残ったことを確かめられるのは、生き残ったあなただけです。</span>'],
+  ['この施設では、銃の代わりに地雷の盤を使います。', '地雷の置き方はまだ決まっていません。', '置き方の数だけ、別々の世界が重なっています。'],
+  ['あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
+  ['盤が1つの世界に決まると、観測は終わります。', '周りの数字から推理すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
+  ['この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
-let lore = 0, pulls = 0;
-function loreShow() {
-  const step = LORE[lore], last = lore === LORE.length - 1;
-  let html = '';
-  if (step === 'trigger') {
-    html = `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`
-      + `<div class="lcount"><div>あなたが見た結果<b id="lseen">—</b></div><div class="out">外から見て生きている確率<b id="lout">100%</b></div></div>`
-      + `<button id="ltrig">引き金を引く</button><p id="lcap"></p>`;
-  } else html = `<p>${step}</p>`;
-  html += `<div class="lnav">${last ? '<button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button>'
-    : `<button id="lnext"${step === 'trigger' && pulls < 3 ? ' hidden' : ''}>次へ</button>`}</div>`;
-  $('lorebody').innerHTML = html;
-  if (step === 'trigger') loreTree();
+let lore = 0, loreK = 0, pulls = 0;
+function loreStart() {
+  lore = 0;
+  loreK = 0;
+  pulls = 0;
+  $('lorebody').innerHTML = '';
+  loreStep();
 }
-// 引いた回数だけ枝を描く。弾が出た世界は赤い短い枝で切り、弾が出なかった世界（あなたが見る世界）を金で伸ばす
+// 今の場面の次の1文（か装置）を出す
+function loreStep() {
+  const scene = LORE[lore], item = scene[loreK++];
+  const body = $('lorebody');
+  if (item === 'trigger') {
+    body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`
+      + `<div class="lcount"><div>あなたが見た結果<b id="lseen">—</b></div><div class="out">外から見て生きている確率<b id="lout">100%</b></div></div>`
+      + `<button id="ltrig">引き金を引く</button>`);
+    loreTree();
+  } else if (item === 'end') {
+    body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
+  } else body.insertAdjacentHTML('beforeend', `<p>${item}</p>`);
+}
+function loreTap() {
+  const scene = LORE[lore];
+  // 装置を出している間は、3回引くまで進めない
+  if (scene[0] === 'trigger' && pulls < 3) return;
+  if (loreK < scene.length) return loreStep();
+  if (lore === LORE.length - 1) return;
+  lore++;
+  loreK = 0;
+  $('lorebody').innerHTML = '';
+  loreStep();
+}
+// 本編の流れ図と同じく、帯の太さを生き残った世界の割合にする。引くたびに半分が赤い舌になって下へ剥がれ、残りの金の帯が続く
 function loreTree() {
-  const n = pulls, show = Math.min(n, 8), x0 = 14, dx = 36, y = 46;
-  let g = `<circle cx="${x0}" cy="${y}" r="5" fill="var(--gold)"/>`;
+  const n = pulls, show = Math.min(n, 8), x0 = 10, dx = 36, y0 = 14, T = 60;
+  let g = '';
   for (let k = 0; k < show; k++) {
-    const x = x0 + k * dx;
-    g += `<line x1="${x}" y1="${y}" x2="${x + dx}" y2="${y}" stroke="var(--gold)" stroke-width="3"/>`
-      + `<line x1="${x}" y1="${y}" x2="${x + dx * .7}" y2="${y + 44}" stroke="var(--risk)" stroke-width="2" opacity=".7"/>`
-      + `<text x="${x + dx * .7}" y="${y + 58}" fill="var(--risk)" font-size="12" text-anchor="middle">✕</text>`;
+    const x = x0 + k * dx, xm = x + dx * .45, xe = x + dx * .85;
+    const t0 = T * 0.5 ** k, t1 = t0 / 2, h = t0 - t1, Y = y0 + t0 + 14;
+    g += `<rect x="${x}" y="${y0}" width="${dx + .5}" height="${t1}" fill="var(--gold)"/>`
+      + `<path d="M${x},${y0 + t1} C${xm},${y0 + t1} ${xm},${Y} ${xe},${Y} L${xe},${Y + h} C${xm},${Y + h} ${xm},${y0 + t0} ${x},${y0 + t0}Z" fill="var(--risk)" opacity=".55"/>`;
   }
-  if (n) g += `<circle cx="${x0 + show * dx}" cy="${y}" r="5" fill="var(--gold)"/>`;
+  // 引く前の帯と、今いる位置
+  const xn = x0 + show * dx, tn = T * 0.5 ** show;
+  g = `<rect x="0" y="${y0}" width="${x0}" height="${T}" fill="var(--gold)"/>` + g
+    + `<rect x="${xn}" y="${y0}" width="${Math.max(0, 320 - xn)}" height="${tn}" fill="var(--gold)" opacity=".35"/>`;
   $('ltree').innerHTML = g;
   $('lseen').textContent = n ? `${n} 回とも不発` : '—';
   $('lout').textContent = `${(100 * 0.5 ** n).toFixed(n > 6 ? 2 : n > 3 ? 1 : 0)}%`;
 }
-$('lorebody').addEventListener('click', e => {
+$('lore').addEventListener('click', e => {
+  if (e.target.closest('#lback')) return;
   if (e.target.id === 'ltrig') {
     pulls++;
     loreTree();
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
-    if (pulls === 3) {
-      $('lcap').innerHTML = '弾が出た世界のあなたは、もう何も見ません。結果を見るのは、弾が出なかった世界のあなただけです。<br>だから、あなたから見ると、何度引いても弾は出ません。';
-      $('lnext').hidden = false;
-    }
     return;
   }
-  if (e.target.id === 'lnext') { lore++; loreShow(); return; }
   const go = e.target.closest('[data-lgo]');
-  if (!go) return;
+  if (!go) return loreTap();
   $('lore').hidden = true;
   if (go.dataset.lgo === 'intro') startStage(-1, 0);
   else { $('worlds').hidden = false; wStart(); }
@@ -1855,9 +1874,7 @@ $('camp').addEventListener('click', e => {
   if (!e.target.closest('[data-lore]')) return;
   $('entry').hidden = true;
   $('lore').hidden = false;
-  lore = 0;
-  pulls = 0;
-  loreShow();
+  loreStart();
 });
 $('lback').addEventListener('click', () => { $('lore').hidden = true; showEntry(); });
 
