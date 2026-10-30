@@ -1741,25 +1741,36 @@ const WN = 9, WORLDS = [];
 for (let a = 0; a < WN; a++) for (let b = a + 1; b < WN; b++) WORLDS.push([a, b]);
 const wNear = (c, d) => c !== d && Math.abs(c % 3 - d % 3) <= 1 && Math.abs(((c / 3) | 0) - ((d / 3) | 0)) <= 1;
 const wCount = (w, c) => w.filter(d => wNear(c, d)).length;
-// 最も良い開け方で生き残れる世界の数。alive は生き残った世界の添字、op は開けたマスと ● にしたマス
+// 最も良い開け方で [生き残れる世界の数, そのうちここから先は世界を失わずに終われる数]。前者が多い手を選び、
+// 同じなら後者が多い手を選ぶ。alive は生き残った世界の添字、op は開けたマスと ● にしたマス
 const wMemo = new Map();
+const wMore = (a, b) => a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]);
 function wBest(alive, op) {
-  if (alive.length <= 1) return alive.length;
+  if (alive.length <= 1) return [alive.length, alive.length];
   const key = alive.join() + '|' + op;
   if (!wMemo.has(key)) {
-    let best = 0;
-    for (let c = 0; c < WN; c++) if (!(op >> c & 1)) best = Math.max(best, wValue(alive, op, c, true), wValue(alive, op, c, false));
+    let best = [0, 0];
+    for (let c = 0; c < WN; c++) if (!(op >> c & 1)) for (const mine of [true, false]) {
+      const v = wValue(alive, op, c, mine);
+      if (wMore(v, best)) best = v;
+    }
     wMemo.set(key, best);
   }
   return wMemo.get(key);
 }
-// マス c に ●（mine）か ○ を打った後、最も良く続けて生き残れる世界の数。○ では数字ごとに世界が分かれる
-function wValue(alive, op, c, mine) {
+// マス c に ●（mine）か ○ を打った後の、wBest と同じ組。○ では数字ごとに世界が分かれる。
+// この手で世界を失えば後者は 0。keepLoss を立てると、この手で失う分は数えない
+function wValue(alive, op, c, mine, keepLoss = false) {
   const keep = alive.filter(i => WORLDS[i].includes(c) === mine), next = op | 1 << c;
-  if (mine) return keep.length ? wBest(keep, next) : 0;
-  const by = new Map();
-  for (const i of keep) { const n = wCount(WORLDS[i], c); by.set(n, [...(by.get(n) || []), i]); }
-  return [...by.values()].reduce((t, g) => t + wBest(g, next), 0);
+  if (!keep.length) return [0, 0];
+  let v;
+  if (mine) v = wBest(keep, next);
+  else {
+    const by = new Map();
+    for (const i of keep) { const n = wCount(WORLDS[i], c); by.set(n, [...(by.get(n) || []), i]); }
+    v = [...by.values()].map(g => wBest(g, next)).reduce((t, x) => [t[0] + x[0], t[1] + x[1]], [0, 0]);
+  }
+  return keep.length < alive.length && !keepLoss ? [v[0], 0] : v;
 }
 const wAll = WORLDS.map((w, i) => i);
 let ws;
@@ -1771,9 +1782,17 @@ function wStart() {
 }
 // 世界が 1 つ（か 0）になったら、最も良い開け方との比べと、もう一度のボタンを盤の下に出す
 function wFinish() {
-  const all = wBest(wAll, 0), top = WORLDS.length - WORLDS.filter(w => w.includes(0)).length;
+  // 最初の一手はどこでも 8 つの世界を失うので、運が良い時の上限は最初の一手の後のメーター。
+  // その上限で終われる確率は、最初の一手で失う分を除いて数える
+  let first = [0, 0];
+  for (let c = 0; c < WN; c++) for (const mine of [true, false]) {
+    const v = wValue(wAll, 0, c, mine, true);
+    if (wMore(v, first)) first = v;
+  }
+  const top = WORLDS.length - WORLDS.filter(w => w.includes(0)).length;
   const pct = n => (n / WORLDS.length * 100).toFixed(1) + '%';
-  $('wendtext').innerHTML = `最も良い開け方をすれば、生き残る確率は <b>${pct(all)}</b> です。数字の出方が良ければ、<b>${pct(top)}</b> のまま終えられます。<br>`
+  $('wendtext').innerHTML = `最も良い開け方をすれば、生き残る確率は <b>${pct(first[0])}</b> です。`
+    + `最初の一手の後は一度も世界を失わずに、<b>${pct(top)}</b> のまま終えられる確率は <b>${pct(first[1])}</b> です。<br>`
     + (ws.best
       ? 'あなたは最も良い開け方をしました。開けるマスによって、後で出る数字から絞れる世界の数が変わり、生き残る確率も変わります。結果の表の「選択の損」は、その一手で終わる世界の割合だけを比べるので、この違いを数えていません。'
       : 'もっと良い開け方があります。');
@@ -1803,7 +1822,7 @@ function wAct(c, mine) {
   const alive = wAlive();
   if (alive.length <= 1) return;
   const op = ws.cell.reduce((m, v, d) => v === '' ? m : m | 1 << d, 0);
-  if (wValue(alive, op, c, mine) < wBest(alive, op)) ws.best = false;
+  if (wValue(alive, op, c, mine)[0] < wBest(alive, op)[0]) ws.best = false;
   // 赤: この手と合わない世界のあなたは終わる
   const dead = alive.filter(i => WORLDS[i].includes(c) !== mine);
   dead.forEach(i => { ws.st[i] = 'l'; });
