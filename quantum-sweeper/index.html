@@ -380,6 +380,11 @@ function tipText(i) {
 // 安全なマスしか開けない人にも先に伝わるよう、降り立った後から初めて分岐するまでは分岐できることを出し、初めて分岐した直後は、何が起きたかを出す。
 // 見たかどうかは手がかりの種類と同じ集合に 'branch' として残す
 let branchTip = false;
+// チュートリアルで止めた、どの世界でも失敗する手（cell と、● だったか）。札で理由を示す
+let fatalTip = null, fatalN = 0;
+// チュートリアル2面で ● を置いて自動で開けた後に、✓ と ● 自動 を説明する
+let autoTip = false;
+const inIntro = () => !!camp && camp.s < 0;
 const branchSeen = () => seenSet().has('branch');
 // 札で示す、外れた世界の割合（risk）と、その手が ● だったか
 function noteBranch(r, mine) {
@@ -423,6 +428,10 @@ function coachTip() {
     const { risk, mine } = branchTip;
     return { key: 'after', focus: last, low: true, hl: ['meter'], html: `このマスに地雷が${mine ? '無い' : 'ある'}確率は ${pct(risk)} でした。その ${pct(risk)} の世界のあなたは、ここで終わりました。残りの ${pct(1 - risk)} の世界のあなたが続きます。上の数字も、この割合まで下がりました。` };
   }
+  if (fatalTip) return { key: 'fatal' + fatalN, focus: fatalTip.cell, html: fatalTip.mine
+    ? 'このマスには、どの世界でも地雷がありません。● を置くと、すべての世界のあなたが終わります。'
+    : 'このマスには、どの世界でも地雷があります。開けると、すべての世界のあなたが終わります。' };
+  if (autoTip) return { key: 'auto', focus: last, hl: ['autochord', 'showd'], html: `● を置いたことで、周りの地雷がすべて分かった数字があります。その数字の周りの残りのマスは、自動で開けました。${$('autochord').textContent} で、自動で開けるかどうかを切り替えられます。周りの地雷がすべて分かった数字は、薄く表示します。✓ で、表示を切り替えられます。` };
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
@@ -459,7 +468,7 @@ function renderCoach() {
   const el = $('coach');
   el.hidden = !coach;
   // 札が話している盤の外のもの（メーターや上のボタン）を、札を開いている間だけ金の枠で示す
-  for (const id of ['meter', 'showm', 'showp', 'shown']) $(id).classList.toggle('hl', !!coach && !!coach.hl && coach.hl.includes(id));
+  for (const id of ['meter', 'showm', 'showp', 'shown', 'autochord', 'showd']) $(id).classList.toggle('hl', !!coach && !!coach.hl && coach.hl.includes(id));
   // 雲と p の札を見た後、札を閉じている間は、オフのままのボタンを光らせ続ける
   const lit = introProbs() && coachShown.has('cloud') && !coach;
   $('showp').classList.toggle('go', lit && !showP);
@@ -474,6 +483,8 @@ function closeCoach() {
   // 手がかりの読み方と分岐の後の説明は、閉じた時に枠も消す
   if (coach.key.startsWith('clue')) tipCell = -1;
   if (coach.key === 'after') branchTip = false;
+  if (coach.key.startsWith('fatal')) fatalTip = null;
+  if (coach.key === 'auto') autoTip = false;
   coach = null;
   render();
 }
@@ -540,6 +551,8 @@ function newGame() {
   g.autoChord = mode === 'safe' && autoChord;
   last = hint = areaOf = tipCell = -1;
   branchTip = false;
+  fatalTip = null;
+  autoTip = false;
   coach = null;
   coachShown = new Set();
   marked = [];
@@ -980,6 +993,7 @@ function act(i) {
   branchTip = false;
   if (g.opened[i]) { chord(i); if (hadTip) render(); return; }
   if (g.mines.has(i)) return;
+  if (inIntro() && g.landed && g.prob(i) > 1 - 1e-9) { fatalTip = { cell: i, mine: false }; fatalN++; render(); return; }
   betOpen(i);
 }
 
@@ -1250,7 +1264,10 @@ const quickMine = i => {
   if (step && !(i === step.cell && (step.kind === 'mine' || (step.kind === 'open' && g.landed)))) return;
   tipCell = -1;
   branchTip = false;
+  if (inIntro() && g.landed && g.prob(i) < 1e-9) { fatalTip = { cell: i, mine: true }; fatalN++; render(); return; }
+  const two = inIntro() && camp.k === 1 && !g.mines.size;
   betMine(i);
+  if (two && g.state === 'play' && g.auto && g.auto.count > 0) { autoTip = true; render(); }
 };
 let pressTimer = 0, longPressed = false;
 board.addEventListener('pointerover', e => {
