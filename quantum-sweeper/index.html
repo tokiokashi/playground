@@ -357,17 +357,11 @@ function pickTip(fresh) {
   seen.add(g.det[c]);
   try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
 }
-// 手がかりの表示の読み方。範囲は枠で見せているので、文では「枠の中」とだけ言う
+// 手がかりの表示の読み方。範囲は枠で見せているので、文では「周囲」とだけ言う
 function tipText(i) {
   const t = g.det[i], lab = g.label[i];
   const head = `<b>${MARK[t] ? MARK[t] + ' ' : ''}${lab}</b>`;
-  let m;
-  if (t === 'parity') return head + `枠の中の地雷は${lab === '偶' ? '偶数' : '奇数'}個`;
-  if (t === 'lr') return head + (lab === '⇔' ? '左の列と右の列の地雷は同じ数' : `${lab === '←' ? '左' : '右'}の列の地雷の方が多い`);
-  if (t === 'ud') return head + (lab === '⇕' ? '上の行と下の行の地雷は同じ数' : `${lab === '↑' ? '上' : '下'}の行の地雷の方が多い`);
-  if ((m = /^(\d+)\|(\d+)$/.exec(lab))) return head + `枠の中の地雷は ${m[1]} 個か ${m[2]} 個`;
-  if ((m = /^(\d+)-(\d+)$/.exec(lab))) return head + `枠の中の地雷は ${m[1]}〜${m[2]} 個`;
-  return head + `枠の中の地雷は ${lab} 個`;
+  return head + (/^\d+$/.test(lab) ? 'マスの数字は周囲の地雷の数を表します。' : 'マスの文字は周囲の地雷の情報を表します。');
 }
 // 分岐の1行。普通のマインスイーパーと違い、未確定のマスを選んでも失敗せず、世界が分岐して進む。
 // 安全なマスしか開けない人にも先に伝わるよう、降り立った後から初めて分岐するまでは分岐できることを出し、初めて分岐した直後は、何が起きたかを出す。
@@ -407,14 +401,14 @@ const fineMouse = matchMedia('(hover:hover) and (pointer:fine)');
 let coach = null, coachShown = new Set();
 function coachTip() {
   if (review >= 0) return null;
-  if (branchTip) return { key: 'after', focus: last, html: '<b>分岐</b>地雷のある世界のあなたは消え、残った世界のあなたが進んだ。∿ は、ここまで生き残っている割合' };
+  if (branchTip) return { key: 'after', focus: last, html: '<b>分岐</b>地雷があった世界のあなたは、ここで終わりました。地雷が無かった世界のあなたが続きます。∿ は、生き残っている世界の割合です。' };
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (g.state !== 'play') return null;
-  if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>印のマスを開ける。最初に開けたマスと周りの8マスに、地雷は無い' };
-  if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>印のマスは、どの世界でも地雷がある。${fineMouse.matches ? '右クリック' : '長押し'}で ● を置く` };
+  if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
+  if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
   if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
-    ? { key: 'pre', focus: step.cell, html: '<b>○</b>印のマスは未確定。それでも開けられる。地雷のある世界のあなたは消えるが、失敗にはならない' }
-    : { key: 'pre', focus: -1, html: '<b>∿</b>未確定のマスも選べる。地雷のある世界が消え、分岐して進む' };
+    ? { key: 'pre', focus: step.cell, html: '<b>○</b>光っているマスは、地雷の有無が確定していませんが、このゲームでは開けることができます。' }
+    : { key: 'pre', focus: -1, html: '<b>∿</b>地雷の有無が確定していないマスも、○ と ● で選べます。' };
   return null;
 }
 function renderCoach() {
