@@ -145,6 +145,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lore .whead{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 #lore .whead b{font-size:15px}
 #lore{min-height:calc(100vh - 140px);cursor:pointer}
+/* 続けてタップする画面とボタンでは、ダブルタップの拡大を止める */
+#lore,#worlds,button{touch-action:manipulation}
 #lorebody{min-height:300px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
 #lorebody p{margin:0;max-width:30em;animation:lorein .7s ease both}
 @keyframes lorein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
