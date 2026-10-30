@@ -1,6 +1,6 @@
 // 作品の fonts/ に置いた woff2（使う字だけに絞ったフォント）に、作品の .html と .js に出てくる字が
 // すべて入っているかを確かめる。文を変えたのにフォントを作り直し忘れると、足りない字を挙げて止まる。
-// 元のフォントにも無い字（記号など）は、<フォント名>.noglyph.txt に並べておけば数えない。
+// フォントに入れない字（元のフォントにも無い字や、わざと外した記号）は、<フォント名>.noglyph.txt に並べておけば数えない。
 // フォントを作り直した直後に `--update` を付けて実行すると、今足りない字でこのファイルを書き直す。
 // woff2 は Node の brotli で展開し、cmap 表だけを読む。
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';

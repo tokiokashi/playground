@@ -7,9 +7,9 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 /* 施設が語る文だけ New Tegomin にする。ボタンや数字などの操作の部品は本文の書体のまま。
-   fonts/ の woff2 は、作品で使う字だけに絞ったもの（作り方は fonts/README.md） */
+   fonts/ の woff2 は、作品で使う字だけに絞ったもの（作り方は fonts/README.md）。○ ● などの記号は入れず、本文の書体で出す */
 @font-face{font-family:"New Tegomin";src:url(fonts/NewTegomin-subset.woff2) format("woff2");font-display:swap}
-:root{--voice:"New Tegomin","Hiragino Mincho ProN","Yu Mincho",serif}
+:root{--voice:"New Tegomin","Hiragino Sans","Yu Gothic",system-ui,sans-serif}
 #lore .whead b,#lorebody p,#lmsg span,#worlds .whead b,#wcap,.stagelabel,#coach p,#result h2,#result .story{font-family:var(--voice)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px 16px 40px}
 main{max-width:680px;margin:0 auto}
