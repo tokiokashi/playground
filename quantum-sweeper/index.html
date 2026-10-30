@@ -428,9 +428,14 @@ function coachTip() {
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
   if (introProbs() && showM && !g.situation().safeExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, hl: ['meter', 'showm'], html: '上の数字は、あなたが生き残れた確率です。今は、地雷が無いと確定したマスがありません。そういう時、数字が揺れます。∿ で、表示を切り替えられます。' };
   if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。両方を押してみてください。' };
-  if (g.landed && !branchSeen() && !seenSet().has('pre') && !(step && step.kind === 'probs')) return step
-    ? { key: 'pre', focus: step.cell, html: '光っているマスは、地雷の有無が確定していません。このゲームでは、有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。' }
-    : { key: 'pre', focus: -1, html: 'このゲームでは、地雷の有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。' };
+  if (g.landed && !branchSeen() && !seenSet().has('pre') && !(step && step.kind === 'probs')) {
+    // ○ と ● を初めて名前で呼ぶ札なので、意味と操作をここで示す
+    const ops = `地雷が無いと考えるマスは${fineMouse.matches ? 'クリック' : 'タップ'}して開けます（○）。地雷があると考えるマスは${fineMouse.matches ? '右クリック' : '長押し'}して ● を置きます。`;
+    const safe = 'このゲームでは、地雷の有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。';
+    return step
+      ? { key: 'pre', focus: step.cell, html: `光っているマスは、地雷の有無が確定していません。${ops}${safe}` }
+      : { key: 'pre', focus: -1, html: ops + safe };
+  }
   return null;
 }
 // 導入の1面で、降り立ってから初めて分岐するまで
@@ -967,7 +972,7 @@ function act(i) {
     return;
   }
   if (g.state !== 'play' || coach) return;
-  // 導入の台本の手がある間は、そのマスを開ける操作だけを受け付ける
+  // 導入の台本の手がある間は、そのマスへの操作だけを受け付ける
   if (step && !(step.kind === 'open' && i === step.cell)) return;
   // 説明の枠は、次にマスを操作した時に消す。何も開かない操作でも描き直して消す
   const hadTip = tipCell >= 0 || branchTip;
@@ -1025,6 +1030,7 @@ function betMine(i) {
   // 降り立つ前は ● を置けないので、どの操作でも降り立つ
   if (!g.landed) return betOpen(i);
   const before = probsNow();
+  const guided = !!step && step.kind === 'open' && i === step.cell;
   const r = g.claim(i);
   if (!r) return;
   noteBranch(r, true);
@@ -1032,6 +1038,7 @@ function betMine(i) {
   if (g.state !== 'dead' && (r.cost > 0 || g.state === 'clear')) collapse(i, before, r.cost > 0);
   last = i;
   const m = g.moves[g.moves.length - 1];
+  if (guided) m.guided = true;
   if (g.state === 'dead') showResult(false);
   else {
     $('msg').innerHTML = betLine(r, m);
@@ -1239,7 +1246,8 @@ $('coach').addEventListener('click', closeCoach);
 // タップとクリックは ○（地雷が無いと決めて開ける）。長押しと右クリックは ●（地雷を観測する）
 const quickMine = i => {
   if (g.state !== 'play' || !g.free(i) || coach) return;
-  if (step && !(step.kind === 'mine' && i === step.cell)) return;
+  // 導入で開けてもらうマスには、● を置くことも許す（○ と ● のどちらを選んでも分岐を見せられる）
+  if (step && !(i === step.cell && (step.kind === 'mine' || (step.kind === 'open' && g.landed)))) return;
   tipCell = -1;
   branchTip = false;
   betMine(i);
