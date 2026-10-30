@@ -126,10 +126,10 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 @media (prefers-reduced-motion:reduce){.hl{animation:none}}
 #coachok{min-width:6em;padding:6px 18px}
 #coachok:disabled{opacity:.35;cursor:default}
-/* 導入で次に押すマス。金の枠を脈打たせる */
-.c.go,.bar button.go{outline:2px solid var(--gold);outline-offset:-2px;animation:go 1.1s ease-in-out infinite}
+/* 導入で次に押すマス（と、観測記録 000 で先へ進めるようになったギブアップ）。金の枠を脈打たせる */
+.c.go,.bar button.go,#lgive.go{outline:2px solid var(--gold);outline-offset:-2px;animation:go 1.1s ease-in-out infinite}
 @keyframes go{50%{outline-color:rgba(242,198,107,.2)}}
-@media (prefers-reduced-motion:reduce){.c.go,.bar button.go{animation:none}}
+@media (prefers-reduced-motion:reduce){.c.go,.bar button.go,#lgive.go{animation:none}}
 .c.ta{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
 .c.tq{outline:2px solid #7fb2ff;outline-offset:-2px;animation:tq 1.2s ease-in-out infinite}
 @keyframes tq{50%{outline-color:rgba(127,178,255,.25)}}
@@ -196,6 +196,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #ltrig{font-size:15px;padding:8px 22px;border-color:var(--risk);color:var(--risk)}
 #ltrig.flash{background:rgba(255,107,107,.25)}
 #lgive{font-size:13px;padding:8px 14px;color:var(--dim)}
+#lgive.go{color:var(--gold)}
 .lnav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .lnav button{font-size:14px;padding:6px 16px}
 #grid table{border-collapse:separate;border-spacing:3px;margin:10px auto 6px}
@@ -1838,7 +1839,7 @@ const loreWrap = t => t.replace(/(<[^>]+>)|([^<、。]+[、。]?)/g, (m, tag, se
 // 10 回以上は % の小数では 0 に近づいて読めないので、「N 分の 1」で書く。100 回を超えると分母が画面の幅に収まらないので、「2 の N 乗分の 1」で書く
 const loreOdds = () => pulls < 10 ? `${(100 * 0.5 ** pulls).toFixed(pulls > 6 ? 2 : pulls > 2 ? 1 : 0)}%` : pulls <= 100 ? `${(2n ** BigInt(pulls)).toLocaleString('ja-JP')} 分の 1` : `2 の ${pulls} 乗分の 1`;
 // 種明かしの前の幸運の言い方。引いた回数が多いほど強く言う（回数の多い順に並べ、最初に当てはまったものを使う）
-const LUCK = [[100, 'これはもう、幸運ではありません。'], [20, '偶然では説明できないほどの幸運です。'], [8, '信じられないほどの幸運の持ち主です。'], [4, '生き残れて、幸運でしたね。'], [0, 'これ以上引く度胸は、ありませんでしたか。']];
+const LUCK = [[100, 'これはもう、幸運ではありません。'], [20, '偶然では説明できないほどの幸運です。'], [8, '信じられないほどの幸運の持ち主です。'], [4, '生き残れて、幸運でしたね。'], [0, 'これ以上引く勇気は、なかったようですね。']];
 // 引き続けた時に、不発の欄へ混ぜる施設の言葉
 const PULL_SAY = { 10: 'そろそろ、次へ進んでください。', 20: '記録は、もう十分です。', 30: '何度引いても、結果は同じです。', 100: 'あなたが死んだ世界は、もう数えきれません。' };
 function loreNext() {
@@ -2000,12 +2001,14 @@ document.addEventListener('click', e => {
       $('lmsg').append(say);
     }
     // 3 回目までは、不発の文の少し後に、もう一度引くよう頼む文を出す。文は毎回作り直して、出る動きをやり直す。
-    // 頼む文が出終わるまでは次を受けない。3 回引いた後は、頼む文を消して続けて引けるようにする
+    // 頼む文が出終わるまでは次を受けない。3 回引いた後は、頼む文を消して続けて引けるようにし、
+    // ギブアップを金色にして先へ進めることを示す
     const again = ['もう一度、引いてください。', 'もう一度。'][pulls - 1] || '';
     if (pulls <= 3) $('lagain').textContent = '';
     if (again) trigWait = true;
     setTimeout(() => {
       if (again && $('lagain')) $('lagain').innerHTML = `<p>${again}</p>`;
+      else $('lgive')?.classList.add('go');
     }, 600);
     if (again) setTimeout(() => { trigWait = false; }, 1300);
     e.target.classList.add('flash');
