@@ -150,6 +150,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 @keyframes lorein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#lorebody p{animation:none}}
 #lorebody .l{color:var(--risk)}
+#lorebody .lseg{display:inline-block}
 #ltree{width:100%;max-width:360px;height:auto}
 .lcount{display:flex;gap:18px;justify-content:center;font:600 13px/1.4 ui-monospace,Menlo,monospace;color:var(--mute)}
 .lcount b{display:block;font-size:22px;color:var(--gold);font-variant-numeric:tabular-nums}
@@ -1826,8 +1827,10 @@ function loreStep() {
     loreTree();
   } else if (item === 'end') {
     body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
-  } else body.insertAdjacentHTML('beforeend', `<p>${item}</p>`);
+  } else body.insertAdjacentHTML('beforeend', `<p>${loreWrap(item)}</p>`);
 }
+// 句読点の後でだけ改行するよう、句読点までのまとまりを折り返さない塊にする（タグの中は分けない）
+const loreWrap = t => t.replace(/(<[^>]+>)|([^<、。]+[、。]?)/g, (m, tag, seg) => tag || `<span class="lseg">${seg}</span>`);
 function loreTap() {
   const scene = LORE[lore];
   // 装置を出している間は、3回引くまで進めない
@@ -1857,8 +1860,9 @@ function loreTree() {
   $('lseen').textContent = n ? `${n} 回とも不発` : '—';
   $('lout').textContent = `${(100 * 0.5 ** n).toFixed(n > 6 ? 2 : n > 3 ? 1 : 0)}%`;
 }
-$('lore').addEventListener('click', e => {
-  if (e.target.closest('#lback')) return;
+// 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
+document.addEventListener('click', e => {
+  if ($('lore').hidden || e.target.closest('#lback, #entry, a')) return;
   if (e.target.id === 'ltrig') {
     pulls++;
     loreTree();
