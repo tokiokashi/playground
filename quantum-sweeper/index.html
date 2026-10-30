@@ -1966,7 +1966,7 @@ function loreStep() {
   const scene = LORE[lore], item = scene[loreK++];
   const body = $('lorebody');
   if (item === 'trigger') {
-    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
+    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><p id="lagain" hidden></p><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
   } else if (item === 'tree') {
     // 引いた回数だけ分かれた世界を、種明かしの後で見せる
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`);
@@ -2152,6 +2152,9 @@ document.addEventListener('click', e => {
     m.style.left = `calc((100% - 6.4em) * ${R()})`;
     m.style.top = `calc((100% - 5.5em) * ${R()} + 2em)`;
     $('lmsg').append(m);
+    // 3 回目までは、もう一度引くよう頼む文を出す。文は毎回作り直して、出る動きをやり直す
+    const again = ['もう一度、引いてください。', 'もう一度。'][pulls - 1];
+    $('lagain').outerHTML = `<p id="lagain"${again ? '' : ' hidden'}>${again || ''}</p>`;
     if (pulls >= 3) $('lnext').hidden = false;
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
