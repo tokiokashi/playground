@@ -114,8 +114,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #coach.low{inset:0 0 -140px;align-items:flex-end}
 #coach .card{max-width:340px;background:var(--panel);border:1px solid #7fb2ff;border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.5);text-align:center}
 #coach p{margin:0 0 8px;font-size:15px;line-height:1.6;color:var(--ink)}
-#coach b{display:inline-block;color:#7fb2ff;font:700 17px/1.3 ui-monospace,Menlo,monospace;margin-right:.5em}
-#coach b.g{color:var(--gold)}
+.hl{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px;animation:go 1.1s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.hl{animation:none}}
 #coachok{min-width:6em;padding:6px 18px}
 /* 導入で次に押すマス。金の枠を脈打たせる */
 .c.go,.bar button.go{outline:2px solid var(--gold);outline-offset:-2px;animation:go 1.1s ease-in-out infinite}
@@ -363,9 +363,8 @@ function pickTip(fresh) {
 }
 // 手がかりの表示の読み方。範囲は枠で見せているので、文では「周囲」とだけ言う
 function tipText(i) {
-  const t = g.det[i], lab = g.label[i];
-  const head = `<b>${MARK[t] ? MARK[t] + ' ' : ''}${lab}</b>`;
-  return head + (/^\d+$/.test(lab) ? 'マスの数字は周囲の地雷の数を表します。' : 'マスの文字は周囲の地雷の情報を表します。');
+  const lab = g.label[i];
+  return (/^\d+$/.test(lab) ? 'マスの数字は周囲の地雷の数を表します。' : 'マスの文字は周囲の地雷の情報を表します。');
 }
 // 分岐の1行。普通のマインスイーパーと違い、未確定のマスを選んでも失敗せず、世界が分岐して進む。
 // 安全なマスしか開けない人にも先に伝わるよう、降り立った後から初めて分岐するまでは分岐できることを出し、初めて分岐した直後は、何が起きたかを出す。
@@ -409,17 +408,17 @@ function coachTip() {
   if (branchTip) {
     const pct = x => pctN(x) + '%';
     const { risk, mine } = branchTip;
-    return { key: 'after', focus: last, html: `<b>分岐</b>このマスに地雷が${mine ? '無い' : 'ある'}確率は ${pct(risk)} でした。その ${pct(risk)} の世界のあなたは、ここで終わりました。残りの ${pct(1 - risk)} の世界のあなたが続きます。上の数字も、この割合まで下がりました。` };
+    return { key: 'after', focus: last, low: true, hl: ['meter'], html: `このマスに地雷が${mine ? '無い' : 'ある'}確率は ${pct(risk)} でした。その ${pct(risk)} の世界のあなたは、ここで終わりました。残りの ${pct(1 - risk)} の世界のあなたが続きます。上の数字も、この割合まで下がりました。` };
   }
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (g.state !== 'play') return null;
-  if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
-  if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
-  if (introProbs() && showM && !g.situation().safeExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, html: '<b>∿</b>上の数字は、あなたが生き残れた確率です。今は、地雷が無いと確定したマスがありません。そういう時、数字が揺れます。' };
-  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, html: '<b>|ψ|²</b>上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。' };
+  if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
+  if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
+  if (introProbs() && showM && !g.situation().safeExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, hl: ['meter', 'showm'], html: '上の数字は、あなたが生き残れた確率です。今は、地雷が無いと確定したマスがありません。そういう時、数字が揺れます。∿ で、表示を切り替えられます。' };
+  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。' };
   if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
-    ? { key: 'pre', focus: step.cell, html: '<b>○</b>光っているマスは、地雷の有無が確定していませんが、このゲームでは開けることができます。' }
-    : { key: 'pre', focus: -1, html: '<b>∿</b>地雷の有無が確定していないマスも、○ と ● で選べます。' };
+    ? { key: 'pre', focus: step.cell, html: '光っているマスは、地雷の有無が確定していませんが、このゲームでは開けることができます。' }
+    : { key: 'pre', focus: -1, html: '地雷の有無が確定していないマスも、○ と ● で選べます。' };
   return null;
 }
 // 導入の1面で、降り立ってから初めて分岐するまでは、雲と確率の数字のボタンを光らせる（オンにしたボタンは光らせない）
@@ -440,6 +439,8 @@ function renderCoach() {
   }
   const el = $('coach');
   el.hidden = !coach;
+  // 札が話している盤の外のもの（メーターや上のボタン）を、札を開いている間だけ金の枠で示す
+  for (const id of ['meter', 'showm', 'showp', 'shown']) $(id).classList.toggle('hl', !!coach && !!coach.hl && coach.hl.includes(id));
   if (!coach) return;
   $('coachtext').innerHTML = coach.html;
   // 説明の札は、示しているマスと反対の側（マスが上半分なら下、下半分なら上）に寄せる
