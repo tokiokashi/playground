@@ -248,7 +248,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   </span>
 </div>
 <div class="bar">
-  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">● 自動</button>
+  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">○ 自動</button>
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示">p</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
@@ -390,7 +390,7 @@ function warnFatal(i, mine) {
   render();
   return true;
 }
-// チュートリアル2面で ● を置いて自動で開けた後に、✓ と ● 自動 を説明する
+// チュートリアル2面で ● を置いて自動で開けた後に、✓ と ○ 自動 を説明する
 let autoTip = false;
 const inIntro = () => !!camp && camp.s < 0;
 const branchSeen = () => seenSet().has('branch');
@@ -439,7 +439,9 @@ function coachTip() {
   if (fatalTip) return { key: 'fatal' + fatalN, focus: fatalTip.cell, html: fatalTip.mine
     ? 'このマスには、どの世界でも地雷がありません。● を置くと、すべての世界のあなたが終わります。'
     : 'このマスには、どの世界でも地雷があります。開けると、すべての世界のあなたが終わります。' };
-  if (autoTip) return { key: 'auto', focus: last, hl: ['autochord', 'showd'], html: `● を置いたことで、周りの地雷がすべて分かった数字があります。その数字の周りの残りのマスは、自動で開けました。${$('autochord').textContent} で、自動で開けるかどうかを切り替えられます。周りの地雷がすべて分かった数字は、薄く表示します。✓ で、表示を切り替えられます。` };
+  if (autoTip) return { key: 'auto', focus: last, hl: ['autochord', 'showd'], html: `● を置いたことで、周りの地雷がすべて分かった数字があります。その数字の周りの残りのマスは、自動で開けました。金色の点線の枠のマスが、自動で開けたマスです。${$('autochord').textContent} で、自動で開けるかどうかを切り替えられます。周りの地雷がすべて分かった数字は、薄く表示します。✓ で、表示を切り替えられます。` };
+  // より安い手を示す灰色の破線の枠は、初めて出た時だけ読み方を示す
+  if (hint >= 0 && !seen.has('hint') && !g.opened[hint] && !g.mines.has(hint)) return { key: 'hint', focus: hint, html: '今の手より、終わる世界が少ない手がありました。灰色の破線の枠のマスに薄く重ねた ○ か ● が、その手です。' };
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
@@ -466,9 +468,9 @@ function renderCoach() {
       coachShown.add(t.key);
       coach = t;
       // 分岐する前の札は、どの盤でも一度だけ出す（手がかりや分岐の札と同じく、見たことを残す）
-      if (t.key === 'pre') {
-        seenSet().add('pre');
-        seen.add('pre');
+      if (t.key === 'pre' || t.key === 'hint') {
+        seenSet().add(t.key);
+        seen.add(t.key);
         try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
       }
     }
@@ -1219,8 +1221,12 @@ function showResult(ok) {
   if (camp) {
     const sc = scenOf(camp), last = camp.k === sc.stages.length - 1;
     setting = `${sc.name} ${camp.k + 1}/${sc.stages.length}・${g.W}×${g.H}・${g.M}個`;
-    // 導入は、最後の面をクリアしたら終えたことにする。ランクは記録しない
-    if (ok && camp.s < 0 && last) introDone();
+    // 導入は、クリアした面を覚えておき（入口の表でクリアの色にする）、最後の面をクリアしたら終えたことにする。ランクは記録しない
+    if (ok && camp.s < 0) {
+      introClear.add(camp.k);
+      try { localStorage.setItem('qs-intro-clear', JSON.stringify([...introClear])); } catch { /* 保存できない環境 */ }
+      if (last) introDone();
+    }
     // 自動プレーを使った面は、次へ進めるがクリアとして記録しない
     else if (ok && camp.s >= 0 && !g.botUsed) {
       // 面ごとに一番良かった記録（ランクと、その時の L）を残す。ランクが同じなら L が小さい方
@@ -1474,6 +1480,9 @@ const INTRO = {
   land: [20, 24, 35],
 };
 const scenOf = c => c.s < 0 ? INTRO : SCEN[c.s];
+// 導入でクリアした面の番号。このブラウザにだけ残す
+let introClear = new Set();
+try { introClear = new Set(JSON.parse(localStorage.getItem('qs-intro-clear')) || []); } catch { /* 保存できない環境 */ }
 function introDone() {
   try { localStorage.setItem('qs-intro', '1'); } catch { /* 保存できない環境 */ }
 }
@@ -1531,7 +1540,7 @@ function showEntry() {
 // チュートリアルの面のボタンを、シナリオの行と同じ形で1行目に並べる。どの面からでも始められる
 function introRow() {
   return `<div class="scen"><span>${INTRO.name}</span>` + INTRO.stages.map(([W, H], k) =>
-    `<button data-s="-1" data-k="${k}" aria-label="${INTRO.heads[k]}">${W}×${H}</button>`).join('') + '</div>';
+    `<button data-s="-1" data-k="${k}"${introClear.has(k) ? ' class="done"' : ''} aria-label="${INTRO.heads[k]}">${W}×${H}</button>`).join('') + '</div>';
 }
 // シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
 function stageRow(i) {
