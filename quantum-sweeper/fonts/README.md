@@ -7,7 +7,7 @@
 - ライセンス: SIL Open Font License 1.1（`OFL.txt`）
 - Copyright 2020 The New Tegomin Project Authors
 
-施設が語る文（観測記録の見出しと文、説明の札、結果画面の文、36 の世界の説明）にだけ使う。
+施設が語る文（観測記録の見出しと文、説明の札、結果画面の文）にだけ使う。
 
 ### 作り直し方
 
