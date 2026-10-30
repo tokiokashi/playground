@@ -6,6 +6,11 @@
 :root{--bg:#0b0f1a;--panel:#121a2b;--line:#26324d;--ink:#e7ecf6;--mute:#8e9ab5;--gold:#f2c66b;--safe:#1a2338;--cell:#2b3858;--cellhi:#364670;--risk:#ff6b6b;color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+/* 施設が語る文だけ New Tegomin にする。ボタンや数字などの操作の部品は本文の書体のまま。
+   fonts/ の woff2 は、作品で使う字だけに絞ったもの（作り方は fonts/README.md） */
+@font-face{font-family:"New Tegomin";src:url(fonts/NewTegomin-subset.woff2) format("woff2");font-display:swap}
+:root{--voice:"New Tegomin","Hiragino Mincho ProN","Yu Mincho",serif}
+#lore .whead b,#lorebody p,#lmsg span,#worlds .whead b,#wcap,.stagelabel,#coach p,#result h2,#result .story{font-family:var(--voice)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 "Hiragino Sans","Yu Gothic",system-ui,sans-serif;padding:20px 16px 40px}
 main{max-width:680px;margin:0 auto}
 a.back{display:inline-block;margin:0 0 6px;font-size:13px;color:var(--mute);text-decoration:none}
@@ -1809,7 +1814,7 @@ $('wreset').addEventListener('click', wStart);
 // 観測記録 000。何もない画面をタップするたびに1文ずつ出す。場面の文を出し切ったら、次のタップで画面を消して次の場面へ。
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
-  ['ここに、引き金を引くたびに半々の確率で弾が出る銃があります。', 'この銃を自分に向けて、引き金を引いてください。'],
+  ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', 'この銃を自分に向けて、引き金を引いてください。'],
   ['trigger'],
   ['この銃は、量子の測定で弾を出すかどうかを決めています。', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', 'tree', '弾が出た世界のあなたは、その結果を知ることができません。', '結果を知るのは、弾が出なかった世界のあなただけです。'],
   ['本来、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
