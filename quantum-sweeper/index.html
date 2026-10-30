@@ -169,11 +169,16 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lboards{width:100%;max-width:360px;height:auto}
 #lboards .lcut{transition:opacity .8s}
 #lcloud{width:100%;max-width:360px;height:auto}
-#lcloud circle{transition:opacity 1.2s ease}
-#lcloud .lco{transition:fill .4s}
-#lcloud.on .lco{fill:var(--safe)}
-#lcloud .lcn{font:700 18px ui-monospace,Menlo,monospace;fill:var(--ink);opacity:0;transition:opacity .4s}
-#lcloud.on .lcn{opacity:1}
+#lcloud circle{transition:opacity 2.4s ease}
+#lcloud .lco{transition:fill .6s}
+#lcloud.s1 .lco{fill:var(--safe)}
+#lcloud .lcn{font:700 18px ui-monospace,Menlo,monospace;fill:var(--ink);opacity:0;transition:opacity .6s}
+#lcloud.s3 .lcn{opacity:1}
+#lcloud .lw{opacity:0;transition:opacity 1s}
+#lcloud.s1 .lw{opacity:1}
+#lcloud.s2 .lwc{opacity:.25}
+#lcloud.s2 .lwc rect:first-child{stroke:var(--risk)}
+#lcloud .lwn{font:700 9px ui-monospace,Menlo,monospace;fill:var(--ink)}
 #lboards .lcut.on{opacity:.25}
 #lboards .lcut.on rect:first-child{stroke:var(--risk)}
 #ltrig{font-size:15px;padding:8px 22px;border-color:var(--risk);color:var(--risk)}
@@ -1953,14 +1958,16 @@ function loreStep() {
     body.insertAdjacentHTML('beforeend', loreBoards(item === 'row'));
     loreStep();
   } else if (item === 'cloud') {
-    // 開ける前の一様な雲を出し、少し置いてからマスを開けて、雲が数字に合う形へ移るところを見せる
+    // 一様な雲の盤でマスを開け（s1）、下に並べた世界のうち数字の合わない世界を消し（s2）、
+    // 残った世界から数えた濃さへ雲を移す（s3）。各段の間は、前の段の変化が見終わるまで待つ
     body.insertAdjacentHTML('beforeend', loreCloud());
-    setTimeout(() => {
+    [[800, 's1'], [2800, 's2'], [4400, 's3']].forEach(([t, k]) => setTimeout(() => {
       const svg = $('lcloud');
       if (!svg) return;
-      svg.classList.add('on');
-      svg.querySelectorAll('[data-p]').forEach(e => { e.style.opacity = Math.min(1, +e.dataset.p * 2); });
-    }, 700);
+      svg.classList.add(k);
+      if (k === 's1') svg.querySelector('[data-c="1"]').style.opacity = 0;
+      if (k === 's3') svg.querySelectorAll('[data-p]').forEach(e => { e.style.opacity = Math.min(1, +e.dataset.p * 2); });
+    }, t));
     loreStep();
   } else if (item === 'cut') {
     // ○ のマスに地雷がある世界を赤くして消す
@@ -2029,21 +2036,34 @@ function loreBoards(row) {
   return `<svg id="lboards" viewBox="0 0 320 ${row ? 20 + bw * 2 + 12 : 106}" role="img" aria-label="${row ? '真ん中のマスに ○ を置いた世界と ● を置いた世界' : '重なった世界'}">${body}</svg>`;
 }
 // 3×3・地雷 2 個の盤の上辺の真ん中を開けると 2 が出る。地雷は周りの 5 マスのどれか 2 つなので、下の段は p = 0 になる。
-// 雲の濃さは、開ける前は全マス 2/9、開けた後は 36 の世界のうち数字に合う世界から数えた p
+// 雲の濃さは、開ける前は全マス 2/9、開けた後は 36 の世界のうち数字に合う世界から数えた p。
+// 盤の下には、開けたマスに地雷が無い世界を 6 つ並べ、それぞれの世界で出る数字を書く。2 以外の世界に lwc を付ける
+const LCWORLDS = [[0, 3], [6, 8], [2, 4], [3, 7], [4, 5], [5, 8]];
 function loreCloud() {
-  const cs = 30, gap = 3, x0 = 160 - (cs * 3 + gap * 2) / 2, y0 = 8, open = 1;
-  const worlds = WORLDS.filter(w => !w.includes(open) && w.filter(d => wNear(open, d)).length === 2);
+  const cs = 30, gap = 3, x0 = 160 - (cs * 3 + gap * 2) / 2, y0 = 8, open = 1, bh = cs * 3 + gap * 2;
+  const worlds = WORLDS.filter(w => !w.includes(open) && wCount(w, open) === 2);
   let g = '<defs><filter id="lcblur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>';
   let cloud = '';
   for (let c = 0; c < 9; c++) {
     const x = x0 + (c % 3) * (cs + gap), y = y0 + ((c / 3) | 0) * (cs + gap);
     g += `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="3" fill="var(--cell)"${c === open ? ' class="lco"' : ''}/>`;
     const p = c === open ? 0 : worlds.filter(w => w.includes(c)).length / worlds.length;
-    cloud += `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="${cs * 0.55}" fill="var(--risk)" data-p="${p}" style="opacity:${(2 / 9) * 2}"/>`;
+    cloud += `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="${cs * 0.55}" fill="var(--risk)" data-c="${c}" data-p="${p}" style="opacity:${(2 / 9) * 2}"/>`;
   }
   const ox = x0 + cs + gap + cs / 2, oy = y0 + cs / 2;
   g += `<g filter="url(#lcblur)">${cloud}</g><text x="${ox}" y="${oy + 6}" text-anchor="middle" class="lcn">2</text>`;
-  return `<svg id="lcloud" viewBox="0 0 320 ${y0 * 2 + cs * 3 + gap * 2}" role="img" aria-label="開けたマスの数字で、地雷の雲が寄る">${g}</svg>`;
+  const ws = 11, wg = 2, wp = 3, bw = wp * 2 + ws * 3 + wg * 2, wy = y0 + bh + 14;
+  LCWORLDS.forEach((w, i) => {
+    const x = 10 + i * 51, n = wCount(w, open);
+    let b = `<rect x="${x}" y="${wy}" width="${bw}" height="${bw}" rx="4" fill="var(--panel)" stroke="var(--line)"/>`;
+    for (let c = 0; c < 9; c++) {
+      const cx = x + wp + (c % 3) * (ws + wg), cy = wy + wp + ((c / 3) | 0) * (ws + wg);
+      b += `<rect x="${cx}" y="${cy}" width="${ws}" height="${ws}" rx="1.5" fill="${c === open ? 'var(--safe)' : w.includes(c) ? 'var(--gold)' : 'var(--cell)'}"/>`;
+      if (c === open) b += `<text x="${cx + ws / 2}" y="${cy + ws / 2 + 3.2}" text-anchor="middle" class="lwn">${n}</text>`;
+    }
+    g += `<g class="lw${n === 2 ? '' : ' lwc'}">${b}</g>`;
+  });
+  return `<svg id="lcloud" viewBox="0 0 320 ${wy + bw + 8}" role="img" aria-label="開けたマスの数字に合わない世界が消え、地雷の雲が寄る">${g}</svg>`;
 }
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
