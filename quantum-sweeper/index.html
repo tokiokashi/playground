@@ -248,7 +248,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   </span>
 </div>
 <div class="bar">
-  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">● 自動</button>
+  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">○ 自動</button>
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示">p</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
@@ -390,7 +390,7 @@ function warnFatal(i, mine) {
   render();
   return true;
 }
-// チュートリアル2面で ● を置いて自動で開けた後に、✓ と ● 自動 を説明する
+// チュートリアル2面で ● を置いて自動で開けた後に、✓ と ○ 自動 を説明する
 let autoTip = false;
 const inIntro = () => !!camp && camp.s < 0;
 const branchSeen = () => seenSet().has('branch');
