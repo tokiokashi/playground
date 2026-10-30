@@ -126,7 +126,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 @keyframes tq{50%{outline-color:rgba(127,178,255,.25)}}
 @media (prefers-reduced-motion:reduce){.c.tq{animation:none}}
 .bar #skip{margin-left:auto}
-#intro{margin:6px 0 0 6px}
+#intro{margin:0}
 .scen{display:grid;grid-template-columns:4.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
 .scen span{font-weight:700;align-self:center}
 .scen span.hard{color:var(--risk)}
@@ -136,6 +136,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .scen button.done{border-color:var(--gold);color:var(--gold)}
 .scen button b{display:block;font:800 15px/1.1 ui-monospace,Menlo,monospace}
 #entry{margin:8px 0 16px}
+.ehead{display:flex;justify-content:flex-end;margin-bottom:8px}
 #grid table{border-collapse:separate;border-spacing:3px;margin:10px auto 6px}
 #grid th{font:400 15px/1 ui-monospace,Menlo,monospace;color:var(--mute);padding:0 2px}
 #grid td{width:2.4em;height:2.4em;padding:0}
@@ -200,10 +201,11 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <a class="back" href="../">← 作品一覧</a>
 <h1>量子自●マインスイーパー</h1>
 <div id="entry">
+  <div class="ehead"><button id="intro" aria-label="チュートリアルを最初から">チュートリアル</button></div>
   <div id="camp" role="group" aria-label="キャンペーン"></div>
   <div id="gridrow"></div>
   <div id="grid" role="group" aria-label="検出器の組み合わせ"></div>
-  <button id="free">自由観測</button><button id="intro" aria-label="導入を最初から">○ 導入</button>
+  <button id="free">自由観測</button>
   <details id="records" hidden></details>
 </div>
 <div id="play" hidden>
@@ -1407,7 +1409,7 @@ const SCEN = [
 // 1面は降り立つことと ○、分岐（未確定のマスを押しても失敗しないこと）、2面は ●（長押し・右クリック）、3面は初めての粗視化した検出器（≈）。
 // 盤と地雷の数は、測った面（非粗視化の1・2面、精密≈の1面）と同じにする。シナリオの一覧には出さず、camp.s を -1 にして遊ぶ
 const INTRO = {
-  name: '導入',
+  name: 'チュートリアル',
   heads: ['観測記録 001', '観測記録 002', '観測記録 003'],
   stages: [[6, 6, 7], [7, 7, 9], [8, 8, 6]],
   mixes: [MIXES[0], MIXES[0], [50, 50, 0, 0, 0, 0, 0, 0, 0]],
