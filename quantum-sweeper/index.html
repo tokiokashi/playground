@@ -170,6 +170,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 @media (prefers-reduced-motion:reduce){#lboards,#lpick{animation:none}}
 #lboards .lcut{transition:opacity .8s}
 #lboards .lsp{transform-box:view-box}
+#lpick .lmk{transform-box:fill-box;transform-origin:center;animation:lmk .4s ease-in .7s both}
+@keyframes lmk{from{opacity:0;transform:scale(2.4)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#lpick .lmk{animation:none}}
 #lcloud{width:100%;max-width:360px;height:auto}
 #lcloud circle{transition:opacity 2.4s ease}
 #lcloud .lco{transition:fill .6s}
@@ -1931,7 +1934,7 @@ const LORE = [
   ['tree', () => `生き残った確率は ${loreOdds()} でした。`, 'とても強い幸運の持ち主です。', '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
-  ['pick', 'あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', 'row', 'cut', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
+  ['pick', 'あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', 'cut', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
   ['cloud', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['盤が1つの世界に決まると、観測は終わります。', 'この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
@@ -1942,6 +1945,20 @@ function loreStart() {
   pulls = 0;
   $('lorebody').innerHTML = '';
   loreStep();
+}
+// ○ と ● を置いた盤を、世界ごとに並べた図（○ の段と ● の段）に置き換える。もう置き換えていれば何もしない
+function loreSplit() {
+  if (!$('lpick')) return;
+  $('lpick').outerHTML = loreBoards(true);
+  // 各世界の盤を、○ の段は ○ の盤、● の段は ● の盤の位置と大きさに重ねてから、並ぶ位置へ広げる
+  const svg = $('lboards'), sp = [...svg.querySelectorAll('.lsp')];
+  svg.style.animation = 'none';
+  sp.forEach((e, i) => {
+    const r = e.getBBox(), cx = r.x + r.width / 2, cy = r.y + r.height / 2, mx = LPICK.x[i < LBOARDS.length ? 0 : 1];
+    e.style.transformOrigin = `${cx}px ${cy}px`;
+    if (!matchMedia('(prefers-reduced-motion:reduce)').matches)
+      e.animate([{ transform: `translate(${mx - cx}px, ${LPICK.y - cy}px) scale(${LPICK.w / r.width})` }, { transform: 'none' }], { duration: 1200, easing: 'ease' });
+  });
 }
 // 今の場面の次の1文（か装置）を出す
 function loreStep() {
@@ -1960,21 +1977,15 @@ function loreStep() {
     body.insertAdjacentHTML('beforeend', loreBoards(false));
     loreStep();
   } else if (item === 'pick') {
-    // 中身の見えない盤の真ん中に ○ と ● を置いた図を、次の文と一緒に出す
+    // 中身の見えない盤を 2 枚、次の文と一緒に出す。○ と ● は CSS で 0.7 秒後に置かれ、置き終わった後で世界の盤に分かれる
     body.insertAdjacentHTML('beforeend', lorePick());
+    setTimeout(loreSplit, 1800);
     loreStep();
-  } else if (item === 'row') {
-    // ○ を置いた盤を、世界ごとに並べた図に置き換える（○ の段と ● の段）
-    $('lpick').outerHTML = loreBoards(true);
-    // 各世界の盤を、○ の段は ○ の盤、● の段は ● の盤の位置と大きさに重ねてから、並ぶ位置へ広げる
-    const svg = $('lboards'), sp = [...svg.querySelectorAll('.lsp')];
-    svg.style.animation = 'none';
-    sp.forEach((e, i) => {
-      const r = e.getBBox(), cx = r.x + r.width / 2, cy = r.y + r.height / 2, mx = LPICK.x[i < LBOARDS.length ? 0 : 1];
-      e.style.transformOrigin = `${cx}px ${cy}px`;
-      if (!matchMedia('(prefers-reduced-motion:reduce)').matches)
-        e.animate([{ transform: `translate(${mx - cx}px, ${LPICK.y - cy}px) scale(${LPICK.w / r.width})` }, { transform: 'none' }], { duration: 1200, easing: 'ease' });
-    });
+  } else if (item === 'cut') {
+    // ○ のマスに地雷がある世界を赤くして消す。分かれる前にタップされた時は、先に分ける
+    loreSplit();
+    document.querySelectorAll('#lboards .lcut').forEach(e => e.classList.add('on'));
+    loreStep();
   } else if (item === 'cloud') {
     // 一様な雲の盤でマスを開け（s1）、下に並べた世界のうち数字の合わない世界を消し（s2）、
     // 残った世界から数えた濃さへ雲を移す（s3）。各段の間は、前の段の変化が見終わるまで待つ
@@ -1986,10 +1997,6 @@ function loreStep() {
       if (k === 's1') svg.querySelector('[data-c="1"]').style.opacity = 0;
       if (k === 's3') svg.querySelectorAll('[data-p]').forEach(e => { e.style.opacity = Math.min(1, +e.dataset.p * 2); });
     }, t));
-    loreStep();
-  } else if (item === 'cut') {
-    // ○ のマスに地雷がある世界を赤くして消す
-    document.querySelectorAll('#lboards .lcut').forEach(e => e.classList.add('on'));
     loreStep();
   } else if (item === 'end') {
     body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
@@ -2065,8 +2072,8 @@ function lorePick() {
     for (let c = 0; c < 9; c++) {
       const x = x0 + pad + (c % 3) * (cs + gap), y = y0 + pad + ((c / 3) | 0) * (cs + gap);
       g += `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="3" fill="var(--cell)"/>`;
-      if (c === 4) g += k ? `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="9" fill="var(--ink)"/>`
-        : `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="8" fill="none" stroke="var(--ink)" stroke-width="2.6"/>`;
+      if (c === 4) g += k ? `<circle class="lmk" cx="${x + cs / 2}" cy="${y + cs / 2}" r="9" fill="var(--ink)"/>`
+        : `<circle class="lmk" cx="${x + cs / 2}" cy="${y + cs / 2}" r="8" fill="none" stroke="var(--ink)" stroke-width="2.6"/>`;
     }
   });
   return `<svg id="lpick" viewBox="0 0 320 ${LPICK.y * 2}" role="img" aria-label="真ん中のマスに ○ を置いた盤と ● を置いた盤">${g}</svg>`;
