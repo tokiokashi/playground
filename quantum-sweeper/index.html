@@ -151,7 +151,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lore .whead{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 #lore .whead b{font-size:15px}
 #lskip{margin-left:auto}
-#lore{min-height:calc(100vh - 160px);cursor:pointer}
+/* スマホではアドレスバーが出ている時の高さ（svh）で測り、ページがスクロールしないようにする */
+#lore{min-height:calc(100vh - 160px);min-height:calc(100svh - 160px);cursor:pointer}
 /* 続けてタップする画面とボタンでは、ダブルタップの拡大を止める */
 #lore,#worlds,button{touch-action:manipulation}
 #lorebody{min-height:300px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
