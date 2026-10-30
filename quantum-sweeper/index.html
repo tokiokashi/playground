@@ -165,9 +165,6 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lorebody p:has(.lgap){margin-top:1.6em}
 #lorebody .lseg{display:inline-block}
 #ltree{width:100%;max-width:360px;height:auto}
-.lcount{display:flex;gap:18px;justify-content:center;font:600 13px/1.4 ui-monospace,Menlo,monospace;color:var(--mute)}
-.lcount b{display:block;font-size:22px;color:var(--gold);font-variant-numeric:tabular-nums}
-.lcount .out b{color:var(--risk)}
 #ltrig{font-size:15px;padding:8px 22px;border-color:var(--risk);color:var(--risk)}
 #ltrig.flash{background:rgba(255,107,107,.25)}
 .lnav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
@@ -1816,7 +1813,7 @@ $('wreset').addEventListener('click', wStart);
 const LORE = [
   ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', 'この銃を自分に向けて、引き金を引いてください。'],
   ['trigger'],
-  ['tree', 'この銃は、量子の測定で弾を出すかどうかを決めています。', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を知ることができません。', '結果を知るのは、弾が出なかった世界のあなただけです。'],
+  ['tree', () => `生き残った確率は ${loreOdds()} でした。`, 'とても強い幸運の持ち主です。', '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を知ることができません。', '結果を知るのは、弾が出なかった世界のあなただけです。'],
   ['本来、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['この施設では、銃の代わりに地雷の盤を使います。', '地雷の置き方はまだ決まっていません。', '置き方の数だけ、別々の世界が重なっています。'],
   ['あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
@@ -1839,15 +1836,18 @@ function loreStep() {
     body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><div id="lmsg"></div><button id="lnext" hidden>生き残った確率</button>`);
   } else if (item === 'tree') {
     // 引いた回数だけ分かれた世界を、種明かしの後で見せる
-    body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`
-      + `<div class="lcount"><div>引いた回数<b>${pulls}</b></div><div class="out">生き残った確率<b id="lout"></b></div></div>`);
+    body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`);
     loreTree();
+    // 「生き残った確率」のボタンで来たので、確率の文は図と一緒に出す
+    loreStep();
   } else if (item === 'end') {
     body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
-  } else body.insertAdjacentHTML('beforeend', `<p>${loreWrap(item)}</p>`);
+  } else body.insertAdjacentHTML('beforeend', `<p>${loreWrap(typeof item === 'function' ? item() : item)}</p>`);
 }
 // 句読点の後でだけ改行するよう、句読点までのまとまりを折り返さない塊にする（タグの中は分けない）
 const loreWrap = t => t.replace(/(<[^>]+>)|([^<、。]+[、。]?)/g, (m, tag, seg) => tag || `<span class="lseg">${seg}</span>`);
+// 引いた回数だけ続けて不発になる確率
+const loreOdds = () => `${(100 * 0.5 ** pulls).toFixed(pulls > 6 ? 2 : pulls > 3 ? 1 : 0)}%`;
 function loreNext() {
   lore++;
   loreK = 0;
@@ -1877,7 +1877,6 @@ function loreTree() {
   g = `<rect x="0" y="${y0}" width="${x0}" height="${T}" fill="var(--gold)"/>` + g
     + `<rect x="${xn}" y="${y0}" width="${Math.max(0, 320 - xn)}" height="${tn}" fill="var(--gold)" opacity=".35"/>`;
   if ($('ltree')) $('ltree').innerHTML = g;
-  if ($('lout')) $('lout').textContent = `${(100 * 0.5 ** n).toFixed(n > 6 ? 2 : n > 3 ? 1 : 0)}%`;
 }
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
