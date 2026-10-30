@@ -234,6 +234,8 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
   #play{display:grid;grid-template-columns:minmax(0,1fr) 400px;grid-template-rows:auto 1fr;grid-template-areas:"board side" "board result";column-gap:28px;align-items:start}
   #play .pside{grid-area:side}
   #play .pboard{grid-area:board}
+  /* 盤の上は見出しなので、札は盤の中に出す。教えるマスが上半分なら下端、下半分なら上端に寄せる */
+  #coach,#coach.low{inset:0}
   /* 盤の下の振り返りの操作まで、画面の高さに収める */
   #board{--cs:min(64px,(100vh - 160px)/var(--h))}
   #result{grid-area:result;margin-top:0}
@@ -1714,6 +1716,8 @@ function startStage(s, k) {
   mix = (sc.mixes ? sc.mixes[k] : scenMix(sc)).slice();
   // 導入を始める時は、導入に出る検出器の実演をもう一度見せる
   if (s < 0 && k === 0) introSeen = new Set();
+  // 導入の間は札で教えるので、遊び方は閉じておく
+  if (s < 0) $('howto').open = false;
   // 確率の数字は1面で見せるためのもの。2面からは自分で推理するよう、オフに戻す
   if (s < 0 && k > 0) { showN = false; $('shown').setAttribute('aria-pressed', 'false'); }
   mode = 'safe';
