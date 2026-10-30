@@ -323,11 +323,13 @@ export class Game {
   //   error:  全ての世界で安全なマスが残っていたのに、外れうる賭けをしたコスト（推理ミス）
   //   gap:    賭けるしかない時に、一番安い賭けより高い賭けを選んだ差（賭けの損）
   //   forced: 賭けるしかない時の、一番安い賭けのコスト（不可避）
+  // guided の手（導入で試しに押してもらった分岐）は、どれにも数えない。L には入る
   get breakdown() {
     let error = 0, gap = 0, forced = 0, errors = 0, mineCost = 0;
     for (const m of this.moves) {
       if (!isFinite(m.cost) || m.cost === 0) continue;
       if (m.kind === 'mine') mineCost += m.cost;
+      if (m.guided) continue;
       if (m.safeExists) { error += m.cost; errors++; }
       else { forced += m.best; gap += m.cost - m.best; }
     }
