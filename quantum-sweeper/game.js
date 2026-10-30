@@ -268,13 +268,12 @@ export class Game {
     return opened;
   }
 
-  // 手がかり c が、● と開いたマスだけで埋まったか。範囲に賭けていないマスが残っていないか、
-  // 残りが同時開けで開けられる（● の数が手がかりの値にそろった）時に true。
+  // 手がかり c が、● と開いたマスだけで埋まったか。範囲に開けても ● にもしていないマスが残っていない時に true。
+  // ● の数が手がかりの値にそろっても、残りのマスを開けるまでは、開けてよいことを教える数字なので true にしない。
   // 地雷確率は使わないので、推理の答えは漏れない
   done(c) {
     if (!this.opened[c] || !this.clues.has(c)) return false;
-    const rest = this.areas[c].cells.filter(d => this.free(d));
-    return !rest.length || this.chordTargets(c).length > 0;
+    return this.areas[c].cells.every(d => !this.free(d));
   }
 
   // 開いた手がかりのマス c を押した時に開けるマス。普通のマインスイーパーの同時開けと同じく、数える検出器で、
