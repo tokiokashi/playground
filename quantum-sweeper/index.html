@@ -169,16 +169,11 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lboards,#lask svg{width:100%;max-width:360px;height:auto}
 #lboards,#lask{animation:lorein .7s ease both}
 @media (prefers-reduced-motion:reduce){#lboards,#lask{animation:none}}
-#lask{width:100%;display:flex;flex-direction:column;align-items:center;gap:10px}
+#lask{width:100%;display:flex;justify-content:center;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #lask [data-lc]{cursor:pointer}
-#lask [data-lc].on{stroke:var(--gold);stroke-width:2}
-#lmarks{display:flex;gap:14px;transition:opacity .3s}
-#lmarks.off{opacity:0;pointer-events:none}
-#lmarks button{font-size:22px;min-width:56px;min-height:44px}
-#lmarks button.on{border-color:var(--gold);color:var(--gold)}
 #lboards .lcut{transition:opacity .8s}
 #lboards .lsp{transform-box:view-box}
-#lask .lmk{transform-box:fill-box;transform-origin:center;animation:lmk .35s ease-in both}
+#lask .lmk{pointer-events:none;transform-box:fill-box;transform-origin:center;animation:lmk .35s ease-in both}
 @keyframes lmk{from{opacity:0;transform:scale(2.4)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#lask .lmk{animation:none}}
 #lcloud{width:100%;max-width:360px;height:auto}
@@ -1942,7 +1937,7 @@ const LORE = [
   ['tree', () => `生き残った確率は ${loreOdds()} でした。`, 'とても強い幸運の持ち主です。', '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
-  ['place', '3×3 の盤に、地雷が 2 つ埋まっています。', 'どれか1つのマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置いてください。', 'cut', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
+  ['place', '3×3 の盤に、地雷が 2 つ埋まっています。', () => `どれか1つのマスを選び、地雷が無いと考えるなら${fineMouse.matches ? 'クリック' : 'タップ'}して ○、あると考えるなら${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。`, 'cut', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
   ['cloud', '開ける場所によって、次の盤面に与える影響も変わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['盤が1つの世界に決まると、観測は終わります。', 'この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
@@ -1984,7 +1979,8 @@ function loreStep() {
     body.insertAdjacentHTML('beforeend', loreBoards());
     loreStep();
   } else if (item === 'place') {
-    // 中身の見えない盤と ○・● のボタンを、次の文と一緒に出す。置くまではタップで先へ進まない（loreTap）
+    // 中身の見えない盤を、次の文と一緒に出す。本編と同じく、タップ・クリックで ○、長押し・右クリックで ● を置く。
+    // 置くまではタップで先へ進まない（loreTap）
     lsel = { c: -1, m: '', done: false };
     body.insertAdjacentHTML('beforeend', loreAsk());
     loreStep();
@@ -2073,7 +2069,7 @@ function loreGrid(c, mark) {
   const body = WORLDS.map((w, i) => loreMini(w, x0 + (i % 9) * step, 8 + ((i / 9) | 0) * step, cs, 1, c, mark)).join('');
   return `<svg id="lboards" viewBox="0 0 320 ${16 + step * 4 - 4}" role="img" aria-label="36 の世界のすべてで、選んだマスに ${mark === 'open' ? '○' : '●'} を置いたところ">${body}</svg>`;
 }
-// 中身の見えない 3×3 の盤と、○・● のボタン。マスと印の両方を選ぶと置く。LASK は盤の真ん中の座標と幅で、36 の世界はここから広がる
+// 中身の見えない 3×3 の盤。LASK は盤の真ん中の座標と幅で、36 の世界はここから広がる
 const LASK = { x: 160, y: 56, w: 96 };
 let lsel = { c: -1, m: '', done: false };
 function loreAsk() {
@@ -2081,28 +2077,33 @@ function loreAsk() {
   let g = `<rect x="${x0}" y="${y0}" width="${LASK.w}" height="${LASK.w}" rx="6" fill="var(--panel)" stroke="var(--line)"/>`;
   for (let c = 0; c < 9; c++)
     g += `<rect data-lc="${c}" x="${x0 + pad + (c % 3) * (cs + gap)}" y="${y0 + pad + ((c / 3) | 0) * (cs + gap)}" width="${cs}" height="${cs}" rx="3" fill="var(--cell)"/>`;
-  return `<div id="lask"><svg viewBox="0 0 320 ${LASK.y * 2}" role="img" aria-label="中身の見えない盤">${g}</svg>`
-    + `<div id="lmarks"><button data-lm="open" aria-label="地雷が無い">○</button><button data-lm="mine" aria-label="地雷がある">●</button></div></div>`;
+  return `<div id="lask"><svg viewBox="0 0 320 ${LASK.y * 2}" role="img" aria-label="中身の見えない盤">${g}</svg></div>`;
 }
-// マスか印を選ぶ。両方そろったら盤に印を置き、少し見せてから 36 の世界に分け、分け終わったら選択と合わない世界を消す
-function loreChoose(e) {
+// c のマスに印を置き、少し見せてから 36 の世界に分け、分け終わったら選択と合わない世界を消す
+function lorePlace(c, m) {
   if (lsel.done) return;
-  const c = e.target.closest('[data-lc]'), m = e.target.closest('[data-lm]');
-  if (c) lsel.c = +c.dataset.lc;
-  if (m) lsel.m = m.dataset.lm;
-  document.querySelectorAll('#lask [data-lc]').forEach(r => r.classList.toggle('on', +r.dataset.lc === lsel.c));
-  document.querySelectorAll('#lmarks [data-lm]').forEach(b => b.classList.toggle('on', b.dataset.lm === lsel.m));
-  if (lsel.c < 0 || !lsel.m) return;
-  lsel.done = true;
-  const r = $('lask').querySelector(`[data-lc="${lsel.c}"]`), cx = +r.getAttribute('x') + 14, cy = +r.getAttribute('y') + 14;
-  r.insertAdjacentHTML('afterend', lsel.m === 'open'
+  lsel = { c, m, done: true };
+  const r = $('lask').querySelector(`[data-lc="${c}"]`), cx = +r.getAttribute('x') + 14, cy = +r.getAttribute('y') + 14;
+  r.insertAdjacentHTML('afterend', m === 'open'
     ? `<circle class="lmk" cx="${cx}" cy="${cy}" r="8" fill="none" stroke="var(--ink)" stroke-width="2.6"/>`
     : `<circle class="lmk" cx="${cx}" cy="${cy}" r="9" fill="var(--ink)"/>`);
-  $('lmarks').classList.add('off');
   const at = lore;
   setTimeout(loreSplit, 700);
   setTimeout(() => { if (lore === at && LORE[lore][loreK] === 'cut') loreStep(); }, 700 + 1000 + 35 * 12 + 300);
 }
+// 長押しで ● を置く。長押しの後に来るクリックは数えない（本編の盤・36 の世界と同じ）
+let lPress = 0, lLong = false;
+document.addEventListener('pointerdown', e => {
+  const r = e.target.closest('#lask [data-lc]'); if (!r) return;
+  lLong = false;
+  if (e.pointerType !== 'mouse') lPress = setTimeout(() => { lLong = true; lorePlace(+r.dataset.lc, 'mine'); }, 420);
+});
+for (const t of ['pointerup', 'pointercancel']) document.addEventListener(t, () => clearTimeout(lPress));
+document.addEventListener('contextmenu', e => {
+  const r = e.target.closest('#lask [data-lc]'); if (!r) return;
+  e.preventDefault();
+  lorePlace(+r.dataset.lc, 'mine');
+});
 // 3×3・地雷 2 個の盤の上辺の真ん中を開けると 2 が出る。地雷は周りの 5 マスのどれか 2 つなので、下の段は p = 0 になる。
 // 雲の濃さは、開ける前は全マス 2/9、開けた後は 36 の世界のうち数字に合う世界から数えた p。
 // 盤の下には、開けたマスに地雷が無い世界を 6 つ並べ、それぞれの世界で出る数字を書く。2 以外の世界に lwc を付ける
@@ -2154,7 +2155,8 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.id === 'lnext') return loreNext();
-  if (e.target.closest('#lask [data-lc], #lmarks [data-lm]')) return loreChoose(e);
+  const lc = e.target.closest('#lask [data-lc]');
+  if (lc) return lLong ? undefined : lorePlace(+lc.dataset.lc, 'open');
   const go = e.target.closest('[data-lgo]');
   if (!go) return loreTap();
   $('lore').hidden = true;
