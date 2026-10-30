@@ -203,6 +203,11 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   #msg{margin-top:6px}
   #probebar{margin-top:6px}
 }
+/* 360px より狭い端末でも、ボタンの列を1行に収める */
+@media (max-width:359px){
+  .bar{gap:4px}
+  .bar button{padding:4px 7px}
+}
 </style></head><body><main>
 <a class="back" href="../">← 作品一覧</a>
 <h1>量子自●マインスイーパー</h1>
@@ -387,7 +392,7 @@ function noteBranch(r, mine) {
 // 導入の台本。導入の盤は種を固定した乱数で作るので、同じ操作には同じ盤と同じ手がかりが返る。
 // 決めた手を打つまでは、そのマスを ○ か ● の印で示し、他の操作を受け付けない
 //   全ての面: 決めた場所に降り立つ
-//   1面: 地雷の確率が一番低い、開いたマスに接した未確定のマスを開けて、分岐を見る
+//   1面: |ψ|² と p をオンにしてもらい、その後で地雷の確率が一番低い、開いたマスに接した未確定のマスを開けて、分岐を見る
 //   2面: 開いたマスに接した、どの世界でも地雷があるマスに ● を置く
 function scriptStep() {
   if (!(camp && camp.s < 0) || review >= 0 || g.state !== 'play') return null;
@@ -395,6 +400,8 @@ function scriptStep() {
   const edge = i => g.free(i) && g.areas[i].cells.some(d => g.opened[d]);
   let c = -1;
   if (camp.k === 0 && !branchSeen()) {
+    // 雲と確率の数字を両方オンにするまでは、盤を操作させない（cell -1 はどのマスとも一致しない）
+    if (!showP || !showN) return { cell: -1, kind: 'probs' };
     for (let i = 0; i < g.N; i++) { const p = g.prob(i); if (edge(i) && p > 1e-9 && p < 1 - 1e-9 && (c < 0 || p < g.prob(c))) c = i; }
     return c < 0 ? null : { cell: c, kind: 'open' };
   }
@@ -420,8 +427,8 @@ function coachTip() {
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
   if (introProbs() && showM && !g.situation().safeExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, hl: ['meter', 'showm'], html: '上の数字は、あなたが生き残れた確率です。今は、地雷が無いと確定したマスがありません。そういう時、数字が揺れます。∿ で、表示を切り替えられます。' };
-  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。' };
-  if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
+  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。両方を押してみてください。' };
+  if (g.landed && !branchSeen() && !seenSet().has('pre') && !(step && step.kind === 'probs')) return step
     ? { key: 'pre', focus: step.cell, html: '光っているマスは、地雷の有無が確定していません。このゲームでは、有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。' }
     : { key: 'pre', focus: -1, html: 'このゲームでは、地雷の有無が確定していないマスに ○ や ● の操作をしても失敗することはありません。' };
   return null;
