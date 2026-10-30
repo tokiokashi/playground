@@ -144,6 +144,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lore{margin:8px 0 16px}
 #lore .whead{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 #lore .whead b{font-size:15px}
+#lskip{margin-left:auto}
 #lore{min-height:calc(100vh - 140px);cursor:pointer}
 /* 続けてタップする画面とボタンでは、ダブルタップの拡大を止める */
 #lore,#worlds,button{touch-action:manipulation}
@@ -165,17 +166,18 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #worlds .whead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 #worlds .whead b{font-size:15px}
 #worlds .whead #wreset{margin-left:auto}
-.wtop{display:flex;align-items:center;justify-content:center;gap:18px;margin:0 0 10px}
-#wboard{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:150px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
-#wboard button{aspect-ratio:1;padding:0;border:0;border-radius:4px;font:700 22px/1 ui-monospace,Menlo,monospace;background:var(--cell);color:var(--ink);-webkit-touch-callout:none}
+.wtop{display:flex;align-items:center;justify-content:center;gap:18px;margin:0 0 8px}
+#wboard{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:112px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#wboard button{aspect-ratio:1;padding:0;border:0;border-radius:4px;font:700 18px/1 ui-monospace,Menlo,monospace;background:var(--cell);color:var(--ink);-webkit-touch-callout:none}
 #wboard button.o{background:var(--safe);cursor:default}
 #wboard button.m{color:var(--gold)}
 .wmeter{text-align:center;font:600 13px/1.4 ui-monospace,Menlo,monospace;color:var(--mute)}
 .wmeter b{display:block;font-size:28px;color:var(--gold);font-variant-numeric:tabular-nums}
-#wcap{min-height:3.4em;margin:0 0 10px;font-size:14px;text-align:center}
+#wcap{min-height:5.8em;margin:0 0 8px;font-size:13px;line-height:1.45;text-align:center}
 #wcap .l{color:var(--risk)}
 #wcap .i{color:#7fb2ff}
-#wgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-width:420px;margin:0 auto}
+/* 盤・説明・36 の世界が、スマホの表示領域の高さに収まるよう、36 の世界の幅を画面の高さから決める */
+#wgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-width:clamp(240px,calc(100svh - 350px),420px);margin:0 auto}
 .wm3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;padding:3px;border-radius:5px;background:var(--panel);border:1px solid var(--line);transition:opacity .6s,background .6s,border-color .6s}
 .wm3 i{aspect-ratio:1;border-radius:1px;background:var(--cell)}
 .wm3 i.x{background:var(--gold)}
@@ -262,7 +264,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <details id="records" hidden></details>
 </div>
 <div id="lore" hidden>
-  <div class="whead"><button id="lback" aria-label="入口へ">←</button><b>観測記録 000</b></div>
+  <div class="whead"><button id="lback" aria-label="入口へ">←</button><b>観測記録 000</b><button id="lskip" hidden>スキップ</button></div>
   <div id="lorebody"></div>
 </div>
 <div id="worlds" hidden>
@@ -1595,9 +1597,9 @@ function showEntry() {
 }
 // チュートリアルの面のボタンを、シナリオの行と同じ形で1行目に並べる。どの面からでも始められる
 function introRow() {
-  return `<div class="scen"><span>${INTRO.name}</span>` + INTRO.stages.map(([W, H], k) =>
+  return `<div class="scen"><span>${INTRO.name}</span><button class="wbtn" data-lore aria-label="観測記録 000">背景</button>` + INTRO.stages.map(([W, H], k) =>
     `<button data-s="-1" data-k="${k}"${introClear.has(k) ? ' class="done"' : ''} aria-label="${INTRO.heads[k]}">${W}×${H}</button>`).join('')
-    + '<button class="wbtn" data-lore aria-label="観測記録 000">背景</button><button class="wbtn" data-worlds aria-label="36 の世界">世界</button></div>';
+    + '<button class="wbtn" data-worlds aria-label="36 の世界">世界</button></div>';
 }
 // シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
 function stageRow(i) {
@@ -1807,7 +1809,7 @@ const LORE = [
   ['外から見ている人には、あなたは高い確率で撃たれています。', '<span class="l">何度引いても弾が出ないのは、あなたから見た時だけです。</span>'],
   ['この施設では、銃の代わりに地雷の盤を使います。', '地雷の置き方はまだ決まっていません。', '置き方の数だけ、別々の世界が重なっています。'],
   ['あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
-  ['盤が1つの世界に決まると、観測は終わります。', '周りの数字から推理すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
+  ['盤が1つの世界に決まると、観測は終わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
   ['この施設が何を確かめたいのかは、あなたには知らされていません。', 'ここにある記録は、すべて生き残ったあなたのものです。', '観測者が消滅した世界から、記録は届きません。', 'end'],
 ];
 let lore = 0, loreK = 0, pulls = 0;
@@ -1864,7 +1866,7 @@ function loreTree() {
 }
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
-  if ($('lore').hidden || e.target.closest('#lback, #entry, a')) return;
+  if ($('lore').hidden || e.target.closest('#lback, #lskip, #entry, a')) return;
   if (e.target.id === 'ltrig') {
     pulls++;
     loreTree();
@@ -1879,20 +1881,26 @@ document.addEventListener('click', e => {
   if (go.dataset.lgo === 'intro') startStage(-1, 0);
   else { $('worlds').hidden = false; wStart(); }
 });
-$('camp').addEventListener('click', e => {
-  if (!e.target.closest('[data-lore]')) return;
+// first は初めて開いた時。入口へ戻るボタンの代わりにスキップを出し、スキップすると導入の1面へ進む
+function showLore(first) {
   $('entry').hidden = true;
   $('lore').hidden = false;
   $('howto').hidden = true;
+  $('lback').hidden = first;
+  $('lskip').hidden = !first;
   loreStart();
+}
+$('camp').addEventListener('click', e => {
+  if (e.target.closest('[data-lore]')) showLore(false);
 });
+$('lskip').addEventListener('click', () => { $('lore').hidden = true; $('howto').hidden = false; startStage(-1, 0); });
 $('lback').addEventListener('click', () => { $('lore').hidden = true; showEntry(); });
 // 観測記録 000 と 36 の世界を開いている間は、遊び方を隠す。入口と盤に戻る時に出す
 
 newGame();
-// 初めて開いた時は、入口の表を出さずに導入の1面から始める。キャンペーンの記録がある時は、導入を終えた人として扱う
+// 初めて開いた時は、入口の表を出さずに観測記録 000 から始め、導入の1面へ続ける。キャンペーンの記録がある時は、導入を終えた人として扱う
 let introOk = prog.some(row => row.some(Boolean));
 try { introOk ||= localStorage.getItem('qs-intro') === '1'; } catch { /* 保存できない環境 */ }
-if (introOk) showEntry(); else startStage(-1, 0);
+if (introOk) showEntry(); else showLore(true);
 </script>
 </body></html>
