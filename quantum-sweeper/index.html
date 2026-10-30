@@ -1174,17 +1174,17 @@ function showResult(ok) {
       (!lucky ? '' : `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率で、あなたは生き残りました。`)
         // 安全第一では、どう打っても払うしかなかった分を分けて書き、運の大きさが腕の差に見えないようにする
         + (mode === 'safe' && b.forced >= 0.05 ? `うち <b>${b.forced.toFixed(1)}</b> 回は、必要な犠牲でした。` : ''),
-      `最初にいたあなたのうち、ここにいるのは <b>${pctS(surv)}</b> です。`,
+      `あなたが生き残れた確率は <b>${pctS(surv)}</b> でした。`,
       !worst ? ''
-        : `分岐は <b>${bets.length}</b> 回でした。最も危うかったのは、` + (worst.kind === 'mine'
-          ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスに ● を置いた時です。`
-          : `地雷がある確率 <b>${(risk * 100).toFixed(1)}%</b> のマスを開けた時です。`),
+        : `分岐は <b>${bets.length}</b> 回でした。最も危険な選択は、` + (worst.kind === 'mine'
+          ? `地雷が無い確率 <b>${(risk * 100).toFixed(1)}%</b> のマスに ● を置いたことです。`
+          : `地雷がある確率 <b>${(risk * 100).toFixed(1)}%</b> のマスを開けたことです。`),
       `2<sup>${g.H0.toFixed(1)}</sup> 通りの世界のうち <b>${(g.I / g.H0 * 100).toFixed(1)}%</b> を、根拠を持って絞り込みました。`,
     ];
     chart = flowChart();
     // 項目は2列に並べ、値の長い L だけ1行を使う
     table = `<dl>${rows.map(([k, v]) => `<div${k === 'L' ? ' class="wide"' : ''}><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>`;
-    summary = r + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(surv)}）` : '') + (worst ? `・最も危うい分岐 ${(risk * 100).toFixed(1)}%` : '');
+    summary = r + (lucky ? `・コイントス ${coins} 回連続で当てるのと同じ確率（${pctS(surv)}）` : '') + (worst ? `・最も危険な選択 ${(risk * 100).toFixed(1)}%` : '');
   }
   const fog = document.querySelector('[data-fog][aria-pressed="true"]');
   let setting = `${g.W}×${g.H}・${g.M}個・${fog ? fog.textContent : '詳細設定'}・${mode === 'safe' ? '安全第一' : '最小コスト'}`;
