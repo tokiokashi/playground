@@ -1829,7 +1829,7 @@ function loreTree() {
   }
   if (n) g += `<circle cx="${x0 + show * dx}" cy="${y}" r="5" fill="var(--gold)"/>`;
   $('ltree').innerHTML = g;
-  $('lseen').textContent = n ? `カチッ ×${n}` : '—';
+  $('lseen').textContent = n ? `${n} 回とも不発` : '—';
   $('lout').textContent = `${(100 * 0.5 ** n).toFixed(n > 6 ? 2 : n > 3 ? 1 : 0)}%`;
 }
 $('lorebody').addEventListener('click', e => {
