@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/build.mjs
+      - run: node scripts/check-fonts.mjs
       - run: npm install --no-save --no-package-lock playwright@${{ env.PLAYWRIGHT_VERSION }}
       - run: npx playwright install --with-deps chromium
       - run: node scripts/check-mobile.mjs

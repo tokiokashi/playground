@@ -11,7 +11,9 @@
 
 ### 作り直し方
 
-文を変えて新しい字が増えたら、元のフォントから作り直す。入っていない字は、明朝体の代わりのフォントで出る。
+文を変えて新しい字が増えたら、元のフォントから作り直す。入っていない字は、明朝体の代わりのフォントで出る。作り直し忘れは CI（`node scripts/check-fonts.mjs`）が足りない字を挙げて止める。
+
+`NewTegomin-subset.noglyph.txt` は、作品に出てくる字のうち元のフォントにも無い字（記号など）の一覧。検査はこの字を数えない。作り直した後に、リポジトリの直下で `node scripts/check-fonts.mjs --update` を実行して書き直す。
 
 ```sh
 pip install fonttools brotli
