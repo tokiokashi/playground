@@ -154,7 +154,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 /* 続けてタップする画面とボタンでは、ダブルタップの拡大を止める */
 #lore,#worlds,button{touch-action:manipulation}
 #lorebody{min-height:300px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
-/* 引くたびに「銃は不発でした。」を、この枠の中のばらばらの位置に重ねていく */
+/* 引くたびに「不発でした。」を、この枠の中のばらばらの位置に重ねていく */
 #lmsg{position:relative;align-self:stretch;height:40vh;min-height:220px;overflow:hidden}
 #lmsg span{position:absolute;white-space:nowrap;animation:lorein .7s ease both}
 @media (prefers-reduced-motion:reduce){#lmsg span{animation:none}}
@@ -1885,12 +1885,12 @@ document.addEventListener('click', e => {
   if (e.target.id === 'ltrig') {
     pulls++;
     const m = document.createElement('span');
-    m.textContent = '銃は不発でした。';
+    m.textContent = '不発でした。';
     // 大きさと傾きもばらばらにする。傾けてもはみ出しにくいよう、上下に余白を取る
     const R = () => Math.random().toFixed(3);
     m.style.fontSize = `${(0.8 + 0.7 * Math.random()).toFixed(2)}em`;
     m.style.rotate = `${Math.round(70 * Math.random() - 35)}deg`;
-    m.style.left = `calc((100% - 8.4em) * ${R()})`;
+    m.style.left = `calc((100% - 6.4em) * ${R()})`;
     m.style.top = `calc((100% - 5.5em) * ${R()} + 2em)`;
     $('lmsg').append(m);
     if (pulls >= 3) $('lnext').hidden = false;
