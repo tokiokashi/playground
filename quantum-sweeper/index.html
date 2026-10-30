@@ -1881,8 +1881,12 @@ document.addEventListener('click', e => {
     pulls++;
     const m = document.createElement('span');
     m.textContent = '銃は不発でした。';
-    m.style.left = `calc((100% - 9em) * ${Math.random().toFixed(3)})`;
-    m.style.top = `calc((100% - 1.6em) * ${Math.random().toFixed(3)})`;
+    // 大きさと傾きもばらばらにする。傾けてもはみ出しにくいよう、上下に余白を取る
+    const R = () => Math.random().toFixed(3);
+    m.style.fontSize = `${(0.8 + 0.7 * Math.random()).toFixed(2)}em`;
+    m.style.rotate = `${Math.round(70 * Math.random() - 35)}deg`;
+    m.style.left = `calc((100% - 8.4em) * ${R()})`;
+    m.style.top = `calc((100% - 5.5em) * ${R()} + 2em)`;
     $('lmsg').append(m);
     if (pulls >= 3) $('lnext').hidden = false;
     e.target.classList.add('flash');
