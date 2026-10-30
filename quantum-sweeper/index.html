@@ -281,7 +281,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <summary>遊び方</summary>
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「並行世界」と呼び、残っている並行世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
-<p>最初の一歩では、降り立つ場所を ○ で選びます。降り立った場所とその周りの 8 マスに、地雷はありません。</p>
+<p>最初の一歩では、好きなマスに ○ で踏み込みます。最初に踏み込んだマスとその周りの 8 マスに、地雷はありません。</p>
 <p>マスごとの p は、残っている世界のうち、そのマスに地雷がある世界の割合です。「|ψ|²」を押すと、p の分布が赤い雲で盤に重なります。</p>
 <h3>どの世界へ進むかを決める</h3>
 <p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身どおりの世界だけが残ります。目印だけを付ける手段はありません。</p>
@@ -410,7 +410,7 @@ function coachTip() {
   if (branchTip) return { key: 'after', focus: last, html: '<b>分岐</b>地雷のある世界のあなたは消え、残った世界のあなたが進んだ。∿ は、ここまで生き残っている割合' };
   if (tipCell >= 0) return { key: 'clue' + tipCell, focus: tipCell, html: tipText(tipCell) };
   if (g.state !== 'play') return null;
-  if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>印のマスに降り立つ。そのマスと周りの8マスに、地雷は無い' };
+  if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>印のマスに踏み込む。最初に踏み込んだマスと周りの8マスに、地雷は無い' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>印のマスは、どの世界でも地雷がある。${fineMouse.matches ? '右クリック' : '長押し'}で ● を置いて、地雷を観測する` };
   if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
     ? { key: 'pre', focus: step.cell, html: '<b>○</b>印のマスは未確定。それでも開けられる。地雷のある世界のあなたは消えるが、失敗にはならない' }
