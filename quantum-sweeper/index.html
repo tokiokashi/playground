@@ -1804,9 +1804,10 @@ $('wreset').addEventListener('click', wStart);
 // 観測記録 000。何もない画面をタップするたびに1文ずつ出す。場面の文を出し切ったら、次のタップで画面を消して次の場面へ。
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
-  ['量子自殺という思考実験があります。', '量子の測定で、弾が出るかどうかが半々で決まる銃を、自分に向けて引き続けます。'],
-  ['trigger', '弾が出た世界のあなたは、その結果を知ることができません。', '結果を知るのは、弾が出なかった世界のあなただけです。', 'だから、あなたから見ると、何度引いても弾は出ません。'],
-  ['外から見ている人には、あなたは高い確率で撃たれています。', '<span class="l">何度引いても弾が出ないのは、あなたから見た時だけです。</span>'],
+  ['ここに、引き金を引くたびに半々の確率で弾が出る銃があります。', 'この銃を自分に向けて、引き金を引いてください。'],
+  ['trigger', '弾は一度も出ませんでした。'],
+  ['この銃は、量子の測定で弾を出すかどうかを決めています。', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', 'tree', '弾が出た世界のあなたは、その結果を知ることができません。', '結果を知るのは、弾が出なかった世界のあなただけです。'],
+  ['これは、量子自殺と呼ばれる思考実験です。', '外から見ている人には、あなたは高い確率で撃たれています。', '<span class="l">何度引いても弾が出ないのは、あなたから見た時だけです。</span>'],
   ['この施設では、銃の代わりに地雷の盤を使います。', '地雷の置き方はまだ決まっていません。', '置き方の数だけ、別々の世界が重なっています。'],
   ['あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
   ['盤が1つの世界に決まると、観測は終わります。', '周りの情報を利用すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
@@ -1825,9 +1826,12 @@ function loreStep() {
   const scene = LORE[lore], item = scene[loreK++];
   const body = $('lorebody');
   if (item === 'trigger') {
+    body.insertAdjacentHTML('beforeend', `<div class="lcount"><b id="lseen">—</b></div><button id="ltrig">引き金を引く</button>`);
+    loreTree();
+  } else if (item === 'tree') {
+    // 引いた回数だけ分かれた世界を、種明かしの後で見せる
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`
-      + `<div class="lcount"><div>あなたが見た結果<b id="lseen">—</b></div><div class="out">外から見て生きている確率<b id="lout">100%</b></div></div>`
-      + `<button id="ltrig">引き金を引く</button>`);
+      + `<div class="lcount"><div>引いた回数<b>${pulls}</b></div><div class="out">外から見て生きている確率<b id="lout"></b></div></div>`);
     loreTree();
   } else if (item === 'end') {
     body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
@@ -1839,6 +1843,8 @@ function loreTap() {
   const scene = LORE[lore];
   // 装置を出している間は、3回引くまで進めない
   if (scene[0] === 'trigger' && pulls < 3) return;
+  // 引いた結果を文で受けたら、それ以上は引けなくする
+  if (scene[0] === 'trigger') $('ltrig').disabled = true;
   if (loreK < scene.length) return loreStep();
   if (lore === LORE.length - 1) return;
   lore++;
@@ -1860,9 +1866,9 @@ function loreTree() {
   const xn = x0 + show * dx, tn = T * 0.5 ** show;
   g = `<rect x="0" y="${y0}" width="${x0}" height="${T}" fill="var(--gold)"/>` + g
     + `<rect x="${xn}" y="${y0}" width="${Math.max(0, 320 - xn)}" height="${tn}" fill="var(--gold)" opacity=".35"/>`;
-  $('ltree').innerHTML = g;
-  $('lseen').textContent = n ? `${n} 回とも不発` : '—';
-  $('lout').textContent = `${(100 * 0.5 ** n).toFixed(n > 6 ? 2 : n > 3 ? 1 : 0)}%`;
+  if ($('ltree')) $('ltree').innerHTML = g;
+  if ($('lseen')) $('lseen').textContent = n ? `${n} 回とも不発` : '—';
+  if ($('lout')) $('lout').textContent = `${(100 * 0.5 ** n).toFixed(n > 6 ? 2 : n > 3 ? 1 : 0)}%`;
 }
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
