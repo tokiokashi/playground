@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>量子自殺マインスイーパー</title>
+<title>量子自●マインスイーパー</title>
 <style>
 :root{--bg:#0b0f1a;--panel:#121a2b;--line:#26324d;--ink:#e7ecf6;--mute:#8e9ab5;--gold:#f2c66b;--safe:#1a2338;--cell:#2b3858;--cellhi:#364670;--risk:#ff6b6b;color-scheme:dark}
 *{box-sizing:border-box}
@@ -57,7 +57,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #cloud{position:absolute;pointer-events:none;z-index:1;filter:blur(2px)}
 #cloud[hidden]{display:none}
 .c.k{background:#4a3416}
-.c.k::after{content:"◆";color:var(--gold)}
+.c.k::after{content:"●";color:var(--gold)}
 .c.last{outline:2px solid var(--gold);outline-offset:-2px}
 .c.hint{outline:2px dashed var(--mute);outline-offset:-2px}
 .c.sel{outline:2px solid #7fe0a0;outline-offset:-2px}
@@ -107,6 +107,15 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .n1{color:#7fb2ff}.n2{color:#7fe0a0}.n3{color:#ff8b8b}.n4{color:#c39bff}.n5{color:#ffb86b}.n6{color:#6fe3e3}.n7,.n8{color:#ddd}.nz{color:#b9c4dc}
 #msg{min-height:1.7em;text-align:center;font-family:ui-monospace,Menlo,monospace;margin:10px 0 0;font-size:14px}
 #msg b{color:var(--gold)}
+/* 初めて見る検出器の手がかりが開いた時の、一度だけの実演。手がかりのマスを脈打つ枠で囲み、見ている範囲を青く縁取って、読み方を1行で出す */
+#tip{min-height:1.6em;text-align:center;margin:4px 0 0;font-size:14px;color:#cdd5e6}
+#tip b{color:#7fb2ff;font-family:ui-monospace,Menlo,monospace;margin-right:.6em}
+.c.ta{box-shadow:inset 0 0 0 2px rgba(127,178,255,.6)}
+.c.tq{outline:2px solid #7fb2ff;outline-offset:-2px;animation:tq 1.2s ease-in-out infinite}
+@keyframes tq{50%{outline-color:rgba(127,178,255,.25)}}
+@media (prefers-reduced-motion:reduce){.c.tq{animation:none}}
+.bar #skip{margin-left:auto}
+#intro{margin:6px 0 0 6px}
 .scen{display:grid;grid-template-columns:4.2em repeat(5,1fr);gap:6px;align-items:stretch;margin:0 0 8px}
 .scen span{font-weight:700;align-self:center}
 .scen span.hard{color:var(--risk)}
@@ -162,12 +171,12 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 .mono{font-family:ui-monospace,Menlo,monospace}
 </style></head><body><main>
 <a class="back" href="../">← 作品一覧</a>
-<h1>量子自殺マインスイーパー</h1>
+<h1>量子自●マインスイーパー</h1>
 <div id="entry">
   <div id="camp" role="group" aria-label="キャンペーン"></div>
   <div id="gridrow"></div>
   <div id="grid" role="group" aria-label="検出器の組み合わせ"></div>
-  <button id="free">自由観測</button>
+  <button id="free">自由観測</button><button id="intro" aria-label="導入を最初から">○ 導入</button>
   <details id="records" hidden></details>
 </div>
 <div id="play" hidden>
@@ -175,6 +184,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div class="bar">
   <button id="toentry" aria-label="入口へ">←</button>
   <span id="stagelabel" class="stagelabel"></span>
+  <button id="skip" hidden>スキップ</button>
 </div>
 <div class="bar" id="setbar">
   <span role="group" aria-label="盤の大きさ">
@@ -199,12 +209,12 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-mode="safe" aria-pressed="true">安全第一</button>
     <button data-mode="cost" aria-pressed="false">最小コスト</button>
   </span>
-  <button id="autochord" aria-pressed="true" aria-label="◆ で決まるマスを自動で開ける">◆ 自動</button>
+  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">● 自動</button>
 </div>
 <div class="bar">
   <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
-  <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">◌</button>
+  <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">✓</button>
   <button id="reset" aria-label="新しい盤">↻</button>
   <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
   <span id="left" class="left" aria-label="残りの地雷"></span>
@@ -238,6 +248,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
 <div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="false" aria-label="各マスの p を数字で表示">%</button></div>
 <p id="msg" aria-live="polite"></p>
+<p id="tip" aria-live="polite"></p>
 </div>
 <div id="result" aria-live="polite"></div>
 </div>
@@ -245,13 +256,13 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <summary>遊び方</summary>
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「並行世界」と呼び、残っている並行世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
-<p>最初の一歩では、降り立つ場所を ◇ で選びます。降り立った場所とその周りの 8 マスに、地雷はありません。</p>
+<p>最初の一歩では、降り立つ場所を ○ で選びます。降り立った場所とその周りの 8 マスに、地雷はありません。</p>
 <p>マスごとの p は、残っている世界のうち、そのマスに地雷がある世界の割合です。「|ψ|²」を押すと、p の分布が赤い雲で盤に重なります。</p>
 <h3>どの世界へ進むかを決める</h3>
 <p>一手ごとに、あなたはマスを一つ選び、その中身を決めて進みます。決めた中身どおりの世界だけが残ります。目印だけを付ける手段はありません。</p>
 <ul>
-<li><b>◇ 踏み込む</b>（タップ・クリック）: 「このマスは空だ」と決めて踏み込みます。地雷がある世界のあなたは、そこで終わります。生き残った世界では、足元の検出器が数字を返します。</li>
-<li><b>◆ 地雷を観測する</b>（長押し・右クリック）: 「このマスに地雷がある」と観測します。地雷が無い世界では地雷を見つけられないので、その世界にあなたはもういません。</li>
+<li><b>○ 踏み込む</b>（タップ・クリック）: 「このマスは空だ」と決めて踏み込みます。地雷がある世界のあなたは、そこで終わります。生き残った世界では、足元の検出器が数字を返します。</li>
+<li><b>● 地雷を観測する</b>（長押し・右クリック）: 「このマスに地雷がある」と観測します。地雷が無い世界では地雷を見つけられないので、その世界にあなたはもういません。</li>
 </ul>
 <p>p = 100% のマスに踏み込むか、p = 0% のマスで地雷を観測すると、あなたのいる世界は一つも残りません（観測者消滅）。p が 0% でも 100% でもない、未確定のマスを選ぶ一手を「分岐」と呼びます。</p>
 <h3>L と ∿</h3>
@@ -281,7 +292,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </ul>
 <h3>盤の印</h3>
 <ul>
-<li>「◌」がオンの間は、使い終わった数字のマスが薄くなります。薄くなるのは、範囲のマスがすべて開いたか ◆ になった時と、範囲の ◆ の数が数字にそろって残りが空と読める時です。</li>
+<li>「✓」がオンの間は、使い終わった数字のマスが薄くなります。薄くなるのは、範囲のマスがすべて開いたか ● になった時と、範囲の ● の数が数字にそろって残りが空と読める時です。</li>
 <li>終局後に盤の下に出る ◀ ▶ で、一手ずつ、その手を打つ直前の盤面を見返せます。|◀ ▶| は分岐の手へ、⇤ は最初の手へ、⇥ は終局の盤へ飛びます。盤には、その時の p が雲で重なります。% を押すと、マスに p の数字も出ます。流れ図の縦線は、見ている手の位置です。金色の実線の枠は選んだマスです。p = 0% か 100% のマスを押すと、そのマスを実線で囲み、そう決めていた数字のマスを縁取ります（0% は緑、100% は赤）。損失があった手では、もっと良かった選択肢を最初から枠で示します。</li>
 </ul>
 </details>
@@ -304,6 +315,43 @@ function openedCell(i, t) {
   // 範囲の違う検出器は、印を数字の背後に大きく敷く
   if (DETECTORS[g.det[i]].show) html = `<span class="wm">${MARK[g.det[i]]}</span><span class="v">${t}</span>`;
   return { cls, html };
+}
+// 検出器の種類ごとの実演。初めてその種類の手がかりが開いた時に一度だけ、手がかりのマスと見ている範囲を枠で示し、
+// 表示の読み方を1行で出す。次にマスを操作すると消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
+let tipCell = -1, introSeen = new Set(), seen = new Set();
+try { seen = new Set(JSON.parse(localStorage.getItem('qs-seen')) || []); } catch { /* 保存できない環境 */ }
+const seenSet = () => camp && camp.s < 0 ? introSeen : seen;
+// この手で開いたマスのうち、まだ見ていない種類の手がかりを、開く動きの早い順に探す。0 個と確定した数字（空白）は除く
+function pickTip(fresh) {
+  const set = seenSet();
+  const c = fresh.filter(i => g.clues.has(i) && g.label[i] && !set.has(g.det[i]))
+    .sort((a, b) => (pops.get(a) || 0) - (pops.get(b) || 0))[0];
+  if (c === undefined) return;
+  tipCell = c;
+  set.add(g.det[c]);
+  seen.add(g.det[c]);
+  try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
+}
+// 手がかりの表示の読み方。範囲は枠で見せているので、文では「枠の中」とだけ言う
+function tipText(i) {
+  const t = g.det[i], lab = g.label[i];
+  const head = `<b>${MARK[t] ? MARK[t] + ' ' : ''}${lab}</b>`;
+  let m;
+  if (t === 'parity') return head + `枠の中の地雷は${lab === '偶' ? '偶数' : '奇数'}個`;
+  if (t === 'lr') return head + (lab === '⇔' ? '左の列と右の列の地雷は同じ数' : `${lab === '←' ? '左' : '右'}の列の地雷の方が多い`);
+  if (t === 'ud') return head + (lab === '⇕' ? '上の行と下の行の地雷は同じ数' : `${lab === '↑' ? '上' : '下'}の行の地雷の方が多い`);
+  if ((m = /^(\d+)\|(\d+)$/.exec(lab))) return head + `枠の中の地雷は ${m[1]} 個か ${m[2]} 個`;
+  if ((m = /^(\d+)-(\d+)$/.exec(lab))) return head + `枠の中の地雷は ${m[1]}〜${m[2]} 個`;
+  return head + `枠の中の地雷は ${lab} 個`;
+}
+// 導入の2面では、● を一度置くまで、● の操作を1行で出す（長押しと右クリックは見た目から分からないので）
+const fineMouse = matchMedia('(hover:hover) and (pointer:fine)');
+function renderTip() {
+  let t = '';
+  if (tipCell >= 0 && review < 0) t = tipText(tipCell);
+  else if (camp && camp.s < 0 && camp.k === 1 && g.state === 'play' && g.landed && !g.mines.size)
+    t = `<b style="color:var(--gold)">●</b>${fineMouse.matches ? '右クリック' : '長押し'}で地雷を観測する`;
+  $('tip').innerHTML = t;
 }
 // 開いた手がかりのマスに触れている間、その検出器が見ている範囲のマスを枠で示す。
 // 開いていないマスに触れている間は、そのマスを範囲に含む手がかりのマスを枠で示す。
@@ -352,10 +400,10 @@ const pct = p => p === 0 ? '0' : p >= 0.995 && p < 1 ? '>99' : p < 0.005 ? '<1' 
 function newGame() {
   stopBot();
   const [W, H, M] = size;
-  g = new Game(W, H, M, mix, Math.random, camp ? SCEN[camp.s].parts : undefined);
+  g = new Game(W, H, M, mix, Math.random, camp ? scenOf(camp).parts : undefined);
   syncCustom();
   g.autoChord = mode === 'safe' && autoChord;
-  last = hint = areaOf = -1;
+  last = hint = areaOf = tipCell = -1;
   marked = [];
   board.style.setProperty('--w', W);
   board.style.setProperty('--h', H);
@@ -373,6 +421,7 @@ function newGame() {
   pops = new Map();
   clps = new Map();
   $('msg').innerHTML = '';
+  $('tip').innerHTML = '';
   $('result').style.display = 'none';
   $('revbar').hidden = true;
   render();
@@ -435,7 +484,7 @@ function render() {
   // 雲は、観測者消滅の盤と、|ψ|² を押している間のプレー中の盤に出す（振り返りの盤では renderReview が出す）
   if (g.state === 'dead' || (showP && g.state === 'play')) startCloud(null); else stopCloud();
   // 前に描いた時から新しく開いたマスがあれば、押したマスからの距離で開く時刻をずらす
-  // 動き終わった後の描き直し（◆ を置いた時や表示の切り替え）では、前の手の動きを繰り返さない
+  // 動き終わった後の描き直し（● を置いた時や表示の切り替え）では、前の手の動きを繰り返さない
   const fresh = [];
   for (let i = 0; i < W * H; i++) if (g.opened[i] && !shown[i]) fresh.push(i);
   if (performance.now() > popEnd) pops = new Map();
@@ -450,7 +499,9 @@ function render() {
       pops.set(i, Math.min(d, POP_MAX) * POP_STEP);
     }
     popEnd = performance.now() + Math.max(...pops.values()) + 550;
+    if (g.state === 'play') pickTip(fresh);
   }
+  const tipArea = tipCell >= 0 ? new Set(g.areas[tipCell].cells) : null;
   for (let i = 0; i < W * H; i++) {
     const b = cells[i];
     let cls = 'c', html = '';
@@ -464,16 +515,18 @@ function render() {
       if (g.mines.has(i)) cls += ' k';
       // 終わった時の地雷: クリアなら確定した地雷として落ち着いた色、ゲームオーバーなら赤
       else if (over && p > 1 - 1e-9) cls += g.state === 'clear' ? ' w' : ' m';
-      // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（◆）と、
+      // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（●）と、
       // 雲を表示している時の p = 1 のマス。雲を隠している時に p から消すと、答えが漏れる
       const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
       if (MARK[g.det[i]] && !hideMark) html += `<span class="d">${MARK[g.det[i]]}</span>`;
     }
     if (i === last) cls += ' last';
-    // 一番安かった賭けのマスには、その賭けの記号（◇ 開ける / ◆ 地雷に賭ける）を薄く重ねる
+    if (i === tipCell) cls += ' tq';
+    else if (tipArea && tipArea.has(i)) cls += ' ta';
+    // 一番安かった賭けのマスには、その賭けの記号（○ 開ける / ● 地雷に賭ける）を薄く重ねる
     if (i === hint && !g.opened[i] && !g.mines.has(i)) {
       cls += ' hint';
-      html += `<span class="gh">${hintKind === 'mine' ? '◆' : '◇'}</span>`;
+      html += `<span class="gh">${hintKind === 'mine' ? '●' : '○'}</span>`;
     }
     // まとめて開けたマスと自動で開けたマス
     if (g.auto && g.auto.cells.includes(i)) cls += ' auto';
@@ -484,12 +537,13 @@ function render() {
     if (b._h !== html) { b.innerHTML = html; b._h = html; }
     b.setAttribute('aria-label', g.opened[i] ? `開いた ${g.label[i] || '0'}` : g.mines.has(i) ? '地雷を観測したマス' : '未開放');
   }
-  // 残りの地雷: 地雷の総数から ◆ の数を引いたもの
+  // 残りの地雷: 地雷の総数から ● の数を引いたもの
   $('left').innerHTML = `<b>●</b>${g.M - g.mines.size}`;
   // 観測者消滅では、あなたのいる世界が残っていないので、L を ∞、2^−L を 0 として出す
   renderStats(g.an.omega, liveL(), g.I);
   renderMeter();
   markArea(areaOf);
+  renderTip();
 }
 const liveL = () => g.state === 'dead' ? Infinity : g.L;
 function renderStats(omega, L, I) {
@@ -505,7 +559,7 @@ function renderStats(omega, L, I) {
 // （安全第一で安全なマスが残っていた時は p = 0% のマス、賭けるしかない時は一番安い賭けのマス）。
 // p = 0% か 100% のマスを押すと、そのマスを実線で囲み、そう決めていた手がかりのマスを縁取る（0% は緑、100% は赤）。
 // 推理ミスの手では、最初から安全なマスを1つ選んでおく。根拠が近く少ないマス（同じなら選んだマスに近いもの）を選ぶ。
-// ◆ と地雷の総数だけで決まるマスでは、縁取る手がかりは無い
+// ● と地雷の総数だけで決まるマスでは、縁取る手がかりは無い
 const reviewMoves = () => g.moves.filter(m => m.snap);
 // 外れうる賭けだった手（コストを払った手と、観測者消滅の手）
 const isBet = m => m.cost > 0;
@@ -565,14 +619,15 @@ function renderReview(m) {
   renderStats(s.omega, s.L, s.I);
   renderMeter();
   markArea(areaOf);
+  renderTip();
 }
 // 振り返りの1行: 選んだ手の記号と p。賭けの手ではコストも出し、推理ミスなら ✕、もっと安い賭けがあればその賭け
 function reviewLine(m) {
-  let t = `${m.kind === 'mine' ? '◆' : '◇'} p ${(m.p * 100).toFixed(1)}%`;
+  let t = `${m.kind === 'mine' ? '●' : '○'} p ${(m.p * 100).toFixed(1)}%`;
   if (!isBet(m)) return t;
   if (isFinite(m.cost)) t += ` · <b>+${m.cost.toFixed(2)} bit</b>`;
   if (m.safeExists && mode === 'safe') t += ' · ✕';
-  else if (!m.safeExists && m.cost > m.best + 1e-9) t += ` · 最安 ${m.bestKind === 'mine' ? '◆' : '◇'} ${(m.bestP * 100).toFixed(1)}%`;
+  else if (!m.safeExists && m.cost > m.best + 1e-9) t += ` · 最安 ${m.bestKind === 'mine' ? '●' : '○'} ${(m.bestP * 100).toFixed(1)}%`;
   return t;
 }
 function setReview(k) {
@@ -633,7 +688,7 @@ function betNear(dir) {
 
 // 世界線メーター: 生き残っている割合 2^−L をニキシー管風の数字で出す。
 // 全ての世界で安全なマス（p = 0%）が一つも無く、外れうる賭けを打つしかない局面では、数字を揺らす。
-// p = 100% のマスに ◆ を置いても世界は減らず、他のマスの p は変わらないので、そのマスが残っていても揺らす。
+// p = 100% のマスに ● を置いても世界は減らず、他のマスの p は変わらないので、そのマスが残っていても揺らす。
 // 判定は推理ミスと同じ situation().safeExists を使う。教えるのは安全なマスがあるかどうかだけで、場所は教えない
 let showM = true, meterTimer = 0;
 // 埋まった手がかりを薄くするか。どの盤でも共通の設定で、このブラウザに残す
@@ -713,7 +768,7 @@ function rollMeter(changed, digits, paint, rnd, settle) {
   }, 45);
 }
 
-// 開いた手がかりのマスを押すと、その手がかりと周りの ◆ で安全と決まるマスをまとめて開ける。コストは常に 0
+// 開いた手がかりのマスを押すと、その手がかりと周りの ● で安全と決まるマスをまとめて開ける。コストは常に 0
 function chord(i) {
   const before = probsNow();
   const targets = g.chordTargets(i);
@@ -740,7 +795,7 @@ function chord(i) {
   render();
 }
 
-// 自動開放を有効にした時に、それまでの ◆ で決まるマスを開ける
+// 自動開放を有効にした時に、それまでの ● で決まるマスを開ける
 function settleNow() {
   if (g.state !== 'play' || !g.autoChord) return;
   g.settle();
@@ -748,7 +803,7 @@ function settleNow() {
 }
 
 // 賭けの直後に出す数字: p とコスト。一番安い賭けより高かった時はその値も並べる。
-// 外れようのない手（p = 0% を開ける、p = 100% に ◆）は p だけを出す
+// 外れようのない手（p = 0% を開ける、p = 100% に ●）は p だけを出す
 function betLine(r, m) {
   hint = -1;
   if (r.cost === 0) return `p ${(r.p * 100).toFixed(1)}%`;
@@ -756,7 +811,7 @@ function betLine(r, m) {
   if (m.safeExists && mode === 'safe') t += ' · ✕';
   else if (!m.safeExists && m.cost > m.best + 1e-9) {
     // 一番安かった賭けを、そのマスの確率で示し、盤の上でも枠で示す
-    t += ` · 最安 ${m.bestKind === 'mine' ? '◆' : '◇'} ${(m.bestP * 100).toFixed(1)}%`;
+    t += ` · 最安 ${m.bestKind === 'mine' ? '●' : '○'} ${(m.bestP * 100).toFixed(1)}%`;
     hint = m.bestCell;
     hintKind = m.bestKind;
   }
@@ -771,6 +826,7 @@ function act(i) {
     return;
   }
   if (g.state !== 'play') return;
+  tipCell = -1;
   if (g.opened[i]) { chord(i); return; }
   if (g.mines.has(i)) return;
   betOpen(i);
@@ -816,12 +872,12 @@ function betOpen(i) {
 }
 
 function betMine(i) {
-  // 降り立つ前は ◆ を置けないので、どの操作でも降り立つ
+  // 降り立つ前は ● を置けないので、どの操作でも降り立つ
   if (!g.landed) return betOpen(i);
   const before = probsNow();
   const r = g.claim(i);
   if (!r) return;
-  // 外れうる ◆ だった時は、◆ のマスと、それで決まったマスを光らせる。外れようのない ◆ でも、続く自動開放で全てが決まれば光らせる
+  // 外れうる ● だった時は、● のマスと、それで決まったマスを光らせる。外れようのない ● でも、続く自動開放で全てが決まれば光らせる
   if (g.state !== 'dead' && (r.cost > 0 || g.state === 'clear')) collapse(i, before, r.cost > 0);
   last = i;
   const m = g.moves[g.moves.length - 1];
@@ -951,7 +1007,7 @@ function showResult(ok) {
     const rows = mode === 'safe'
       ? [['推理ミス', `${f(b.error)}（${b.errors}）`], ['選択の損', f(b.gap)], ['不可避', f(b.forced)]]
       : [];
-    rows.push(['L', `${f(g.L)} / ${g.H0.toFixed(1)}（${(ratio * 100).toFixed(1)}%）`], ['◆', f(b.mineCost)]);
+    rows.push(['L', `${f(g.L)} / ${g.H0.toFixed(1)}（${(ratio * 100).toFixed(1)}%）`], ['●', f(b.mineCost)]);
     head = `<h2><span class="rank">${r}</span>Ω = 1</h2>`;
     story = [
       (!lucky ? '' : `コイントスを <b>${coins}</b> 回続けて当てるのと同じ確率で、あなたは生き残りました。`)
@@ -974,10 +1030,12 @@ function showResult(ok) {
   // キャンペーンでは、クリアを記録し、次の面・やり直しのボタンを出す
   let next = '';
   if (camp) {
-    const sc = SCEN[camp.s], last = camp.k === sc.stages.length - 1;
+    const sc = scenOf(camp), last = camp.k === sc.stages.length - 1;
     setting = `${sc.name} ${camp.k + 1}/${sc.stages.length}・${g.W}×${g.H}・${g.M}個`;
+    // 導入は、最後の面をクリアしたら終えたことにする。ランクは記録しない
+    if (ok && camp.s < 0 && last) introDone();
     // 自動プレーを使った面は、次へ進めるがクリアとして記録しない
-    if (ok && !g.botUsed) {
+    else if (ok && camp.s >= 0 && !g.botUsed) {
       // 面ごとに一番良かった記録（ランクと、その時の L）を残す。ランクが同じなら L が小さい方
       const old = prog[camp.s][camp.k], d = rankOrder(r) - rankOrder(old);
       if (d > 0 || (d === 0 && (recL(old) === null || g.L < recL(old)))) prog[camp.s][camp.k] = { r, L: g.L };
@@ -986,7 +1044,7 @@ function showResult(ok) {
     }
     next = `<button id="next">${!ok ? 'やり直す' : last ? '入口へ' : '次へ'}</button>`;
   }
-  shareText = `量子自殺マインスイーパー ${setting}\n${summary}`;
+  shareText = `量子自●マインスイーパー ${setting}\n${summary}`;
   // ランクと次へ、流れ図を先に置き、文章と表はその後ろに回す。振り返りの操作は盤のすぐ下（#revbar）に出す
   el.innerHTML = `<div class="rhead">${head}${next}</div>${chart}<p class="story">${story.filter(Boolean).join('<br>')}</p>${table}<button id="share">共有</button>`;
   $('share').addEventListener('click', shareResult);
@@ -1004,7 +1062,7 @@ function showResult(ok) {
   }
   if (camp) $('next').addEventListener('click', () => {
     if (!ok) newGame();
-    else if (camp.k === SCEN[camp.s].stages.length - 1) showEntry();
+    else if (camp.k === scenOf(camp).stages.length - 1) showEntry();
     else startStage(camp.s, camp.k + 1);
   });
   el.style.display = 'block';
@@ -1022,8 +1080,8 @@ async function shareResult(e) {
   } catch { /* 共有を取り消した時など */ }
 }
 
-// タップとクリックは ◇（空と決めて踏み込む）。長押しと右クリックは ◆（地雷を観測する）
-const quickMine = i => { if (g.state === 'play' && g.free(i)) betMine(i); };
+// タップとクリックは ○（空と決めて踏み込む）。長押しと右クリックは ●（地雷を観測する）
+const quickMine = i => { if (g.state === 'play' && g.free(i)) { tipCell = -1; betMine(i); } };
 let pressTimer = 0, longPressed = false;
 board.addEventListener('pointerover', e => {
   const b = e.target.closest('.c');
@@ -1201,6 +1259,19 @@ const SCEN = [
   // ≋ 単体は、0 を常に単独の値として返す（今の分け方それぞれから 0 を切り出す）。0 の連鎖が起きるので地雷を置ける
   { name: '≋', cell: [4, 4], hard: true, mix: [0, 0, 0, 0, 100, 0, 0, 0, 0], parts: { wide: [[[0], [1, 2], [3, 4, 5], [6, 7, 8]], [[0], [1, 2, 3], [4, 5, 6], [7, 8]], [[0], [1], [2, 3, 4], [5, 6, 7], [8]]] }, stages: [[9, 9, 7], [10, 10, 9], [12, 12, 12], [14, 14, 16], [16, 16, 21]] },
 ];
+// 導入。初めての人が最初に遊ぶ3面。1面で教えることを1つに絞る:
+// 1面は降り立つことと ○、2面は ●（長押し・右クリック）、3面は初めての粗視化した検出器（≈）。
+// 盤と地雷の数は、測った面（非粗視化の1・2面、精密≈の1面）と同じにする。シナリオの一覧には出さず、camp.s を -1 にして遊ぶ
+const INTRO = {
+  name: '導入',
+  heads: ['観測記録 001', '観測記録 002', '観測記録 003'],
+  stages: [[6, 6, 7], [7, 7, 9], [8, 8, 6]],
+  mixes: [MIXES[0], MIXES[0], [50, 50, 0, 0, 0, 0, 0, 0, 0]],
+};
+const scenOf = c => c.s < 0 ? INTRO : SCEN[c.s];
+function introDone() {
+  try { localStorage.setItem('qs-intro', '1'); } catch { /* 保存できない環境 */ }
+}
 let camp = null;   // 遊んでいるキャンペーンの面 { s: シナリオ, k: 面 }。自由観測では null
 // キャンペーンの面を始める時に、自由観測の設定を退避しておき、自由観測へ戻る時に戻す
 let freeSet = null;
@@ -1317,13 +1388,17 @@ function enterPlay() {
   // 詳細設定の自動プレーは残す
   for (const id of ['setbar', 'modegrp']) $(id).hidden = !!camp;
   document.querySelectorAll('#custom label').forEach(l => l.hidden = !!camp);
-  $('stagelabel').textContent = camp ? `${SCEN[camp.s].name} ${camp.k + 1}/${SCEN[camp.s].stages.length}` : '';
+  $('stagelabel').textContent = !camp ? '' : camp.s < 0 ? INTRO.heads[camp.k] : `${SCEN[camp.s].name} ${camp.k + 1}/${SCEN[camp.s].stages.length}`;
+  $('skip').hidden = !camp || camp.s >= 0;
 }
 function startStage(s, k) {
   if (!freeSet) freeSet = { size, mix, mode };
   camp = { s, k };
-  size = SCEN[s].stages[k].slice();
-  mix = scenMix(SCEN[s]).slice();
+  const sc = scenOf(camp);
+  size = sc.stages[k].slice();
+  mix = (sc.mixes ? sc.mixes[k] : scenMix(sc)).slice();
+  // 導入を始める時は、導入に出る検出器の実演をもう一度見せる
+  if (s < 0 && k === 0) introSeen = new Set();
   mode = 'safe';
   document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === 'safe'));
   $('autochord').hidden = false;
@@ -1352,9 +1427,14 @@ $('free').addEventListener('click', () => {
   enterPlay();
   newGame();
 });
-$('toentry').addEventListener('click', showEntry);
+$('toentry').addEventListener('click', () => { if (camp && camp.s < 0) introDone(); showEntry(); });
+$('skip').addEventListener('click', () => { introDone(); showEntry(); });
+$('intro').addEventListener('click', () => startStage(-1, 0));
 
 newGame();
-showEntry();
+// 初めて開いた時は、入口の表を出さずに導入の1面から始める。キャンペーンの記録がある時は、導入を終えた人として扱う
+let introOk = prog.some(row => row.some(Boolean));
+try { introOk ||= localStorage.getItem('qs-intro') === '1'; } catch { /* 保存できない環境 */ }
+if (introOk) showEntry(); else startStage(-1, 0);
 </script>
 </body></html>
