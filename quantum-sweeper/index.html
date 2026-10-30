@@ -1597,7 +1597,7 @@ function showEntry() {
 function introRow() {
   return `<div class="scen"><span>${INTRO.name}</span>` + INTRO.stages.map(([W, H], k) =>
     `<button data-s="-1" data-k="${k}"${introClear.has(k) ? ' class="done"' : ''} aria-label="${INTRO.heads[k]}">${W}×${H}</button>`).join('')
-    + '<button class="wbtn" data-lore aria-label="観測記録 000">記録</button><button class="wbtn" data-worlds aria-label="36 の世界">世界</button></div>';
+    + '<button class="wbtn" data-lore aria-label="観測記録 000">背景</button><button class="wbtn" data-worlds aria-label="36 の世界">世界</button></div>';
 }
 // シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
 function stageRow(i) {
@@ -1804,7 +1804,7 @@ $('wreset').addEventListener('click', wStart);
 const LORE = [
   ['量子自殺という思考実験があります。', '量子の測定で、弾が出るかどうかが半々で決まる銃を、自分に向けて引き続けます。'],
   ['trigger', '弾が出た世界のあなたは、その結果を知ることができません。', '結果を知るのは、弾が出なかった世界のあなただけです。', 'だから、あなたから見ると、何度引いても弾は出ません。'],
-  ['外から見ている人には、あなたは高い確率で撃たれています。', '<span class="l">生き残ったことを確かめられるのは、生き残ったあなただけです。</span>'],
+  ['外から見ている人には、あなたは高い確率で撃たれています。', '<span class="l">何度引いても弾が出ないのは、あなたから見た時だけです。</span>'],
   ['この施設では、銃の代わりに地雷の盤を使います。', '地雷の置き方はまだ決まっていません。', '置き方の数だけ、別々の世界が重なっています。'],
   ['あなたはマスを選び、地雷が無いと考えるなら ○、あると考えるなら ● を置きます。', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
   ['盤が1つの世界に決まると、観測は終わります。', '周りの数字から推理すれば、運に頼る分を減らせます。', 'どれだけの世界のあなたを残せたかが、記録になります。'],
