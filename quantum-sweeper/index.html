@@ -390,10 +390,10 @@ function renderTip() {
   if (review >= 0) t = '';
   else if (branchTip) t = '<b>分岐</b>地雷のある世界は消え、残った世界へ進んだ';
   else if (tipCell >= 0) t = tipText(tipCell);
-  else if (g.state === 'play' && g.landed && !branchSeen())
-    t = '<b>∿</b>未確定のマスを選んでも失敗しない。地雷のある世界が消え、分岐して進む';
   else if (camp && camp.s < 0 && camp.k === 1 && g.state === 'play' && g.landed && !g.mines.size)
     t = `<b style="color:var(--gold)">●</b>${fineMouse.matches ? '右クリック' : '長押し'}で地雷を観測する`;
+  else if (g.state === 'play' && g.landed && !branchSeen())
+    t = '<b>∿</b>未確定のマスも選べる。地雷のある世界が消え、分岐して進む';
   $('tip').innerHTML = t;
 }
 // 開いた手がかりのマスに触れている間、その検出器が見ている範囲のマスを枠で示す。
@@ -912,8 +912,9 @@ function betOpen(i) {
   noteBranch(r);
   last = i;
   const m = g.moves[g.moves.length - 1];
-  // 導入で示したマスを押した手は、安全なマスが残っていても推理ミスにしない（試しに押してもらう手なので）
-  if (guided) m.safeExists = false;
+  // 導入で示したマスを押した手は、安全なマスが残っていても推理ミスにしない（試しに押してもらう手なので）。
+  // 一番安い分岐と比べた損も数えない
+  if (guided) { m.safeExists = false; m.best = m.cost; }
   if (g.state === 'dead') showResult(false);
   else {
     $('msg').innerHTML = betLine(r, m);
