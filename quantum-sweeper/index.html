@@ -158,9 +158,9 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 /* 引くたびに「不発でした。」を、この枠の中のばらばらの位置に重ねていく */
 #lmsg{position:relative;align-self:stretch;height:22vh;min-height:130px;overflow:hidden}
 #lagain{height:40px;display:flex;align-items:center;justify-content:center}
-#lnext{animation:lorein .7s ease both}
-@media (prefers-reduced-motion:reduce){#lnext{animation:none}}
+#ltrow{display:flex;gap:10px;align-items:center}
 #lmsg span{position:absolute;white-space:nowrap;animation:lorein .7s ease both}
+#lmsg .lsay{left:50%;translate:-50% 0;z-index:1;padding:4px 10px;border-radius:4px;background:var(--bg);color:var(--risk)}
 @media (prefers-reduced-motion:reduce){#lmsg span{animation:none}}
 #lorebody p{margin:0;max-width:30em;animation:lorein .7s ease both}
 @keyframes lorein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -194,6 +194,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lboards .lcut.on rect:first-child{stroke:var(--risk)}
 #ltrig{font-size:15px;padding:8px 22px;border-color:var(--risk);color:var(--risk)}
 #ltrig.flash{background:rgba(255,107,107,.25)}
+#lgive{font-size:13px;padding:8px 14px;color:var(--dim)}
 .lnav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .lnav button{font-size:14px;padding:6px 16px}
 #worlds{margin:8px 0 16px}
@@ -1935,8 +1936,8 @@ $('wagain').addEventListener('click', () => { wStart(); scrollTo({ top: 0, behav
 // 観測記録 000。何もない画面をタップするたびに1文ずつ出す。場面の文を出し切ったら、次のタップで画面を消して次の場面へ。
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
-  ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', '弾が出れば、あなたは死にます。', '運が良ければ、生き残れるでしょう。', 'この銃を自分に向けて、引き金を引いてください。', 'trigger'],
-  ['tree', () => `生き残った確率は ${loreOdds()} でした。`, 'とても強い幸運の持ち主です。', '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
+  ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', '弾が出れば、あなたは死にます。', '運が良ければ、生き残れるでしょう。', '度胸試しのため、引き金を引いてみてください。', 'trigger'],
+  ['tree', () => `生き残った確率は ${loreOdds()} でした。`, () => LUCK.find(([n]) => pulls >= n)[1], '<span class="lgap">実は、この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
   ['place', '3×3 の盤に、地雷が 2 つ埋まっています。', () => `どれか1つのマスを選び、地雷が無いと考えるなら${fineMouse.matches ? 'クリック' : 'タップ'}して ○、あると考えるなら${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。`, 'cut', '選択と合わない世界のあなたは、そこで終わります。', '残った世界のあなたが、次のマスを選びます。'],
@@ -1969,12 +1970,12 @@ function loreStep() {
   const scene = LORE[lore], item = scene[loreK++];
   const body = $('lorebody');
   if (item === 'trigger') {
-    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><div id="lagain"></div><div id="lmsg"></div>`);
+    body.insertAdjacentHTML('beforeend', `<div id="ltrow"><button id="ltrig">引き金を引く</button><button id="lgive">ギブアップ</button></div><div id="lagain"></div><div id="lmsg"></div>`);
   } else if (item === 'tree') {
     // 引いた回数だけ分かれた世界を、種明かしの後で見せる
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`);
     loreTree();
-    // 「生き残った確率」のボタンで来たので、確率の文は図と一緒に出す
+    // ギブアップのボタンで来たので、確率の文は図と一緒に出す
     loreStep();
   } else if (item === 'stack') {
     // 盤の場面の図。重なった世界を、次の文と一緒に出す
@@ -2014,7 +2015,12 @@ function loreStep() {
 // 句読点の後でだけ改行するよう、句読点までのまとまりを折り返さない塊にする（タグの中は分けない）
 const loreWrap = t => t.replace(/(<[^>]+>)|([^<、。]+[、。]?)/g, (m, tag, seg) => tag || `<span class="lseg">${seg}</span>`);
 // 引いた回数だけ続けて不発になる確率
-const loreOdds = () => `${(100 * 0.5 ** pulls).toFixed(pulls > 6 ? 2 : pulls > 3 ? 1 : 0)}%`;
+// 10 回以上は % の小数では 0 に近づいて読めないので、「N 分の 1」で書く
+const loreOdds = () => pulls < 10 ? `${(100 * 0.5 ** pulls).toFixed(pulls > 6 ? 2 : pulls > 2 ? 1 : 0)}%` : `${(2n ** BigInt(pulls)).toLocaleString('ja-JP')} 分の 1`;
+// 種明かしの前の幸運の言い方。引いた回数が多いほど強く言う（回数の多い順に並べ、最初に当てはまったものを使う）
+const LUCK = [[100, 'これはもう、幸運ではありません。'], [20, '偶然では説明できないほどの幸運です。'], [8, '信じられないほどの幸運の持ち主です。'], [4, '生き残れて、幸運でしたね。'], [0, 'これ以上引く度胸は、ありませんでしたか。']];
+// 引き続けた時に、不発の欄へ混ぜる施設の言葉
+const PULL_SAY = { 10: 'そろそろ、次へ進んでください。', 20: '記録は、もう十分です。', 30: '何度引いても、結果は同じです。', 100: 'あなたが死んだ世界は、もう数えきれません。' };
 function loreNext() {
   lore++;
   loreK = 0;
@@ -2023,7 +2029,7 @@ function loreNext() {
 }
 function loreTap() {
   const scene = LORE[lore];
-  // 装置を出した後は、タップでは進めず「生き残った確率」のボタンで進む
+  // 装置を出した後は、タップでは進めずギブアップのボタンで進む
   if (scene.includes('trigger') && loreK > scene.indexOf('trigger')) return;
   // 盤の場面は、○ か ● を置くまで、置き方を示す文の先へ進まない
   if (scene[0] === 'place' && !lsel.done && scene[loreK] === 'cut') return;
@@ -2143,7 +2149,7 @@ function loreCloud() {
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
   if ($('lore').hidden || e.target.closest('#lback, #lskip, #entry, a')) return;
-  // 引くたびに同じ文を1つ足す。3回引いたら次へ進むボタンを出す
+  // 引くたびに同じ文を1つ足す
   if (e.target.id === 'ltrig') {
     // もう一度引くよう頼む文が出ている間は、文が出終わるまで次を受けない。3 回引いた後は続けて引ける
     if (trigWait) return;
@@ -2156,24 +2162,31 @@ document.addEventListener('click', e => {
     m.style.rotate = `${Math.round(70 * Math.random() - 35)}deg`;
     m.style.left = `calc((100% - 6.4em) * ${R()})`;
     m.style.top = `calc((100% - 5.5em) * ${R()} + 2em)`;
-    $('lmsg').append(m);
+    $('lmsg').querySelector('.lsay') ? $('lmsg').querySelector('.lsay').before(m) : $('lmsg').append(m);
+    if (PULL_SAY[pulls]) {
+      // 前の言葉は消して、いちばん新しい言葉だけを、後から重なる不発の文より手前に出す
+      $('lmsg').querySelector('.lsay')?.remove();
+      const say = document.createElement('span');
+      say.className = 'lsay';
+      say.textContent = PULL_SAY[pulls];
+      say.style.top = `calc((100% - 2em) * ${R()})`;
+      $('lmsg').append(say);
+    }
     // 3 回目までは、不発の文の少し後に、もう一度引くよう頼む文を出す。文は毎回作り直して、出る動きをやり直す。
-    // 頼む文が出終わるまでは次を受けない。3 回引いた後は、頼む文を消して次へ進むボタンを出し、続けて引けるようにする
+    // 頼む文が出終わるまでは次を受けない。3 回引いた後は、頼む文を消して続けて引けるようにする
     const again = ['もう一度、引いてください。', 'もう一度。'][pulls - 1] || '';
     if (pulls <= 3) $('lagain').textContent = '';
     if (again) trigWait = true;
     setTimeout(() => {
-      if (!$('lagain')) return;
-      // 3 回目の後は、頼む文と同じ行に次へ進むボタンを出す（画面の下へ送らず、スクロールしなくても押せるように）
-      if (again) $('lagain').innerHTML = `<p>${again}</p>`;
-      else if (!$('lnext')) $('lagain').innerHTML = '<button id="lnext">生き残った確率</button>';
+      if (again && $('lagain')) $('lagain').innerHTML = `<p>${again}</p>`;
     }, 600);
     if (again) setTimeout(() => { trigWait = false; }, 1300);
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
     return;
   }
-  if (e.target.id === 'lnext') return loreNext();
+  // ギブアップは最初から押せる。3 回引く前に押すと、この場面を初めからやり直す
+  if (e.target.id === 'lgive') return pulls < 3 ? loreStart() : loreNext();
   const lc = e.target.closest('#lask [data-lc]');
   if (lc) return lLong ? undefined : lorePlace(+lc.dataset.lc, 'open');
   const go = e.target.closest('[data-lgo]');
