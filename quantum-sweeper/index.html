@@ -340,7 +340,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </div>
 <div id="result" aria-live="polite"></div>
 </div>
-<details>
+<details id="howto">
 <summary>遊び方</summary>
 <h3>地雷は、まだ置かれていません</h3>
 <p>この盤の地雷は、まだどこにも置かれていません。見えている数字と地雷の総数に矛盾しない配置が、すべて重なったまま残っています。その一つ一つを「並行世界」と呼び、残っている並行世界の数を Ω で表します。Ω が 1 になり、配置が一通りに決まった時点で、あなたはここを出られます。</p>
@@ -1585,6 +1585,7 @@ function showEntry() {
   stopBot();
   $('play').hidden = true;
   $('entry').hidden = false;
+  $('howto').hidden = false;
   $('camp').innerHTML = introRow() + SCEN.map((sc, i) => sc.cell ? '' : stageRow(i)).join('');
   showGrid();
   showRecords();
@@ -1789,6 +1790,7 @@ $('camp').addEventListener('click', e => {
   if (!e.target.closest('[data-worlds]')) return;
   $('entry').hidden = true;
   $('worlds').hidden = false;
+  $('howto').hidden = true;
   wStart();
 });
 $('wback').addEventListener('click', () => { $('worlds').hidden = true; showEntry(); });
@@ -1867,6 +1869,7 @@ $('lore').addEventListener('click', e => {
   const go = e.target.closest('[data-lgo]');
   if (!go) return loreTap();
   $('lore').hidden = true;
+  $('howto').hidden = go.dataset.lgo !== 'intro';
   if (go.dataset.lgo === 'intro') startStage(-1, 0);
   else { $('worlds').hidden = false; wStart(); }
 });
@@ -1874,9 +1877,11 @@ $('camp').addEventListener('click', e => {
   if (!e.target.closest('[data-lore]')) return;
   $('entry').hidden = true;
   $('lore').hidden = false;
+  $('howto').hidden = true;
   loreStart();
 });
 $('lback').addEventListener('click', () => { $('lore').hidden = true; showEntry(); });
+// 観測記録 000 と 36 の世界を開いている間は、遊び方を隠す。入口と盤に戻る時に出す
 
 newGame();
 // 初めて開いた時は、入口の表を出さずに導入の1面から始める。キャンペーンの記録がある時は、導入を終えた人として扱う
