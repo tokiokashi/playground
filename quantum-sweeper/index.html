@@ -169,6 +169,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 #lboards,#lpick{width:100%;max-width:360px;height:auto;animation:lorein .7s ease both}
 @media (prefers-reduced-motion:reduce){#lboards,#lpick{animation:none}}
 #lboards .lcut{transition:opacity .8s}
+#lboards .lsp{transform-box:view-box}
 #lcloud{width:100%;max-width:360px;height:auto}
 #lcloud circle{transition:opacity 2.4s ease}
 #lcloud .lco{transition:fill .6s}
@@ -1959,12 +1960,21 @@ function loreStep() {
     body.insertAdjacentHTML('beforeend', loreBoards(false));
     loreStep();
   } else if (item === 'pick') {
-    // 中身の見えない盤の真ん中に ○ を置いた図を、次の文と一緒に出す
+    // 中身の見えない盤の真ん中に ○ と ● を置いた図を、次の文と一緒に出す
     body.insertAdjacentHTML('beforeend', lorePick());
     loreStep();
   } else if (item === 'row') {
     // ○ を置いた盤を、世界ごとに並べた図に置き換える（○ の段と ● の段）
     $('lpick').outerHTML = loreBoards(true);
+    // 各世界の盤を、○ の段は ○ の盤、● の段は ● の盤の位置と大きさに重ねてから、並ぶ位置へ広げる
+    const svg = $('lboards'), sp = [...svg.querySelectorAll('.lsp')];
+    svg.style.animation = 'none';
+    sp.forEach((e, i) => {
+      const r = e.getBBox(), cx = r.x + r.width / 2, cy = r.y + r.height / 2, mx = LPICK.x[i < LBOARDS.length ? 0 : 1];
+      e.style.transformOrigin = `${cx}px ${cy}px`;
+      if (!matchMedia('(prefers-reduced-motion:reduce)').matches)
+        e.animate([{ transform: `translate(${mx - cx}px, ${LPICK.y - cy}px) scale(${LPICK.w / r.width})` }, { transform: 'none' }], { duration: 1200, easing: 'ease' });
+    });
   } else if (item === 'cloud') {
     // 一様な雲の盤でマスを開け（s1）、下に並べた世界のうち数字の合わない世界を消し（s2）、
     // 残った世界から数えた濃さへ雲を移す（s3）。各段の間は、前の段の変化が見終わるまで待つ
@@ -2035,7 +2045,7 @@ function loreBoards(row) {
         : `<circle cx="${cx + cs / 2}" cy="${cy + cs / 2}" r="4.2" fill="var(--ink)"/>`;
     }
     const cut = mark && w.includes(4) === (mark === 'open');
-    return `<g class="${cut ? 'lcut' : ''}" opacity="${op}">${g}</g>`;
+    return `<g class="lsp"><g class="${cut ? 'lcut' : ''}" opacity="${op}">${g}</g></g>`;
   };
   const n = LBOARDS.length;
   const body = row
@@ -2043,16 +2053,23 @@ function loreBoards(row) {
     : LBOARDS.map((w, i) => [w, i]).reverse().map(([w, i]) => one(w, 85 + i * 18, 8 + (n - 1 - i) * 10, (1 - i * 0.13).toFixed(2))).join('');
   return `<svg id="lboards" viewBox="0 0 320 ${row ? 20 + bw * 2 + 12 : 106}" role="img" aria-label="${row ? '真ん中のマスに ○ を置いた世界と ● を置いた世界' : '重なった世界'}">${body}</svg>`;
 }
-// 中身の見えない 3×3 の盤の真ん中に ○ を置いた図
+// 中身の見えない 3×3 の盤を 2 枚並べ、左の盤の真ん中に ○、右の盤の真ん中に ● を置いた図。
+// LPICK は各盤の真ん中の座標と幅で、世界を並べた図の上の段は左の盤から、下の段は右の盤から広がる
+const LPICK = { w: 84, y: 54, x: [110, 210] };
 function lorePick() {
-  const cs = 30, gap = 3, x0 = 160 - (cs * 3 + gap * 2) / 2, y0 = 8;
+  const cs = 26, gap = 3, pad = (LPICK.w - cs * 3 - gap * 2) / 2;
   let g = '';
-  for (let c = 0; c < 9; c++) {
-    const x = x0 + (c % 3) * (cs + gap), y = y0 + ((c / 3) | 0) * (cs + gap);
-    g += `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="3" fill="var(--cell)"/>`;
-    if (c === 4) g += `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="9" fill="none" stroke="var(--ink)" stroke-width="2.6"/>`;
-  }
-  return `<svg id="lpick" viewBox="0 0 320 ${y0 * 2 + cs * 3 + gap * 2}" role="img" aria-label="真ん中のマスに ○ を置いた盤">${g}</svg>`;
+  LPICK.x.forEach((mx, k) => {
+    const x0 = mx - LPICK.w / 2, y0 = LPICK.y - LPICK.w / 2;
+    g += `<rect x="${x0}" y="${y0}" width="${LPICK.w}" height="${LPICK.w}" rx="6" fill="var(--panel)" stroke="var(--line)"/>`;
+    for (let c = 0; c < 9; c++) {
+      const x = x0 + pad + (c % 3) * (cs + gap), y = y0 + pad + ((c / 3) | 0) * (cs + gap);
+      g += `<rect x="${x}" y="${y}" width="${cs}" height="${cs}" rx="3" fill="var(--cell)"/>`;
+      if (c === 4) g += k ? `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="9" fill="var(--ink)"/>`
+        : `<circle cx="${x + cs / 2}" cy="${y + cs / 2}" r="8" fill="none" stroke="var(--ink)" stroke-width="2.6"/>`;
+    }
+  });
+  return `<svg id="lpick" viewBox="0 0 320 ${LPICK.y * 2}" role="img" aria-label="真ん中のマスに ○ を置いた盤と ● を置いた盤">${g}</svg>`;
 }
 // 3×3・地雷 2 個の盤の上辺の真ん中を開けると 2 が出る。地雷は周りの 5 マスのどれか 2 つなので、下の段は p = 0 になる。
 // 雲の濃さは、開ける前は全マス 2/9、開けた後は 36 の世界のうち数字に合う世界から数えた p。
