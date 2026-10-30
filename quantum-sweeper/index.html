@@ -149,6 +149,7 @@ button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 /* 続けてタップする画面とボタンでは、ダブルタップの拡大を止める */
 #lore,#worlds,button{touch-action:manipulation}
 #lorebody{min-height:300px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+#lmsg{min-height:1.6em}
 #lorebody p{margin:0;max-width:30em;animation:lorein .7s ease both}
 @keyframes lorein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#lorebody p{animation:none}}
@@ -1805,7 +1806,7 @@ $('wreset').addEventListener('click', wStart);
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
   ['ここに、引き金を引くたびに半々の確率で弾が出る銃があります。', 'この銃を自分に向けて、引き金を引いてください。'],
-  ['trigger', '弾は一度も出ませんでした。'],
+  ['trigger'],
   ['この銃は、量子の測定で弾を出すかどうかを決めています。', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', 'tree', '弾が出た世界のあなたは、その結果を知ることができません。', '結果を知るのは、弾が出なかった世界のあなただけです。'],
   ['これは、量子自殺と呼ばれる思考実験です。', '外から見ている人には、あなたは高い確率で撃たれています。', '<span class="l">何度引いても弾が出ないのは、あなたから見た時だけです。</span>'],
   ['この施設では、銃の代わりに地雷の盤を使います。', '地雷の置き方はまだ決まっていません。', '置き方の数だけ、別々の世界が重なっています。'],
@@ -1826,12 +1827,11 @@ function loreStep() {
   const scene = LORE[lore], item = scene[loreK++];
   const body = $('lorebody');
   if (item === 'trigger') {
-    body.insertAdjacentHTML('beforeend', `<div class="lcount"><b id="lseen">—</b></div><button id="ltrig">引き金を引く</button>`);
-    loreTree();
+    body.insertAdjacentHTML('beforeend', `<button id="ltrig">引き金を引く</button><p id="lmsg"></p><button id="lnext" hidden>生き残った確率</button>`);
   } else if (item === 'tree') {
     // 引いた回数だけ分かれた世界を、種明かしの後で見せる
     body.insertAdjacentHTML('beforeend', `<svg id="ltree" viewBox="0 0 320 120" role="img" aria-label="引き金を引くたびに分かれる世界"></svg>`
-      + `<div class="lcount"><div>引いた回数<b>${pulls}</b></div><div class="out">外から見て生きている確率<b id="lout"></b></div></div>`);
+      + `<div class="lcount"><div>引いた回数<b>${pulls}</b></div><div class="out">生き残った確率<b id="lout"></b></div></div>`);
     loreTree();
   } else if (item === 'end') {
     body.insertAdjacentHTML('beforeend', '<div class="lnav"><button data-lgo="intro">観測記録 001 へ</button><button data-lgo="worlds">36 の世界</button></div>');
@@ -1839,18 +1839,19 @@ function loreStep() {
 }
 // 句読点の後でだけ改行するよう、句読点までのまとまりを折り返さない塊にする（タグの中は分けない）
 const loreWrap = t => t.replace(/(<[^>]+>)|([^<、。]+[、。]?)/g, (m, tag, seg) => tag || `<span class="lseg">${seg}</span>`);
-function loreTap() {
-  const scene = LORE[lore];
-  // 装置を出している間は、3回引くまで進めない
-  if (scene[0] === 'trigger' && pulls < 3) return;
-  // 引いた結果を文で受けたら、それ以上は引けなくする
-  if (scene[0] === 'trigger') $('ltrig').disabled = true;
-  if (loreK < scene.length) return loreStep();
-  if (lore === LORE.length - 1) return;
+function loreNext() {
   lore++;
   loreK = 0;
   $('lorebody').innerHTML = '';
   loreStep();
+}
+function loreTap() {
+  const scene = LORE[lore];
+  // 装置の場面は、タップでは進めず「生き残った確率」のボタンで進む
+  if (scene[0] === 'trigger') return;
+  if (loreK < scene.length) return loreStep();
+  if (lore === LORE.length - 1) return;
+  loreNext();
 }
 // 本編の流れ図と同じく、帯の太さを生き残った世界の割合にする。引くたびに半分が赤い舌になって下へ剥がれ、残りの金の帯が続く
 function loreTree() {
@@ -1867,19 +1868,24 @@ function loreTree() {
   g = `<rect x="0" y="${y0}" width="${x0}" height="${T}" fill="var(--gold)"/>` + g
     + `<rect x="${xn}" y="${y0}" width="${Math.max(0, 320 - xn)}" height="${tn}" fill="var(--gold)" opacity=".35"/>`;
   if ($('ltree')) $('ltree').innerHTML = g;
-  if ($('lseen')) $('lseen').textContent = n ? `${n} 回とも不発` : '—';
   if ($('lout')) $('lout').textContent = `${(100 * 0.5 ** n).toFixed(n > 6 ? 2 : n > 3 ? 1 : 0)}%`;
 }
 // 画面のどこをタップしても進むよう、文書全体で受ける（入口のボタンで開いた時のタップは数えない）
 document.addEventListener('click', e => {
   if ($('lore').hidden || e.target.closest('#lback, #lskip, #entry, a')) return;
+  // 引くたびに同じ文を出し直す。3回引いたら次へ進むボタンを出す
   if (e.target.id === 'ltrig') {
     pulls++;
-    loreTree();
+    // 要素を差し替えて、出てくる動きを毎回やり直す
+    const msg = $('lmsg').cloneNode();
+    msg.innerHTML = loreWrap('銃は不発でした。');
+    $('lmsg').replaceWith(msg);
+    if (pulls >= 3) $('lnext').hidden = false;
     e.target.classList.add('flash');
     setTimeout(() => e.target.classList.remove('flash'), 150);
     return;
   }
+  if (e.target.id === 'lnext') return loreNext();
   const go = e.target.closest('[data-lgo]');
   if (!go) return loreTap();
   $('lore').hidden = true;
