@@ -412,7 +412,7 @@ function coachTip() {
   if (g.state !== 'play') return null;
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '<b>○</b>印のマスに降り立つ。そのマスと周りの8マスに、地雷は無い' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `<b class="g">●</b>印のマスは、どの世界でも地雷がある。${fineMouse.matches ? '右クリック' : '長押し'}で ● を置いて、地雷を観測する` };
-  if (g.landed && !branchSeen()) return step
+  if (g.landed && !branchSeen() && !seenSet().has('pre')) return step
     ? { key: 'pre', focus: step.cell, html: '<b>○</b>印のマスは未確定。それでも開けられる。地雷のある世界のあなたは消えるが、失敗にはならない' }
     : { key: 'pre', focus: -1, html: '<b>∿</b>未確定のマスも選べる。地雷のある世界が消え、分岐して進む' };
   return null;
@@ -420,7 +420,16 @@ function coachTip() {
 function renderCoach() {
   if (!coach) {
     const t = coachTip();
-    if (t && !coachShown.has(t.key)) { coachShown.add(t.key); coach = t; }
+    if (t && !coachShown.has(t.key)) {
+      coachShown.add(t.key);
+      coach = t;
+      // 分岐する前の札は、どの盤でも一度だけ出す（手がかりや分岐の札と同じく、見たことを残す）
+      if (t.key === 'pre') {
+        seenSet().add('pre');
+        seen.add('pre');
+        try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
+      }
+    }
   }
   const el = $('coach');
   el.hidden = !coach;
