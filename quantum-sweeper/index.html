@@ -1755,7 +1755,7 @@ function wAct(c, mine) {
     : `どの世界でも、このマスに地雷は${mine ? 'ありました' : 'ありませんでした'}。`;
   if (mine) {
     ws.cell[c] = '●';
-    ws.cap = lost + (left === 1 ? '残った世界は 1 つです。' : '');
+    ws.cap = lost + (left === 1 ? '<br>残った世界は 1 つです。' : '');
     return wRender();
   }
   // 青: 開けたマスの数字を、生き残った世界から選ぶ。数字と合わない世界は、あなたのいる世界ではなくなる
@@ -1771,7 +1771,7 @@ function wAct(c, mine) {
     off.forEach(i => { ws.st[i] = 'i'; });
     const rest = live.length - off.length;
     ws.cap = lost + (off.length ? `<br>数字は ${n} でした。数字が ${n} にならない <span class="i">${off.length} の世界は、あなたのいる世界ではありません</span>。` : `<br>数字は ${n} でした。`)
-      + (rest === 1 ? '残った世界は 1 つです。' : '');
+      + (rest === 1 ? '<br>残った世界は 1 つです。' : '');
     ws.busy = false;
     wRender();
   }, 700);
