@@ -316,7 +316,7 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 </div>
 <div class="bar">
   <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける" title="● で決まるマスを自動で開ける">○ 自動</button>
-  <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示" title="地雷の分布を雲で表示">|ψ|²</button>
+  <button id="showp" aria-pressed="true" aria-label="地雷の分布を雲で表示" title="地雷の分布を雲で表示">|ψ|²</button>
   <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示" title="地雷の確率を数字で表示">p</button>
   <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示" title="世界線メーターを表示">∿</button>
   <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示" title="埋まった手がかりを薄く表示">✓</button>
@@ -526,7 +526,7 @@ function coachTip() {
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
   if (introProbs() && showM && !g.situation().sureExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, hl: ['meter', 'showm'], html: '上の数字は、あなたが生き残れた確率です。今は、中身が確定したマスがありません。そういう時、数字が揺れます。∿ で、表示を切り替えられます。' };
-  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。両方を押してみてください。' };
+  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: `盤の上の雲は、地雷がある確率を表します。|ψ|² で、表示を切り替えられます。p を押すと、確率を数字（%）で表示します。${showP ? '' : '|ψ|² と '}p を押してみてください。` };
   if (g.landed && !branchSeen() && !seenSet().has('pre') && !(step && step.kind === 'probs')) {
     // ○ と ● を初めて名前で呼ぶ札なので、意味と操作をここで示す
     const ops = `地雷が無いと考えるマスは${fineMouse.matches ? 'クリック' : 'タップ'}して開けます（○）。地雷があると考えるマスは${fineMouse.matches ? '右クリック' : '長押し'}して ● を置きます。`;
@@ -606,7 +606,7 @@ function markArea(i) {
 }
 // 調査: オンの間は、タップでマスを開けずに、上の枠だけを出す（マウスなら重ねるだけで出る）
 let probe = false;
-let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = false, showN = false;
+let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = true, showN = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 終局後の振り返りで見ている手の番号。-1 なら終局の盤
 let review = -1;
@@ -764,8 +764,8 @@ function render() {
       // 終わった時の地雷: クリアなら確定した地雷として落ち着いた色、ゲームオーバーなら赤
       else if (over && p > 1 - 1e-9) cls += g.state === 'clear' ? ' w' : ' m';
       // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（●）と、
-      // 雲を表示している時の p = 1 のマス。雲を隠している時に p から消すと、答えが漏れる
-      const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
+      // 終わった後の p = 1 のマス。プレー中に p から消すと、雲を表示していても答えが漏れる
+      const hideMark = g.mines.has(i) || (over && p > 1 - 1e-9);
       // p ボタンがオンの間は、各マスの地雷の確率を数字で出す（色は振り返りの % と同じ。数字は分岐の札と同じ形）
       if (showN && !over && g.landed && !g.mines.has(i))
         html += `<span class="pv" style="color:${p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`}">${pctN(p)}</span>`;
@@ -1755,7 +1755,7 @@ const wCount = (w, c) => w.filter(d => wNear(c, d)).length;
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
   ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', '弾が出れば、あなたは死にます。', '運が良ければ、生き残れるでしょう。', 'あなたの度胸を試します。引き金を引いてください。', 'trigger'],
-  ['tree', () => `生き残った確率は ${loreOdds()} でした。`, () => LUCK.find(([n]) => pulls >= n)[1], '<span class="lgap">この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
+  ['tree', () => `生き残った確率は ${loreOdds()} でした。`, () => LUCK.find(([n]) => pulls >= n)[1], '<span class="lgap">ところで、この銃は量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
   ['place', '3×3 の盤に、地雷が 2 つ埋まっています。', () => `どれか1つのマスを選び、地雷が無いと考えるなら${fineMouse.matches ? 'クリック' : 'タップ'}して ○、あると考えるなら${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。`, 'cut', '選択と合わない世界のあなたは、そこで終わります。', 'fade', '残った世界のあなたが、次のマスを選びます。'],
