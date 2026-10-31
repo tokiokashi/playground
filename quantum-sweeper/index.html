@@ -432,26 +432,28 @@ function openedCell(i, t) {
   if (DETECTORS[g.det[i]].show) html = `<span class="wm">${MARK[g.det[i]]}</span><span class="v">${t}</span>`;
   return { cls, html };
 }
-// 検出器の種類ごとの実演。初めてその種類の手がかりが開いた時に一度だけ、手がかりのマスと見ている範囲を枠で示し、
-// 表示の読み方を札で出す。札を閉じると枠も消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
+// 手がかりの読み方の実演。札の文は数字と数字以外の 2 通りしかないので、それぞれ初めて開いた時に一度だけ、
+// 手がかりのマスと見ている範囲を枠で示し、札を出す。札を閉じると枠も消える。見たかどうかはこのブラウザに残す
+// （導入では導入の中で数え直す）
 let tipCell = -1, introSeen = new Set(), seen = new Set();
 try { seen = new Set(JSON.parse(localStorage.getItem('qs-seen')) || []); } catch { /* 保存できない環境 */ }
 const seenSet = () => camp && camp.s < 0 ? introSeen : seen;
-// この手で開いたマスのうち、まだ見ていない種類の手がかりを、開く動きの早い順に探す。0 個と確定した数字（空白）は除く
+// 手がかりの表示が数字か、それ以外か。札の文はこの 2 通り
+const tipKind = i => /^\d+$/.test(g.label[i]) ? 'tip-num' : 'tip-sym';
+// この手で開いたマスのうち、まだ見ていない表示の手がかりを、開く動きの早い順に探す。0 個と確定した数字（空白）は除く
 function pickTip(fresh) {
   const set = seenSet();
-  const c = fresh.filter(i => g.clues.has(i) && g.label[i] && !set.has(g.det[i]))
+  const c = fresh.filter(i => g.clues.has(i) && g.label[i] && !set.has(tipKind(i)))
     .sort((a, b) => (pops.get(a) || 0) - (pops.get(b) || 0))[0];
   if (c === undefined) return;
   tipCell = c;
-  set.add(g.det[c]);
-  seen.add(g.det[c]);
+  set.add(tipKind(c));
+  seen.add(tipKind(c));
   try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
 }
 // 手がかりの表示の読み方。範囲は枠で見せているので、文では「周囲」とだけ言う
 function tipText(i) {
-  const lab = g.label[i];
-  return (/^\d+$/.test(lab) ? 'マスの数字は周囲の地雷の数を表します。' : 'マスの文字は周囲の地雷の情報を表します。');
+  return (tipKind(i) === 'tip-num' ? 'マスの数字は周囲の地雷の数を表します。' : 'マスの文字は周囲の地雷の情報を表します。');
 }
 // 分岐の1行。普通のマインスイーパーと違い、未確定のマスを選んでも失敗せず、世界が分岐して進む。
 // 安全なマスしか開けない人にも先に伝わるよう、降り立った後から初めて分岐するまでは分岐できることを出し、初めて分岐した直後は、何が起きたかを出す。
