@@ -1097,8 +1097,8 @@ function act(i) {
 const probsNow = () => Array.from({ length: g.W * g.H }, (_, i) => g.free(i) ? g.prob(i) : -1);
 const unsure = p => p > 1e-9 && p < 1 - 1e-9;
 // 賭けで確率が 0 か 1 に決まったマスを、賭けたマスからの距離の順に光らせる（開く動きと同じ間隔）。
-// 光らせるのは、決まったことが盤に見えているマスだけにする: 賭けたマス、この手で開いたマス、
-// 終局後の全てのマス、|ψ|² で雲を出している時の開いていないマス。見えていないマスを光らせると、推理の答えが漏れる
+// 光らせるのは、決まったことが盤に見えているマスだけにする: 賭けたマス、この手で開いたマス、終局後の全てのマス。
+// 開いていないマスを光らせると、雲を出していても推理の答えが漏れる
 function collapse(c, before, withSelf) {
   const { W } = g, over = g.state !== 'play';
   const hit = [];
@@ -1107,7 +1107,7 @@ function collapse(c, before, withSelf) {
     if (i === c || !unsure(p)) return;
     const now = g.free(i) ? g.prob(i) : g.mines.has(i) ? 1 : 0;
     if (unsure(now)) return;
-    if (g.opened[i] || over || showP) hit.push(i);
+    if (g.opened[i] || over) hit.push(i);
   });
   clps = new Map();
   for (const i of hit) {
