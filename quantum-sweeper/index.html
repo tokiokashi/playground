@@ -280,13 +280,13 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <details id="records" hidden></details>
 </div>
 <div id="lore" hidden>
-  <div class="whead"><button id="lback" aria-label="入口へ">←</button><b>観測記録 000</b><button id="lskip" hidden>スキップ</button></div>
+  <div class="whead"><button id="lback" aria-label="入口へ" title="入口へ">←</button><b>観測記録 000</b><button id="lskip" hidden>スキップ</button></div>
   <div id="lorebody"></div>
 </div>
 <div id="play" hidden>
 <div class="pside">
 <div class="bar">
-  <button id="toentry" aria-label="入口へ">←</button>
+  <button id="toentry" aria-label="入口へ" title="入口へ">←</button>
   <span id="stagelabel" class="stagelabel"></span>
   <button id="skip" hidden>スキップ</button>
 </div>
@@ -296,32 +296,32 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
     <button data-size="16,16,40" aria-pressed="false">16×16</button>
   </span>
   <span role="group" aria-label="手がかりの粗さ">
-    <button data-fog="0" aria-pressed="false">非粗視化</button>
-    <button data-fog="1" aria-pressed="true">弱粗視化</button>
-    <button data-fog="2" aria-pressed="false">強粗視化</button>
-    <button data-fog="3" aria-pressed="false">全粗視化</button>
+    <button data-fog="0" title="すべてのマスが、周りの地雷の数をそのまま答えます" aria-pressed="false">非粗視化</button>
+    <button data-fog="1" title="6 割のマスが数をそのまま答え、残りは幅や偶奇などで答えます" aria-pressed="true">弱粗視化</button>
+    <button data-fog="2" title="数をそのまま答えるマスは 3 割ほどで、残りは幅や偶奇などで答えます" aria-pressed="false">強粗視化</button>
+    <button data-fog="3" title="すべてのマスが、幅や偶奇などで答えます" aria-pressed="false">全粗視化</button>
   </span>
   <span role="group" aria-label="検出器の範囲">
-    <button data-fog="4" aria-pressed="false">変形</button>
-    <button data-fog="5" aria-pressed="false">差分</button>
-    <button data-fog="6" aria-pressed="false">混成</button>
-    <button data-fog="7" aria-pressed="false">混沌</button>
+    <button data-fog="4" title="数える範囲の違うマス（✚ × ♞&#xFE0E;）が混ざります" aria-pressed="false">変形</button>
+    <button data-fog="5" title="左右や上下の地雷を比べて答えるマス（⇆ ⇅）が混ざります" aria-pressed="false">差分</button>
+    <button data-fog="6" title="すべての種類の検出器が混ざります" aria-pressed="false">混成</button>
+    <button data-fog="7" title="すべての種類の検出器が混ざり、数をそのまま答えるマスはありません" aria-pressed="false">混沌</button>
   </span>
 </div>
 <div class="bar" id="modebar">
   <span role="group" aria-label="評価のモード" id="modegrp">
-    <button data-mode="safe" aria-pressed="true">安全第一</button>
-    <button data-mode="cost" aria-pressed="false">最小コスト</button>
+    <button data-mode="safe" title="推理ミスと選択の損の合計でランクが決まります" aria-pressed="true">安全第一</button>
+    <button data-mode="cost" title="L が小さいほどランクが上がります" aria-pressed="false">最小コスト</button>
   </span>
 </div>
 <div class="bar">
-  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける">○ 自動</button>
-  <button id="showp" aria-pressed="false" aria-label="地雷の分布を雲で表示">|ψ|²</button>
-  <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示">p</button>
-  <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示">∿</button>
-  <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示">✓</button>
-  <button id="reset" aria-label="新しい盤">↻</button>
-  <button id="gear" aria-pressed="false" aria-label="詳細設定">⚙</button>
+  <button id="autochord" aria-pressed="true" aria-label="● で決まるマスを自動で開ける" title="● で決まるマスを自動で開ける">○ 自動</button>
+  <button id="showp" aria-pressed="true" aria-label="地雷の分布を雲で表示" title="地雷の分布を雲で表示">|ψ|²</button>
+  <button id="shown" aria-pressed="false" aria-label="地雷の確率を数字で表示" title="地雷の確率を数字で表示">p</button>
+  <button id="showm" aria-pressed="true" aria-label="世界線メーターを表示" title="世界線メーターを表示">∿</button>
+  <button id="showd" aria-pressed="true" aria-label="埋まった手がかりを薄く表示" title="埋まった手がかりを薄く表示">✓</button>
+  <button id="reset" aria-label="新しい盤" title="新しい盤">↻</button>
+  <button id="gear" aria-pressed="false" aria-label="詳細設定" title="詳細設定">⚙</button>
 </div>
 <div id="custom" hidden>
   <label>W<input type="number" id="cw" min="4" max="20"></label>
@@ -336,8 +336,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
   <label>×<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>♞&#xFE0E;<input type="range" class="mix" min="0" max="100" step="5"></label>
   <label>⇆<input type="range" class="mix" min="0" max="100" step="5"></label>
-  <button id="botrun" aria-pressed="false" aria-label="自動で打ち続ける">▶</button>
-  <button id="botstep" aria-label="自動で1手打つ">⏭</button>
+  <button id="botrun" aria-pressed="false" aria-label="自動で打ち続ける" title="自動で打ち続ける">▶</button>
+  <button id="botstep" aria-label="自動で1手打つ" title="自動で1手打つ">⏭</button>
 </div>
 <div class="stats">
   <div class="stat"><span class="k">Ω</span><span class="v" id="omega"></span></div>
@@ -350,8 +350,8 @@ details h3{margin:14px 0 2px;font-size:14px;color:var(--gold)}
 <div class="pboard">
 <div class="stage"><div id="board" role="grid" aria-label="盤"></div><canvas id="cloud" hidden aria-hidden="true"></canvas><div id="coach" hidden role="dialog" aria-live="polite"><div class="card"><p id="coachtext"></p><button id="coachok">OK</button></div></div></div>
 <p id="msg" aria-live="polite"></p>
-<div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
-<div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐">|◀</button><button id="rvprev" aria-label="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手">▶</button><button id="rvnextb" aria-label="次の分岐">▶|</button><button id="rvlast" aria-label="終局">⇥</button><button id="rvpv" aria-pressed="true" aria-label="各マスの p を数字で表示">%</button></div>
+<div id="probebar"><button id="probe" aria-pressed="false" aria-label="マスに触れて手がかりを調べる。オンの間はマスを開けない" title="マスに触れて手がかりを調べる。オンの間はマスを開けない">調査</button></div>
+<div id="revbar" class="review" hidden><button id="rvfirst" aria-label="最初の手" title="最初の手">⇤</button><button id="rvprevb" aria-label="前の分岐" title="前の分岐">|◀</button><button id="rvprev" aria-label="前の手" title="前の手">◀</button><span id="rvpos"></span><button id="rvnext" aria-label="次の手" title="次の手">▶</button><button id="rvnextb" aria-label="次の分岐" title="次の分岐">▶|</button><button id="rvlast" aria-label="終局" title="終局">⇥</button><button id="rvpv" aria-pressed="true" aria-label="各マスの p を数字で表示" title="各マスの p を数字で表示">%</button></div>
 </div>
 <div id="result" aria-live="polite"></div>
 </div>
@@ -432,26 +432,28 @@ function openedCell(i, t) {
   if (DETECTORS[g.det[i]].show) html = `<span class="wm">${MARK[g.det[i]]}</span><span class="v">${t}</span>`;
   return { cls, html };
 }
-// 検出器の種類ごとの実演。初めてその種類の手がかりが開いた時に一度だけ、手がかりのマスと見ている範囲を枠で示し、
-// 表示の読み方を札で出す。札を閉じると枠も消える。見た種類はこのブラウザに残す（導入では導入の中で数え直す）
+// 手がかりの読み方の実演。札の文は数字と数字以外の 2 通りしかないので、それぞれ初めて開いた時に一度だけ、
+// 手がかりのマスと見ている範囲を枠で示し、札を出す。札を閉じると枠も消える。見たかどうかはこのブラウザに残す
+// （導入では導入の中で数え直す）
 let tipCell = -1, introSeen = new Set(), seen = new Set();
 try { seen = new Set(JSON.parse(localStorage.getItem('qs-seen')) || []); } catch { /* 保存できない環境 */ }
 const seenSet = () => camp && camp.s < 0 ? introSeen : seen;
-// この手で開いたマスのうち、まだ見ていない種類の手がかりを、開く動きの早い順に探す。0 個と確定した数字（空白）は除く
+// 手がかりの表示が数字か、それ以外か。札の文はこの 2 通り
+const tipKind = i => /^\d+$/.test(g.label[i]) ? 'tip-num' : 'tip-sym';
+// この手で開いたマスのうち、まだ見ていない表示の手がかりを、開く動きの早い順に探す。0 個と確定した数字（空白）は除く
 function pickTip(fresh) {
   const set = seenSet();
-  const c = fresh.filter(i => g.clues.has(i) && g.label[i] && !set.has(g.det[i]))
+  const c = fresh.filter(i => g.clues.has(i) && g.label[i] && !set.has(tipKind(i)))
     .sort((a, b) => (pops.get(a) || 0) - (pops.get(b) || 0))[0];
   if (c === undefined) return;
   tipCell = c;
-  set.add(g.det[c]);
-  seen.add(g.det[c]);
+  set.add(tipKind(c));
+  seen.add(tipKind(c));
   try { localStorage.setItem('qs-seen', JSON.stringify([...seen])); } catch { /* 保存できない環境 */ }
 }
 // 手がかりの表示の読み方。範囲は枠で見せているので、文では「周囲」とだけ言う
 function tipText(i) {
-  const lab = g.label[i];
-  return (/^\d+$/.test(lab) ? 'マスの数字は周囲の地雷の数を表します。' : 'マスの文字は周囲の地雷の情報を表します。');
+  return (tipKind(i) === 'tip-num' ? 'マスの数字は周囲の地雷の数を表します。' : 'マスの文字は周囲の地雷の情報を表します。');
 }
 // 分岐の1行。普通のマインスイーパーと違い、未確定のマスを選んでも失敗せず、世界が分岐して進む。
 // 安全なマスしか開けない人にも先に伝わるよう、降り立った後から初めて分岐するまでは分岐できることを出し、初めて分岐した直後は、何が起きたかを出す。
@@ -526,7 +528,7 @@ function coachTip() {
   if (step && !g.landed && camp.k === 0) return { key: 'land', focus: step.cell, html: '光っているマスを開けてください。最初に開けたマスとその周りの 8 マスに、地雷はありません。' };
   if (step && step.kind === 'mine') return { key: 'mine', focus: step.cell, html: `光っているマスには、どの世界でも地雷があります。${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。` };
   if (introProbs() && showM && !g.situation().sureExists && !coachShown.has('meter')) return { key: 'meter', focus: -1, low: true, hl: ['meter', 'showm'], html: '上の数字は、あなたが生き残れた確率です。今は、中身が確定したマスがありません。そういう時、数字が揺れます。∿ で、表示を切り替えられます。' };
-  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: '上の |ψ|² を押すと、地雷がある確率を雲で表示します。p を押すと、確率を数字（%）で表示します。両方を押してみてください。' };
+  if (introProbs() && !coachShown.has('cloud')) return { key: 'cloud', focus: -1, low: true, hl: ['showp', 'shown'], html: `盤の上の雲は、地雷がある確率を表します。|ψ|² で、表示を切り替えられます。p を押すと、確率を数字（%）で表示します。${showP ? '' : '|ψ|² と '}p を押してみてください。` };
   if (g.landed && !branchSeen() && !seenSet().has('pre') && !(step && step.kind === 'probs')) {
     // ○ と ● を初めて名前で呼ぶ札なので、意味と操作をここで示す
     const ops = `地雷が無いと考えるマスは${fineMouse.matches ? 'クリック' : 'タップ'}して開けます（○）。地雷があると考えるマスは${fineMouse.matches ? '右クリック' : '長押し'}して ● を置きます。`;
@@ -606,7 +608,7 @@ function markArea(i) {
 }
 // 調査: オンの間は、タップでマスを開けずに、上の枠だけを出す（マウスなら重ねるだけで出る）
 let probe = false;
-let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = false, showN = false;
+let size = [9, 9, 10], mix = MIXES[1].slice(), mode = 'safe', autoChord = true, showP = true, showN = false;
 let g, cells, last = -1, hint = -1, hintKind = 'open';
 // 終局後の振り返りで見ている手の番号。-1 なら終局の盤
 let review = -1;
@@ -764,8 +766,8 @@ function render() {
       // 終わった時の地雷: クリアなら確定した地雷として落ち着いた色、ゲームオーバーなら赤
       else if (over && p > 1 - 1e-9) cls += g.state === 'clear' ? ' w' : ' m';
       // 検出器の印は、そのマスを開ける見込みがある間だけ出す。消すのはプレイヤーが自分で決めたマス（●）と、
-      // 雲を表示している時の p = 1 のマス。雲を隠している時に p から消すと、答えが漏れる
-      const hideMark = g.mines.has(i) || ((showP || over) && p > 1 - 1e-9);
+      // 終わった後の p = 1 のマス。プレー中に p から消すと、雲を表示していても答えが漏れる
+      const hideMark = g.mines.has(i) || (over && p > 1 - 1e-9);
       // p ボタンがオンの間は、各マスの地雷の確率を数字で出す（色は振り返りの % と同じ。数字は分岐の札と同じ形）
       if (showN && !over && g.landed && !g.mines.has(i))
         html += `<span class="pv" style="color:${p === 0 ? '#7fe0a0' : `rgba(255,139,139,${(0.45 + 0.55 * p).toFixed(2)})`}">${pctN(p)}</span>`;
@@ -1097,8 +1099,8 @@ function act(i) {
 const probsNow = () => Array.from({ length: g.W * g.H }, (_, i) => g.free(i) ? g.prob(i) : -1);
 const unsure = p => p > 1e-9 && p < 1 - 1e-9;
 // 賭けで確率が 0 か 1 に決まったマスを、賭けたマスからの距離の順に光らせる（開く動きと同じ間隔）。
-// 光らせるのは、決まったことが盤に見えているマスだけにする: 賭けたマス、この手で開いたマス、
-// 終局後の全てのマス、|ψ|² で雲を出している時の開いていないマス。見えていないマスを光らせると、推理の答えが漏れる
+// 光らせるのは、決まったことが盤に見えているマスだけにする: 賭けたマス、この手で開いたマス、終局後の全てのマス。
+// 開いていないマスを光らせると、雲を出していても推理の答えが漏れる
 function collapse(c, before, withSelf) {
   const { W } = g, over = g.state !== 'play';
   const hit = [];
@@ -1107,7 +1109,7 @@ function collapse(c, before, withSelf) {
     if (i === c || !unsure(p)) return;
     const now = g.free(i) ? g.prob(i) : g.mines.has(i) ? 1 : 0;
     if (unsure(now)) return;
-    if (g.opened[i] || over || showP) hit.push(i);
+    if (g.opened[i] || over) hit.push(i);
   });
   clps = new Map();
   for (const i of hit) {
@@ -1631,7 +1633,7 @@ function showEntry() {
 }
 // チュートリアルの面のボタンを、シナリオの行と同じ形で1行目に並べる。どの面からでも始められる
 function introRow() {
-  return `<div class="scen"><span>${INTRO.name}</span><button class="wbtn" data-lore aria-label="観測記録 000">背景</button>` + INTRO.stages.map(([W, H], k) =>
+  return `<div class="scen"><span>${INTRO.name}</span><button class="wbtn" data-lore aria-label="観測記録 000" title="観測記録 000">背景</button>` + INTRO.stages.map(([W, H], k) =>
     `<button data-s="-1" data-k="${k}"${introClear.has(k) ? ' class="done"' : ''} aria-label="${INTRO.heads[k]}">${W}×${H}</button>`).join('') + '</div>';
 }
 // シナリオ i の面のボタンを1行に並べる。まだ開いていない面の大きさは「？」で伏せる
@@ -1755,7 +1757,7 @@ const wCount = (w, c) => w.filter(d => wNear(c, d)).length;
 // 2場面目は引き金を引ける装置で、3回引くまではタップで進めない
 const LORE = [
   ['ここに、引き金を引くたびに、半々の確率で弾が出る銃があります。', '弾が出れば、あなたは死にます。', '運が良ければ、生き残れるでしょう。', 'あなたの度胸を試します。引き金を引いてください。', 'trigger'],
-  ['tree', () => `生き残った確率は ${loreOdds()} でした。`, () => LUCK.find(([n]) => pulls >= n)[1], '<span class="lgap">この銃は、量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
+  ['tree', () => `生き残った確率は ${loreOdds()} でした。`, () => LUCK.find(([n]) => pulls >= n)[1], '<span class="lgap">ところで、この銃は量子の測定で弾を出すかどうかを決めています。</span>', '引き金を引くたびに、世界は、弾が出た世界と出なかった世界に分かれます。', '弾が出た世界のあなたは、その結果を見ることはありません。', '結果を見ることができるのは、常に弾が出なかった世界のあなたです。'],
   ['計算上では、あなたは高い確率で自分を撃ち抜いています。', '<span class="l">しかしあなたは、何度引き金を引いても生き残るでしょう。</span>', '<span class="lgap">これが、量子自殺と呼ばれる思考実験です。</span>'],
   ['stack', 'この施設では、銃の代わりに地雷の埋まった盤を使います。', '地雷のある場所は、観測するまで確定していません。', '可能性の数だけ、別々の世界が重なっています。'],
   ['place', '3×3 の盤に、地雷が 2 つ埋まっています。', () => `どれか1つのマスを選び、地雷が無いと考えるなら${fineMouse.matches ? 'クリック' : 'タップ'}して ○、あると考えるなら${fineMouse.matches ? '右クリック' : '長押し'}して ● を置いてください。`, 'cut', '選択と合わない世界のあなたは、そこで終わります。', 'fade', '残った世界のあなたが、次のマスを選びます。'],
